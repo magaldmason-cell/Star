@@ -686,7 +686,7 @@
               <span style="color:#34d399; font-size:9px;">📡 CROSS-DEVICE P2P</span>
             </div>
             <div class="mode-desc">
-              Play live against a friend on another phone or computer! Create a 5-letter <strong>Room Code</strong>, race through the exact same 7 prompts simultaneously, and watch your rival's Space-Krill descend live!
+              Play live against a friend on another phone or computer! Create a 6-digit <strong>Room Code</strong>, race through the exact same 7 prompts simultaneously, and watch your rival's Space-Krill descend live!
             </div>
           </div>
 
@@ -777,7 +777,7 @@
           <!-- Host Side -->
           <div style="background:rgba(15,23,42,0.9); border:2px solid #34d399; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px; justify-content:space-between;">
             <div class="font-pixel" style="font-size:10px; color:#34d399;">HOST A ROOM</div>
-            <p style="font-size:17px; color:#cbd5e1;">Generate a 5-letter room code and invite a friend anywhere.</p>
+            <p style="font-size:17px; color:#cbd5e1;">Generate a 6-digit room code and invite a friend anywhere.</p>
             <button id="hostRoomBtn" class="pixel-btn pixel-btn-emerald" style="font-size:10px;" onclick="OnlineNet.hostRoom()">
               🚀 CREATE CODE
             </button>
@@ -786,7 +786,7 @@
           <!-- Join Side -->
           <div style="background:rgba(15,23,42,0.9); border:2px solid #38bdf8; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px; justify-content:space-between;">
             <div class="font-pixel" style="font-size:10px; color:#38bdf8;">JOIN A ROOM</div>
-            <input id="joinCodeInput" class="p-name-input" type="text" maxlength="6" placeholder="ENTER CODE" style="text-transform:uppercase; letter-spacing:3px;" />
+            <input id="joinCodeInput" class="p-name-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="6" placeholder="ENTER 6-DIGIT CODE" style="letter-spacing:3px;" />
             <button id="joinRoomBtn" class="pixel-btn pixel-btn-cyan" style="font-size:10px;" onclick="OnlineNet.joinRoom()">
               🔗 JOIN ROOM
             </button>
@@ -797,7 +797,7 @@
         <div id="onlineRoomStatusBox" style="display:none; background:rgba(4,8,20,0.92); border:2px solid #fbbf24; border-radius:6px; padding:12px; flex-direction:column; gap:8px; align-items:center;">
           <div id="onlineCodeWrapper" style="display:none; flex-direction:column; align-items:center; gap:6px;">
             <div class="font-pixel" style="font-size:9px; color:#fde68a;">SHARE THIS ROOM CODE WITH YOUR RIVAL:</div>
-            <div id="hostedRoomCodeText" class="room-code-display">-----</div>
+            <div id="hostedRoomCodeText" class="room-code-display">------</div>
             <button class="pixel-btn pixel-btn-gold" style="padding:6px 12px; font-size:9px;" onclick="OnlineNet.copyRoomCode()">
               📋 COPY ROOM CODE
             </button>
@@ -1003,7 +1003,7 @@
         <div style="font-size:20px; line-height:1.35; color:#e2e8f0; display:flex; flex-direction:column; gap:8px;">
           <p>• <strong style="color:#38bdf8;">REVERSE POPULARITY:</strong> Don't type the obvious answer! Obscure, valid answers sink your Space-Krill <strong>10× deeper</strong> in Light-Years (LY).</p>
           <p>• <strong style="color:#fbbf24;">ONE ACCEPTED SHOT:</strong> Wrong guesses shake the box so you can keep trying—but your <strong>first valid answer immediately locks in</strong>!</p>
-          <p>• <strong style="color:#34d399;">ONLINE MULTIPLAYER:</strong> Create a 5-letter Room Code in <strong>ONLINE MULTIPLAYER</strong> and send it to a friend on any device to race live! Easier: tap <strong>🔗 COPY INVITE LINK</strong> — your friend just opens the link and drops straight into your room, no code typing.</p>
+          <p>• <strong style="color:#34d399;">ONLINE MULTIPLAYER:</strong> Create a 6-digit Room Code in <strong>ONLINE MULTIPLAYER</strong> and send it to a friend on any device to race live! Easier: tap <strong>🔗 COPY INVITE LINK</strong> — your friend just opens the link and drops straight into your room, no code typing.</p>
           <p>• <strong style="color:#facc15;">⚡ LIGHTSPEED:</strong> 60 seconds of thinking time, prompts back to back. Consecutive accepted answers build your combo multiplier (up to ×5) — a rejection or timeout resets it!</p>
           <p>• <strong style="color:#fb923c;">🔗 CHAIN REACTION:</strong> One category forever: each new answer must start with the <strong>last letter</strong> of your previous answer. Failed attempts and timeouts cost lives — you have 3.</p>
           <p>• <strong style="color:#c084fc;">💀 LAST SHIP STANDING:</strong> Online elimination — same prompt both ships; the MOST COMMON answer each round is eliminated (ties: the slower ship is out).</p>
@@ -3161,6 +3161,30 @@
       rivalForfeit: false,
       _hostRetries: 0,
 
+      /* --- Reliability machinery -------------------------------------------
+         _sendQueue:     messages produced before the data channel finished
+                         opening are held and flushed on 'open' instead of
+                         being silently dropped by PeerJS.
+         _joinPhase:     guest join state machine — 'idle' | 'joining' |
+                         'joined'. While 'joining', failed knocks retry
+                         with backoff until the ~20s deadline.
+         heartbeat:      PING/PONG every 10s while connected; missed traffic
+                         only raises an "unstable" warning, never a kick. */
+      _sendQueue: [],
+      _joinPhase: 'idle',
+      _joinCode: '',
+      _joinDeadlineAt: 0,
+      _joinAttemptNo: 0,
+      _attemptTimer: null,
+      _retryTimer: null,
+      _deadlineTimer: null,
+      _attemptSettled: true,
+      _busyRefused: false,
+      _roomOpen: false,
+      _hbTimer: null,
+      _lastRxAt: 0,
+      _hbWarnedAt: 0,
+
       GAME_TYPE_DESCS: {
         duel: 'Classic 7-prompt duel — deepest dive wins, speed breaks ties.',
         moonrace: '🌕 Race to the Moon (384,400 km)! Unlimited answers per prompt — Stardust 2,400 km • Too Clever 3,800 • Orbit 9,500 • Rare 24,000 • Deep Space 48,000 • 💎 96,000 km.',
@@ -3192,11 +3216,13 @@
         Game.copyTextToClipboard(this.getInviteLink(), 'INVITE LINK COPIED! SEND IT TO YOUR RIVAL!');
       },
 
+      // Room codes are NUMBERS ONLY, 6 digits: a phone's numeric keypad is
+      // all a guest needs, and digits can't be misread the way O/0 or I/1
+      // letter codes were.
       generateCode() {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         let code = '';
-        for (let i = 0; i < 5; i++) {
-          code += chars[Math.floor(Math.random() * chars.length)];
+        for (let i = 0; i < 6; i++) {
+          code += String(Math.floor(Math.random() * 10));
         }
         return code;
       },
@@ -3231,15 +3257,13 @@
         }
       },
 
-      _armJoinTimeout(kind, code) {
+      // Host-side watchdog: the room must finish registering with the
+      // relay within 9s or the host gets an honest error + one-tap retry.
+      _armJoinTimeout() {
         this._clearJoinTimeout();
         this._joinTimer = setTimeout(() => {
-          if (this.connected) return;
-          if (kind === 'host') {
-            this.setStatus('⚠️ RELAY TOOK TOO LONG TO OPEN YOUR ROOM — TAP "CREATE CODE" TO RETRY.', '#f87171');
-          } else {
-            this.setStatus(`⚠️ ROOM "${code}" DIDN'T ANSWER IN TIME — IT MAY BE FULL, CLOSED, OR THE CODE IS WRONG. TAP "JOIN ROOM" TO RETRY.`, '#f87171');
-          }
+          if (this.connected || this._roomOpen) return;
+          this.setStatus('⚠️ RELAY TOOK TOO LONG TO OPEN YOUR ROOM — TAP "CREATE CODE" TO RETRY.', '#f87171');
         }, 9000);
       },
 
@@ -3247,6 +3271,27 @@
         if (this._joinTimer) {
           clearTimeout(this._joinTimer);
           this._joinTimer = null;
+        }
+      },
+
+      _clearAttemptTimer() {
+        if (this._attemptTimer) {
+          clearTimeout(this._attemptTimer);
+          this._attemptTimer = null;
+        }
+      },
+
+      _clearRetryTimer() {
+        if (this._retryTimer) {
+          clearTimeout(this._retryTimer);
+          this._retryTimer = null;
+        }
+      },
+
+      _clearDeadlineTimer() {
+        if (this._deadlineTimer) {
+          clearTimeout(this._deadlineTimer);
+          this._deadlineTimer = null;
         }
       },
 
@@ -3260,6 +3305,7 @@
         const rawName = (document.getElementById('onlineCallsignInput').value || '').trim().toUpperCase();
         this.myName = rawName || 'HOST-KRILL';
         this.isHost = true;
+        this._hostRetries = 0;
         this.roomCode = this.generateCode();
 
         const box = document.getElementById('onlineRoomStatusBox');
@@ -3270,20 +3316,33 @@
         document.getElementById('onlineStartMatchBtn').style.display = 'none';
         this.setStatus('OPENING ORBITAL BEACON...', '#38bdf8');
 
-        const peerId = `starkrill-room-${this.roomCode}`;
-        this.peer = new Peer(peerId);
-        this._armJoinTimeout('host');
+        this._createHostPeer();
+      },
+
+      _createHostPeer() {
+        this._roomOpen = false;
+        this.peer = new Peer(`starkrill-room-${this.roomCode}`);
+        this._armJoinTimeout();
 
         this.peer.on('open', () => {
           this._clearJoinTimeout();
+          this._roomOpen = true;
           this._hostRetries = 0;
-          this.setStatus('WAITING FOR RIVAL TO ENTER CODE OR OPEN YOUR INVITE LINK...', '#fbbf24');
+          if (!this.connected) {
+            this.setStatus('WAITING FOR RIVAL TO ENTER CODE OR OPEN YOUR INVITE LINK...', '#fbbf24');
+          }
         });
 
-        this.peer.on('connection', (connection) => {
-          if (this.conn && this.conn.open) return; // already matched — ignore extra guests
-          this.conn = connection;
-          this.setupConnectionEvents();
+        this.peer.on('connection', (connection) => this._onHostConnection(connection));
+
+        this.peer.on('disconnected', () => {
+          // The broker socket dropped (mobile network switches do this
+          // constantly). The room id is ours — re-register it instead of
+          // letting the room silently stop being joinable.
+          try { this.peer.reconnect(); } catch (_) {}
+          if (!this.connected) {
+            this.setStatus('RELAY LINK LOST — RECONNECTING YOUR ROOM...', '#fbbf24');
+          }
         });
 
         this.peer.on('error', (err) => {
@@ -3295,24 +3354,37 @@
             document.getElementById('hostedRoomCodeText').textContent = this.roomCode;
             this.setStatus('CODE COLLISION — NEW CODE GENERATED!', '#fbbf24');
             try { this.peer.destroy(); } catch (_) {}
-            this.peer = new Peer(`starkrill-room-${this.roomCode}`);
-            this.peer.on('open', () => {
-              this._clearJoinTimeout();
-              this._hostRetries = 0;
-              this.setStatus('WAITING FOR RIVAL TO ENTER CODE OR OPEN YOUR INVITE LINK...', '#fbbf24');
-            });
-            this.peer.on('connection', (connection) => {
-              if (this.conn && this.conn.open) return;
-              this.conn = connection;
-              this.setupConnectionEvents();
-            });
-            this.peer.on('error', (e2) => {
-              this.setStatus(`RELAY ERROR (${(e2 && e2.type) || 'NETWORK'}) — TRY AGAIN`, '#f87171');
-            });
+            this._createHostPeer();
             return;
           }
-          this.setStatus(`RELAY ERROR (${(err && err.type) || 'NETWORK'}) — TRY AGAIN`, '#f87171');
+          if (!this._roomOpen) {
+            this.setStatus(`RELAY ERROR (${(err && err.type) || 'NETWORK'}) — TRY AGAIN`, '#f87171');
+          }
         });
+      },
+
+      _onHostConnection(connection) {
+        const inGame = Game.mode === 'online' && (Game.state === 'playing' || Game.state === 'summary');
+        if ((this.conn && this.conn.open) || inGame) {
+          // Already matched, or a match is underway: refuse fast and
+          // specifically instead of leaving the extra guest hanging on a
+          // channel nobody will ever answer.
+          connection.on('open', () => {
+            try { connection.send({ type: 'ROOM_BUSY' }); } catch (_) {}
+            setTimeout(() => { try { connection.close(); } catch (_) {} }, 350);
+          });
+          return;
+        }
+        if (this.conn) {
+          // A previous guest is still negotiating (channel never opened):
+          // the newest connection wins, the stale one is dropped. Its
+          // handlers are disarmed by the stale-connection guard.
+          const stale = this.conn;
+          this.conn = null;
+          try { stale.close(); } catch (_) {}
+        }
+        this.conn = connection;
+        this.setupConnectionEvents();
       },
 
       joinRoom() {
@@ -3322,9 +3394,9 @@
           return;
         }
 
-        const code = (document.getElementById('joinCodeInput').value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-        if (code.length !== 5) {
-          Game.showToast('ENTER A 5-LETTER ROOM CODE!');
+        const code = (document.getElementById('joinCodeInput').value || '').replace(/\D/g, '');
+        if (code.length !== 6) {
+          Game.showToast('ENTER THE 6-DIGIT ROOM CODE!');
           return;
         }
 
@@ -3338,33 +3410,154 @@
         box.style.display = 'flex';
         codeWrap.style.display = 'none';
         document.getElementById('onlineStartMatchBtn').style.display = 'none';
-        this.setStatus(`CONNECTING TO ROOM ${code}...`, '#38bdf8');
+
+        // Forgiving join: the classic PeerJS failure is knocking before
+        // the host's room has finished registering with the relay — the
+        // relay answers 'peer-unavailable' and naive code declares the
+        // room dead. Instead, keep knocking with short backoff for up to
+        // ~20 seconds; the host is usually up within the first few tries.
+        this._joinPhase = 'joining';
+        this._joinCode = code;
+        this._busyRefused = false;
+        this._joinAttemptNo = 0;
+        this._attemptSettled = true;
+        this._joinDeadlineAt = Date.now() + 20000;
+        this._deadlineTimer = setTimeout(() => this._failJoin(), 20500);
+        this.setStatus(`LOOKING FOR ROOM "${code}"...`, '#38bdf8');
 
         this.peer = new Peer();
-        this._armJoinTimeout('join', code);
         this.peer.on('open', () => {
-          this.conn = this.peer.connect(`starkrill-room-${code}`, { reliable: true });
-          this.setupConnectionEvents();
+          if (this._joinPhase === 'joining' && !this.conn && !this._retryTimer) {
+            this._attemptJoin();
+          }
+        });
+
+        this.peer.on('disconnected', () => {
+          // Broker socket dropped mid-join: re-register and let the
+          // attempt loop carry on.
+          try { this.peer.reconnect(); } catch (_) {}
         });
 
         this.peer.on('error', (err) => {
-          this._clearJoinTimeout();
-          if (err && err.type === 'peer-unavailable') {
-            this.setStatus(`ROOM "${code}" IS GONE — THE HOST CLOSED IT OR THE CODE IS WRONG. ASK FOR A FRESH INVITE LINK!`, '#f87171');
-          } else if (!this.connected) {
+          if (this._joinPhase === 'joining') {
+            if (err && err.type === 'peer-unavailable') {
+              // Room not registered (yet) — a failed knock, not a verdict.
+              this._failAttempt();
+            }
+            // Any other error while joining: the per-attempt watchdog and
+            // the 20s deadline deliver the final, specific verdict.
+            return;
+          }
+          if (!this.connected) {
             this.setStatus(`RELAY ERROR (${(err && err.type) || 'NETWORK'}) — TAP "JOIN ROOM" TO RETRY.`, '#f87171');
           }
         });
       },
 
+      _attemptJoin() {
+        if (this._joinPhase !== 'joining' || this.connected) return;
+        this._clearRetryTimer();
+        if (Date.now() >= this._joinDeadlineAt) {
+          this._failJoin();
+          return;
+        }
+        this._joinAttemptNo++;
+        this._attemptSettled = false;
+        if (this._joinAttemptNo > 1) {
+          this.setStatus(`STILL LOOKING FOR ROOM "${this._joinCode}" — THE HOST MAY STILL BE STARTING UP...`, '#38bdf8');
+        }
+        try {
+          this.conn = this.peer.connect(`starkrill-room-${this._joinCode}`, { reliable: true });
+        } catch (_) {
+          this._failAttempt();
+          return;
+        }
+        this.setupConnectionEvents();
+        // Per-attempt watchdog: a knock that is neither answered nor
+        // refused within 5s counts as a failed attempt.
+        this._clearAttemptTimer();
+        this._attemptTimer = setTimeout(() => this._failAttempt(), 5000);
+      },
+
+      _failAttempt() {
+        if (this._joinPhase !== 'joining' || this._attemptSettled) return;
+        this._attemptSettled = true;
+        this._clearAttemptTimer();
+        const dead = this.conn;
+        this.conn = null;
+        if (dead) {
+          try { dead.close(); } catch (_) {}
+        }
+        if (Date.now() >= this._joinDeadlineAt) {
+          this._failJoin();
+          return;
+        }
+        const backoff = Math.min(2500, 700 + this._joinAttemptNo * 450);
+        this._clearRetryTimer();
+        this._retryTimer = setTimeout(() => this._attemptJoin(), backoff);
+      },
+
+      _failJoin() {
+        if (this._joinPhase !== 'joining') return;
+        this._joinPhase = 'idle';
+        this._clearAttemptTimer();
+        this._clearRetryTimer();
+        this._clearDeadlineTimer();
+        const dead = this.conn;
+        this.conn = null;
+        if (dead) {
+          try { dead.close(); } catch (_) {}
+        }
+        this.setStatus(`⚠️ ROOM "${this._joinCode}" DIDN'T ANSWER AFTER 20 SECONDS OF KNOCKING — THE HOST MAY HAVE CLOSED IT, OR THE CODE IS WRONG. TAP "JOIN ROOM" TO RETRY.`, '#f87171');
+      },
+
+      _startHeartbeat() {
+        this._stopHeartbeat();
+        this._lastRxAt = Date.now();
+        this._hbTimer = setInterval(() => {
+          if (!this.conn || !this.conn.open) return;
+          this._rawSend({ type: 'PING' });
+          // Warn only: a silent channel is often just a sleeping phone or
+          // a slow tower handover. Never auto-kick on missed pongs.
+          if (Date.now() - this._lastRxAt > 26000 && Date.now() - this._hbWarnedAt > 30000) {
+            this._hbWarnedAt = Date.now();
+            Game.showToast('⚠️ CONNECTION UNSTABLE — CHECK YOUR SIGNAL');
+          }
+        }, 10000);
+      },
+
+      _stopHeartbeat() {
+        if (this._hbTimer) {
+          clearInterval(this._hbTimer);
+          this._hbTimer = null;
+        }
+      },
+
       setupConnectionEvents() {
         if (!this.conn) return;
+        // Capture THIS connection: PeerJS channels can be replaced (guest
+        // retries, a newer guest knocking), and events arriving late from
+        // a stale channel must never touch live match state.
+        const conn = this.conn;
+        let opened = false;
+        this._sendQueue.length = 0;
 
-        this.conn.on('open', () => {
+        conn.on('open', () => {
+          if (this.conn !== conn) return;
+          opened = true;
           this.connected = true;
           this._clearJoinTimeout();
+          if (this._joinPhase === 'joining') {
+            this._joinPhase = 'joined';
+            this._attemptSettled = true;
+            this._clearAttemptTimer();
+            this._clearRetryTimer();
+            this._clearDeadlineTimer();
+          }
           SoundFX.playCoinWinner();
-          this.send({ type: 'HELLO', name: this.myName });
+          this._startHeartbeat();
+          this._rawSend({ type: 'HELLO', name: this.myName });
+          this._flushQueue();
           if (this.isHost) {
             this.setStatus('RIVAL CONNECTED! READY TO LAUNCH!', '#34d399');
             const startBtn = document.getElementById('onlineStartMatchBtn');
@@ -3381,10 +3574,27 @@
           }
         });
 
-        this.conn.on('data', (data) => {
+        conn.on('data', (data) => {
+          if (this.conn !== conn) return;
           if (!data || typeof data !== 'object') return;
+          this._lastRxAt = Date.now();
 
-          if (data.type === 'HELLO') {
+          if (data.type === 'PING') {
+            this._rawSend({ type: 'PONG' });
+            return;
+          } else if (data.type === 'PONG') {
+            return;
+          } else if (data.type === 'ROOM_BUSY') {
+            // Host refused us: a match is already underway in that room.
+            // Terminal — stop knocking and say exactly why.
+            this._busyRefused = true;
+            this._joinPhase = 'idle';
+            this._clearAttemptTimer();
+            this._clearRetryTimer();
+            this._clearDeadlineTimer();
+            this.setStatus('⛔ THAT ROOM ALREADY HAS A MATCH UNDERWAY — ASK THE HOST FOR A FRESH CODE ONCE THEIR GAME ENDS.', '#f87171');
+            return;
+          } else if (data.type === 'HELLO') {
             this.rivalName = String(data.name || 'RIVAL-KRILL').slice(0, 14);
             if (this.isHost) {
               this.setStatus(`✅ ${this.rivalName} JOINED! CLICK LAUNCH!`, '#34d399');
@@ -3425,20 +3635,67 @@
           }
         });
 
-        this.conn.on('close', () => {
+        conn.on('close', () => {
+          if (this.conn !== conn) return; // stale channel — ignore it
+          this.conn = null;
           this.connected = false;
+          this._stopHeartbeat();
+
+          if (!opened) {
+            // A knock that never became a connection: the join retry
+            // loop owns the messaging, this is just bookkeeping.
+            if (this._joinPhase === 'joining') this._failAttempt();
+            return;
+          }
+          if (this._busyRefused) return; // ROOM_BUSY already explained it
+
           if (Game.race && Game.race.active) {
             Game.onRaceRivalDisconnect();
             return;
           }
-          if (Game.mode === 'online' && (Game.state === 'playing' || Game.state === 'summary')) {
+          if (Game.mode === 'online' && Game.state === 'playing') {
             // Rival quit mid-match: the match is decided by forfeit using
             // the last progress the rival sent.
             this.rivalForfeit = true;
             this.rivalFinished = true;
             Game.showToast('RIVAL DISCONNECTED — WIN BY FORFEIT!');
             Game.onOnlineRivalUpdate();
+            return;
           }
+          // Is the lobby what the player is actually looking at? (After a
+          // match, PLAY AGAIN reopens the lobby while mode/state still
+          // say 'online'/'summary' — a rival leaving THAT lobby is a
+          // lobby leave, not a result change.)
+          const lobbyEl = document.getElementById('onlineLobbyModal');
+          const inLobby = lobbyEl && lobbyEl.style.display === 'flex';
+          if (!inLobby && Game.mode === 'online' && Game.state === 'summary' && !this.rivalFinished) {
+            // I finished, the rival hadn't: their leaving settles it.
+            this.rivalForfeit = true;
+            this.rivalFinished = true;
+            Game.showToast('RIVAL DISCONNECTED — WIN BY FORFEIT!');
+            Game.onOnlineRivalUpdate();
+            return;
+          }
+          if (!inLobby && Game.mode === 'online' && Game.state === 'summary') {
+            // The match was already decided — a rival leaving the
+            // results screen must not flip it into a "forfeit win".
+            return;
+          }
+          // In the lobby: the other side left before launch. Say so and
+          // reset, instead of leaving a dead "READY TO LAUNCH!" state
+          // whose button silently does nothing.
+          this.rivalName = 'RIVAL-KRILL';
+          if (this.isHost) {
+            document.getElementById('onlineStartMatchBtn').style.display = 'none';
+            this.setStatus('RIVAL LEFT THE LOBBY — WAITING FOR A NEW RIVAL TO ENTER CODE OR OPEN YOUR INVITE LINK...', '#fbbf24');
+          } else {
+            this.setStatus('⚠️ HOST CLOSED THE ROOM — TAP "JOIN ROOM" TO RETRY, OR ASK FOR A FRESH CODE.', '#f87171');
+          }
+        });
+
+        conn.on('error', () => {
+          if (this.conn !== conn) return;
+          if (!opened && this._joinPhase === 'joining') this._failAttempt();
         });
       },
 
@@ -3489,11 +3746,36 @@
         });
       },
 
-      send(payload) {
+      _rawSend(payload) {
         if (this.conn && this.conn.open) {
           try {
             this.conn.send(payload);
+            return true;
           } catch (_) {}
+        }
+        return false;
+      },
+
+      _flushQueue() {
+        if (!this.conn || !this.conn.open) return;
+        const pending = this._sendQueue.splice(0, this._sendQueue.length);
+        for (const payload of pending) {
+          try {
+            this.conn.send(payload);
+          } catch (_) {}
+        }
+      },
+
+      send(payload) {
+        if (this._rawSend(payload)) return;
+        // Channel not open yet: QUEUE the message instead of dropping it.
+        // PeerJS silently discards anything sent before 'open', which
+        // used to eat launch and progress messages whole.
+        if (this.conn) {
+          this._sendQueue.push(payload);
+          if (this._sendQueue.length > 100) {
+            this._sendQueue.splice(0, this._sendQueue.length - 100);
+          }
         }
       },
 
@@ -3504,11 +3786,20 @@
 
       disconnect() {
         this.connected = false;
+        this._joinPhase = 'idle';
+        this._busyRefused = false;
+        this._roomOpen = false;
         this._clearJoinTimeout();
+        this._clearAttemptTimer();
+        this._clearRetryTimer();
+        this._clearDeadlineTimer();
+        this._stopHeartbeat();
+        this._sendQueue.length = 0;
         this._killWarm();
-        if (this.conn) {
-          try { this.conn.close(); } catch (_) {}
-          this.conn = null;
+        const conn = this.conn;
+        this.conn = null;
+        if (conn) {
+          try { conn.close(); } catch (_) {}
         }
         if (this.peer) {
           try { this.peer.destroy(); } catch (_) {}
@@ -3516,6 +3807,7 @@
         }
       }
     };
+
 
     /* =========================================================================
        6. FULLSCREEN PIXEL-ART SPACE CANVAS RENDERER
@@ -4142,6 +4434,20 @@
         const allChip = document.querySelector('#sectorBar .sector-chip[data-sector="All"]');
         if (allChip) allChip.textContent = `🌌 ALL SECTORS (${CATEGORIES.length})`;
 
+        // Room-code box: digits only (the numeric keypad is all a guest
+        // needs), and the join fires itself the moment the 6th digit
+        // lands — no hunting for the JOIN button.
+        const joinInput = document.getElementById('joinCodeInput');
+        if (joinInput) {
+          joinInput.addEventListener('input', () => {
+            const digits = joinInput.value.replace(/\D/g, '').slice(0, 6);
+            if (digits !== joinInput.value) joinInput.value = digits;
+            if (digits.length === 6 && !OnlineNet.connected && OnlineNet._joinPhase !== 'joining') {
+              OnlineNet.joinRoom();
+            }
+          });
+        }
+
         // Typing sound effect
         const ansInput = document.getElementById('answerInput');
         ansInput.addEventListener('input', () => {
@@ -4165,8 +4471,8 @@
           const params = new URLSearchParams(location.search);
           const joinCode = params.get('join');
           if (joinCode) {
-            const clean = joinCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-            if (clean.length === 5) {
+            const clean = joinCode.replace(/\D/g, '');
+            if (clean.length === 6) {
               setTimeout(() => {
                 this.openOnlineLobby(params.get('game') || undefined);
                 document.getElementById('joinCodeInput').value = clean;
