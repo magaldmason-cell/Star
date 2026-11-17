@@ -3167,7 +3167,14 @@
                          being silently dropped by PeerJS.
          _joinPhase:     guest join state machine — 'idle' | 'joining' |
                          'joined'. While 'joining', failed knocks retry
-                         with backoff until the ~20s deadline.
+                         with backoff until the ~60s deadline.
+         _attemptIceState / _joinIceBest: furthest ICE negotiation stage
+                         reached by the current attempt / the whole join.
+                         An attempt whose ICE reached 'checking' is alive
+                         mid-negotiation, so the watchdog spares it (see
+                         _onAttemptWatchdog); the final verdict reports
+                         the furthest stage so a dead join says how far
+                         the connection actually got.
          heartbeat:      PING/PONG every 10s while connected; missed traffic
                          only raises an "unstable" warning, never a kick. */
       _sendQueue: [],
@@ -3185,15 +3192,20 @@
       _lastRxAt: 0,
       _hbWarnedAt: 0,
       _lastJoinError: '',
+      _attemptStartedAt: 0,
+      _attemptIceState: '',
+      _joinIceBest: '',
 
       // ICE servers for EVERY Peer constructed below (warm-up, host,
       // guest). Left to its defaults, PeerJS has no dependable TURN
       // relay: when a direct peer-to-peer path can't be punched —
       // carrier-grade NAT on phones is the normal case — ICE never
       // completes, the data channel never opens, and the guest's join
-      // dies without a word. The Open Relay Project's free public TURN
-      // servers give those peers a relay path so the connection can
-      // actually complete.
+      // dies without a word. Two independent free public TURN providers
+      // (Open Relay Project + freeturn.net) give those peers a relay
+      // path so the connection can actually complete — and if one
+      // provider's shared endpoints are saturated and can't allocate,
+      // the other still can.
       PEER_OPTS: {
         config: {
           iceServers: [
@@ -3201,7 +3213,10 @@
             { urls: 'stun:stun.relay.metered.ca:80' },
             { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
             { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'stun:freeturn.net:3478' },
+            { urls: 'turn:freeturn.net:3478', username: 'free', credential: 'free' },
+            { urls: 'turn:freeturn.net:3478?transport=tcp', username: 'free', credential: 'free' }
           ]
         }
       },
@@ -3446,15 +3461,18 @@
         // the host's room has finished registering with the relay — the
         // relay answers 'peer-unavailable' and naive code declares the
         // room dead. Instead, keep knocking with short backoff for up to
-        // ~20 seconds; the host is usually up within the first few tries.
+        // ~60 seconds, and give each knock real time to connect (see
+        // _attemptJoin): the host is usually up within the first few
+        // tries, but a relayed connection can need most of that budget.
         this._joinPhase = 'joining';
         this._joinCode = code;
         this._busyRefused = false;
         this._lastJoinError = '';
+        this._joinIceBest = '';
         this._joinAttemptNo = 0;
         this._attemptSettled = true;
-        this._joinDeadlineAt = Date.now() + 20000;
-        this._deadlineTimer = setTimeout(() => this._failJoin(), 20500);
+        this._joinDeadlineAt = Date.now() + 60000;
+        this._deadlineTimer = setTimeout(() => this._failJoin(), 60500);
         this.setStatus(`LOOKING FOR ROOM "${code}"...`, '#38bdf8');
 
         this.peer = new Peer(this.PEER_OPTS);
@@ -3480,13 +3498,24 @@
               this._failAttempt();
             }
             // Any other error while joining: the per-attempt watchdog and
-            // the 20s deadline deliver the final, specific verdict.
+            // the 60s deadline deliver the final, specific verdict.
             return;
           }
           if (!this.connected) {
             this.setStatus(`RELAY ERROR (${(err && err.type) || 'NETWORK'}) — TAP "JOIN ROOM" TO RETRY.`, '#f87171');
           }
         });
+      },
+
+      // How far ICE negotiation got, ranked: an attempt that reached
+      // 'checking' is mid-negotiation (alive), not a dead knock.
+      _iceRank(state) {
+        switch (state) {
+          case 'checking': return 1;
+          case 'connected': return 2;
+          case 'completed': return 3;
+          default: return 0;
+        }
       },
 
       _attemptJoin() {
@@ -3498,11 +3527,13 @@
         }
         this._joinAttemptNo++;
         this._attemptSettled = false;
+        this._attemptStartedAt = Date.now();
+        this._attemptIceState = '';
         // Per-attempt slate: the final verdict names what the LAST
         // knock died of, not a stale error from an earlier one.
         this._lastJoinError = '';
         if (this._joinAttemptNo > 1) {
-          this.setStatus(`STILL LOOKING FOR ROOM "${this._joinCode}" — THE HOST MAY STILL BE STARTING UP...`, '#38bdf8');
+          this.setStatus(`STILL LOOKING FOR ROOM "${this._joinCode}" — THE HOST MAY STILL BE STARTING UP... (TRY ${this._joinAttemptNo})`, '#38bdf8');
         }
         try {
           this.conn = this.peer.connect(`starkrill-room-${this._joinCode}`, { reliable: true });
@@ -3511,10 +3542,33 @@
           return;
         }
         this.setupConnectionEvents();
-        // Per-attempt watchdog: a knock that is neither answered nor
-        // refused within 5s counts as a failed attempt.
+        // Per-attempt watchdog: a knock with zero ICE progress after
+        // 15s counts as a failed attempt. 5s was far too eager — a
+        // relayed (TURN) connection on a mobile network can need
+        // longer than that just to allocate a relay, finish ICE
+        // negotiation and complete the DTLS handshake, and killing
+        // the attempt also tore down the channel the host was
+        // mid-negotiation with, so every retry started both sides
+        // over from zero.
         this._clearAttemptTimer();
-        this._attemptTimer = setTimeout(() => this._failAttempt(), 5000);
+        this._attemptTimer = setTimeout(() => this._onAttemptWatchdog(), 15000);
+      },
+
+      _onAttemptWatchdog() {
+        if (this._joinPhase !== 'joining' || this._attemptSettled) return;
+        // ICE is negotiating: this attempt is ALIVE, not a dead knock.
+        // Spare it up to a 30s hard cap from its start before calling
+        // it failed — the overall 60s join deadline still bounds the
+        // total wait, and a channel 'close'/'error' can still settle
+        // the attempt sooner.
+        if (this._iceRank(this._attemptIceState) >= this._iceRank('checking')) {
+          const remaining = 30000 - (Date.now() - this._attemptStartedAt);
+          if (remaining > 0) {
+            this._attemptTimer = setTimeout(() => this._failAttempt(), remaining);
+            return;
+          }
+        }
+        this._failAttempt();
       },
 
       _failAttempt() {
@@ -3546,7 +3600,14 @@
         if (dead) {
           try { dead.close(); } catch (_) {}
         }
-        this.setStatus(`⚠️ ROOM "${this._joinCode}" DIDN'T ANSWER AFTER 20 SECONDS OF KNOCKING — THE HOST MAY HAVE CLOSED IT, OR THE CODE IS WRONG. TAP "JOIN ROOM" TO RETRY. (LAST ERROR: ${this._lastJoinError || 'NONE — CONNECTION NEVER OPENED'})`, '#f87171');
+        let lastErr = this._lastJoinError || 'NONE — CONNECTION NEVER OPENED';
+        // If any knock got ICE mid-negotiation, say so: "never opened,
+        // but ICE REACHED CHECKING" points at the connection path
+        // itself, not at a wrong code or a closed room.
+        if (!lastErr.startsWith('ICE-') && this._iceRank(this._joinIceBest) >= this._iceRank('checking')) {
+          lastErr += `, ICE REACHED ${this._joinIceBest.toUpperCase()}`;
+        }
+        this.setStatus(`⚠️ ROOM "${this._joinCode}" DIDN'T ANSWER AFTER 60 SECONDS OF KNOCKING — THE HOST MAY HAVE CLOSED IT, OR THE CODE IS WRONG. TAP "JOIN ROOM" TO RETRY. (LAST ERROR: ${lastErr})`, '#f87171');
       },
 
       _startHeartbeat() {
@@ -3741,11 +3802,24 @@
 
         conn.on('iceStateChanged', (state) => {
           if (this.conn !== conn) return;
-          // ICE dying before the channel opens is the signature of a
-          // peer-to-peer path that couldn't be established — record
-          // the stage so the join verdict can name it.
-          if (!opened && this._joinPhase === 'joining' && (state === 'disconnected' || state === 'failed')) {
-            this._lastJoinError = `ICE-${String(state).toUpperCase()}`;
+          if (!opened && this._joinPhase === 'joining') {
+            const s = String(state);
+            // Track how far this attempt's ICE negotiation got: the
+            // join watchdog spares attempts that are mid-negotiation
+            // instead of cutting them down, and the final verdict
+            // reports the furthest stage any knock reached.
+            if (this._iceRank(s) > this._iceRank(this._attemptIceState)) {
+              this._attemptIceState = s;
+            }
+            if (this._iceRank(s) > this._iceRank(this._joinIceBest)) {
+              this._joinIceBest = s;
+            }
+            // ICE dying before the channel opens is the signature of
+            // a peer-to-peer path that couldn't be established —
+            // record the stage so the join verdict can name it.
+            if (s === 'disconnected' || s === 'failed') {
+              this._lastJoinError = `ICE-${s.toUpperCase()}`;
+            }
           }
         });
       },
