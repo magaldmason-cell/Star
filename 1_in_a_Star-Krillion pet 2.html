@@ -1,0 +1,3727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>1 in a Star-Krillion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <!-- PeerJS for Serverless Cross-Device Online Multiplayer (WebRTC) -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --bg-void: #050814;
+      --panel-bg: rgba(9, 14, 32, 0.88);
+      --panel-border: #38bdf8;
+      --gold: #fbbf24;
+      --emerald: #34d399;
+      --purple: #c084fc;
+      --danger: #f87171;
+      --text-main: #f8fafc;
+      --text-dim: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-void);
+      color: var(--text-main);
+      font-family: 'VT323', monospace;
+    }
+
+    /* Fullscreen Pixel-Art Background Canvas */
+    #bgCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+      image-rendering: pixelated;
+    }
+
+    /* UI Overlay Layer */
+    #uiRoot {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px;
+      pointer-events: none;
+    }
+
+    .interactive {
+      pointer-events: auto;
+    }
+
+    .font-pixel {
+      font-family: 'Press Start 2P', monospace;
+    }
+
+    /* Pixel-Art Frame Styling */
+    .pixel-box {
+      background: var(--panel-bg);
+      border: 3px solid #475569;
+      border-radius: 6px;
+      box-shadow:
+        0 0 0 3px #030712,
+        0 10px 30px rgba(0, 0, 0, 0.75),
+        inset 0 2px 0 rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+    }
+
+    .pixel-box-cyan {
+      border-color: #38bdf8;
+    }
+
+    .pixel-box-gold {
+      border-color: #fbbf24;
+    }
+
+    .pixel-box-emerald {
+      border-color: #34d399;
+    }
+
+    /* Buttons */
+    .pixel-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      line-height: 1.4;
+      padding: 10px 14px;
+      border-radius: 5px;
+      border: 3px solid #64748b;
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      color: #f8fafc;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 4px 0 #020617;
+      transition: transform 0.08s ease, filter 0.12s ease, border-color 0.12s ease;
+    }
+
+    .pixel-btn:hover:not(:disabled) {
+      filter: brightness(1.15);
+      border-color: #38bdf8;
+    }
+
+    .pixel-btn:active:not(:disabled) {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #020617;
+    }
+
+    .pixel-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .pixel-btn-gold {
+      border-color: #fde68a;
+      background: linear-gradient(180deg, #f59e0b 0%, #b45309 100%);
+      color: #090d16;
+      box-shadow: 0 4px 0 #451a03;
+    }
+
+    .pixel-btn-emerald {
+      border-color: #6ee7b7;
+      background: linear-gradient(180deg, #10b981 0%, #047857 100%);
+      color: #042f2e;
+      box-shadow: 0 4px 0 #022c22;
+    }
+
+    .pixel-btn-cyan {
+      border-color: #7dd3fc;
+      background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+      color: #f0f9ff;
+      box-shadow: 0 4px 0 #082f49;
+    }
+
+    /* Top HUD Bar */
+    #topHud {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: 1020px;
+      margin: 0 auto;
+    }
+
+    .hud-pill {
+      background: rgba(6, 11, 26, 0.88);
+      border: 2px solid #334155;
+      border-radius: 5px;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 19px;
+      box-shadow: 0 3px 0 #020617;
+    }
+
+    /* Main Center Stage */
+    #centerStage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      max-width: 1020px;
+      margin: 0 auto;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .modal-panel {
+      width: 100%;
+      max-width: 860px;
+      padding: 18px;
+      display: none;
+      flex-direction: column;
+      gap: 13px;
+      max-height: 100%;
+      overflow-y: auto;
+    }
+
+    /* Title Header */
+    .game-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(15px, 3vw, 25px);
+      line-height: 1.35;
+      text-align: center;
+      color: #fde68a;
+      text-shadow: 0 4px 0 #78350f, 0 0 22px rgba(251, 191, 36, 0.45);
+    }
+
+    .game-subtitle {
+      text-align: center;
+      font-size: 20px;
+      color: #bae6fd;
+      line-height: 1.25;
+    }
+
+    /* Mode Grid (7 Modes: 3-column desktop, 2-column tablet, 1-column mobile) */
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 2px;
+    }
+
+    @media (max-width: 660px) {
+      .mode-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+    }
+
+    .mode-card {
+      background: rgba(15, 23, 42, 0.9);
+      border: 3px solid #334155;
+      border-radius: 6px;
+      padding: 12px 14px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 6px;
+      min-height: 92px;
+      transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
+      box-shadow: 0 4px 0 #020617;
+    }
+
+    .mode-card:hover {
+      transform: translateY(-2px);
+      border-color: #38bdf8;
+      background: rgba(30, 41, 59, 0.95);
+    }
+
+    .mode-card.featured-gold {
+      border-color: #f59e0b;
+      background: linear-gradient(180deg, rgba(45, 28, 10, 0.9) 0%, rgba(15, 23, 42, 0.92) 100%);
+    }
+
+    .mode-card.featured-2p {
+      border-color: #38bdf8;
+      background: linear-gradient(180deg, rgba(12, 42, 68, 0.92) 0%, rgba(15, 23, 42, 0.94) 100%);
+    }
+
+    .mode-card.featured-online {
+      grid-column: 1 / -1;
+      border-color: #34d399;
+      background: linear-gradient(180deg, rgba(6, 52, 42, 0.92) 0%, rgba(15, 23, 42, 0.95) 100%);
+    }
+
+    .mode-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .mode-desc {
+      font-size: 18px;
+      line-height: 1.25;
+      color: #cbd5e1;
+    }
+
+    /* Sector Filter Pills */
+    .sector-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .sector-chip {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      padding: 7px 10px;
+      border-radius: 4px;
+      border: 2px solid #334155;
+      background: #0f172a;
+      color: #94a3b8;
+      cursor: pointer;
+    }
+
+    .sector-chip.active {
+      border-color: #38bdf8;
+      background: #0369a1;
+      color: #ffffff;
+    }
+
+    /* Active Gameplay Card */
+    #playScreen {
+      max-width: 680px;
+    }
+
+    .clock-bar-wrap {
+      width: 100%;
+      height: 14px;
+      background: #020617;
+      border: 2px solid #334155;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    #clockFill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #34d399, #38bdf8);
+      transition: width 0.08s linear, background 0.2s ease;
+    }
+
+    .prompt-box {
+      background: rgba(4, 9, 24, 0.92);
+      border: 3px solid #38bdf8;
+      border-radius: 6px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    #promptText {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(13px, 2.5vw, 18px);
+      line-height: 1.5;
+      color: #ffffff;
+      margin-top: 6px;
+    }
+
+    .answer-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    #answerInput {
+      flex: 1;
+      background: #020617;
+      border: 3px solid #475569;
+      border-radius: 5px;
+      padding: 12px 14px;
+      color: #ffffff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 13px;
+      outline: none;
+      user-select: text;
+    }
+
+    #answerInput:focus {
+      border-color: #fbbf24;
+    }
+
+    #answerInput.shake {
+      animation: shakeHorizontal 0.35s ease;
+      border-color: #f87171;
+    }
+
+    @keyframes shakeHorizontal {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+    }
+
+    /* Tier Reveal Banner */
+    #tierRevealBox {
+      display: none;
+      border-radius: 6px;
+      padding: 12px 14px;
+      text-align: center;
+      border: 3px solid #fbbf24;
+      background: rgba(15, 23, 42, 0.96);
+    }
+
+    /* Name & Room Code Inputs */
+    .p-name-input {
+      background: #040814;
+      border: 2px solid #38bdf8;
+      border-radius: 4px;
+      padding: 9px 10px;
+      color: #ffffff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      text-align: center;
+      width: 100%;
+      outline: none;
+      user-select: text;
+    }
+
+    .p-name-input:focus {
+      border-color: #fbbf24;
+    }
+
+    /* Cosmic Coin */
+    .cosmic-coin {
+      width: 90px;
+      height: 90px;
+      margin: 4px auto;
+      border-radius: 50%;
+      border: 4px solid #fde68a;
+      background: radial-gradient(circle at 30% 30%, #fef08a 0%, #f59e0b 65%, #b45309 100%);
+      box-shadow: 0 0 24px rgba(251, 191, 36, 0.55), inset 0 0 10px rgba(255, 255, 255, 0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Press Start 2P', monospace;
+      color: #090d16;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .cosmic-coin.flipping {
+      animation: coinSpin3D 0.16s linear infinite;
+    }
+
+    @keyframes coinSpin3D {
+      0%   { transform: scaleX(1) translateY(0); }
+      50%  { transform: scaleX(0.12) translateY(-10px); }
+      100% { transform: scaleX(1) translateY(0); }
+    }
+
+    /* Online Room Code Display */
+    .room-code-display {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 24px;
+      letter-spacing: 5px;
+      color: #34d399;
+      background: #020617;
+      border: 3px dashed #34d399;
+      border-radius: 6px;
+      padding: 12px 18px;
+      display: inline-block;
+      margin: 4px auto;
+      user-select: text;
+    }
+
+    /* Summary Breakdown */
+    .breakdown-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 230px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .breakdown-row {
+      background: rgba(15, 23, 42, 0.85);
+      border: 2px solid #1e293b;
+      border-radius: 4px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 18px;
+    }
+
+    /* Cosmetics Locker Grid */
+    .locker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 10px;
+    }
+
+    .locker-item {
+      background: rgba(15, 23, 42, 0.9);
+      border: 2px solid #334155;
+      border-radius: 5px;
+      padding: 10px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .locker-item.equipped {
+      border-color: #34d399;
+      background: rgba(6, 78, 59, 0.35);
+    }
+
+    /* Bottom Zone Telemetry Bar */
+    #bottomHud {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: 1020px;
+      margin: 0 auto;
+    }
+
+    /* Toast Notification */
+    #toastBanner {
+      position: fixed;
+      top: 64px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: #0f172a;
+      border: 2px solid #38bdf8;
+      color: #f8fafc;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      padding: 10px 16px;
+      border-radius: 5px;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+    }
+
+    #toastBanner.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <!-- Animated Pixel-Art Deep Space Canvas -->
+  <canvas id="bgCanvas"></canvas>
+
+  <!-- Toast Banner -->
+  <div id="toastBanner">COPIED TO CLIPBOARD!</div>
+
+  <!-- UI Overlay -->
+  <div id="uiRoot">
+    <!-- TOP HUD -->
+    <header id="topHud" class="interactive">
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <div class="hud-pill">
+          <span>🚀</span>
+          <span id="hudDepthText" style="color:#38bdf8; font-weight:bold;">0 LY</span>
+        </div>
+        <div class="hud-pill">
+          <span>🪙</span>
+          <span id="hudTokensText" style="color:#fbbf24;">0</span>
+        </div>
+        <div class="hud-pill">
+          <span>🔥</span>
+          <span id="hudStreakText" style="color:#fb923c;">0d</span>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+        <button id="webJudgeToggleBtn" class="pixel-btn" style="padding:7px 10px; font-size:9px; border-color:#34d399; color:#6ee7b7;" onclick="Game.toggleWebJudge()">
+          🌐 WEB AI: ON
+        </button>
+        <button class="pixel-btn" style="padding:7px 10px; font-size:9px;" onclick="Game.openLocker()">
+          🛸 LOCKER
+        </button>
+        <button class="pixel-btn" style="padding:7px 10px; font-size:9px;" onclick="Game.openHelp()">
+          ❓ RULES
+        </button>
+        <button id="muteBtn" class="pixel-btn" style="padding:7px 10px; font-size:9px;" onclick="Game.toggleMute()">
+          🔊
+        </button>
+      </div>
+    </header>
+
+    <!-- CENTER STAGE -->
+    <main id="centerStage">
+      <!-- 1. MAIN MENU SCREEN -->
+      <section id="menuScreen" class="modal-panel pixel-box pixel-box-cyan interactive" style="display:flex;">
+        <div>
+          <h1 class="game-title">🦐 1 IN A STAR-KRILLION 🌌</h1>
+          <p class="game-subtitle">
+            Reverse-Popularity Space Trivia • Type the <span style="color:#fbbf24;">RAREST</span> valid answer to plunge deeper into the cosmos!
+          </p>
+        </div>
+
+        <!-- Sector Filter -->
+        <div class="sector-bar" id="sectorBar">
+          <button class="sector-chip active" data-sector="All" onclick="Game.selectSector('All')">🌌 ALL SECTORS (70)</button>
+          <button class="sector-chip" data-sector="Space & Science" onclick="Game.selectSector('Space & Science')">🪐 SPACE & SCIENCE</button>
+          <button class="sector-chip" data-sector="Words & Letters" onclick="Game.selectSector('Words & Letters')">🔤 WORDS & LETTERS</button>
+          <button class="sector-chip" data-sector="Geography" onclick="Game.selectSector('Geography')">🗺️ GEOGRAPHY</button>
+          <button class="sector-chip" data-sector="Movies & TV" onclick="Game.selectSector('Movies & TV')">🎬 MOVIES & TV</button>
+          <button class="sector-chip" data-sector="Pop Culture & Games" onclick="Game.selectSector('Pop Culture & Games')">🕹️ POP CULTURE</button>
+        </div>
+
+        <!-- 7-Mode Grid -->
+        <div class="mode-grid">
+          <!-- 1. Daily Launch -->
+          <div class="mode-card featured-gold" onclick="Game.startMode('daily')">
+            <div class="mode-title">
+              <span>📅 DAILY LAUNCH</span>
+              <span id="dailyBadge" style="color:#fbbf24; font-size:9px;">7 PROMPTS</span>
+            </div>
+            <div class="mode-desc">
+              Global daily 7-prompt mission. One shot per day—build your streak & share your cosmic rarity grid!
+            </div>
+          </div>
+
+          <!-- 2. Unlimited Dive -->
+          <div class="mode-card" onclick="Game.startMode('unlimited')">
+            <div class="mode-title">
+              <span>🌌 UNLIMITED DIVE</span>
+              <span style="color:#38bdf8; font-size:9px;">25S CLOCK</span>
+            </div>
+            <div class="mode-desc">
+              Practice endless 7-prompt launches in your chosen sector with zero-repeat deck cycling.
+            </div>
+          </div>
+
+          <!-- 3. Endless Oxygen -->
+          <div class="mode-card" onclick="Game.startMode('endless')">
+            <div class="mode-title">
+              <span>🫧 ENDLESS OXYGEN</span>
+              <span style="color:#34d399; font-size:9px;">3 TANKS</span>
+            </div>
+            <div class="mode-desc">
+              Dive past 7,000 LY! Timeouts cost 1 O₂ tank; landing a 100-pt <span style="color:#fbbf24;">1 in a Star-Krillion</span> refills a tank.
+            </div>
+          </div>
+
+          <!-- 4. 40-Krill Fleet Lobby -->
+          <div class="mode-card" onclick="Game.startMode('fleet')">
+            <div class="mode-title">
+              <span>🦐 40-KRILL FLEET</span>
+              <span style="color:#c084fc; font-size:9px;">LIVE SWARM</span>
+            </div>
+            <div class="mode-desc">
+              Launch alongside 39 space-krill pilots visibly descending beside you in real time.
+            </div>
+          </div>
+
+          <!-- 5. Ranked 1v1 Duel -->
+          <div class="mode-card" onclick="Game.startMode('duel')">
+            <div class="mode-title">
+              <span>⚔️ RANKED 1V1 DUEL</span>
+              <span style="color:#f87171; font-size:9px;">15S CLOCK</span>
+            </div>
+            <div class="mode-desc">
+              Head-to-head against an AI rival on a fast 15-second clock. Total answer speed breaks ties!
+            </div>
+          </div>
+
+          <!-- 6. Local Pass & Play (2P) -->
+          <div class="mode-card featured-2p" onclick="Game.startMode('passplay')">
+            <div class="mode-title">
+              <span>🎮 LOCAL PASS & PLAY (2P)</span>
+              <span style="color:#38bdf8; font-size:9px;">🪙 COIN FLIP</span>
+            </div>
+            <div class="mode-desc">
+              Same device! Flip a cosmic coin to see who goes first—Pilot #2 <span style="color:#fbbf24;">cannot repeat</span> Pilot #1's answers.
+            </div>
+          </div>
+
+          <!-- 7. Real Online Multiplayer (P2P Room Code) -->
+          <div class="mode-card featured-online" onclick="Game.openOnlineLobby()">
+            <div class="mode-title">
+              <span>🌐 ONLINE MULTIPLAYER (LIVE 1V1 ROOMS)</span>
+              <span style="color:#34d399; font-size:9px;">📡 CROSS-DEVICE P2P</span>
+            </div>
+            <div class="mode-desc">
+              Play live against a friend on another phone or computer! Create a 5-letter <strong>Room Code</strong>, race through the exact same 7 prompts simultaneously, and watch your rival's Space-Krill descend live!
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2A. ONLINE MULTIPLAYER LOBBY MODAL -->
+      <section id="onlineLobbyModal" class="modal-panel pixel-box pixel-box-emerald interactive" style="max-width:580px; text-align:center;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 class="font-pixel" style="font-size:13px; color:#34d399;">🌐 ONLINE MULTIPLAYER</h2>
+          <button class="pixel-btn" style="padding:6px 10px; font-size:10px;" onclick="OnlineNet.disconnect(); Game.returnToMenu()">✕ CLOSE</button>
+        </div>
+
+        <div style="max-width:300px; margin:0 auto; width:100%;">
+          <div class="font-pixel" style="font-size:9px; color:#94a3b8; margin-bottom:6px;">YOUR PILOT CALLSIGN</div>
+          <input id="onlineCallsignInput" class="p-name-input" type="text" maxlength="14" value="STAR-KRILL" placeholder="YOUR CALLSIGN" />
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:4px;">
+          <!-- Host Side -->
+          <div style="background:rgba(15,23,42,0.9); border:2px solid #34d399; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px; justify-content:space-between;">
+            <div class="font-pixel" style="font-size:10px; color:#34d399;">HOST A ROOM</div>
+            <p style="font-size:17px; color:#cbd5e1;">Generate a 5-letter room code and invite a friend anywhere.</p>
+            <button id="hostRoomBtn" class="pixel-btn pixel-btn-emerald" style="font-size:10px;" onclick="OnlineNet.hostRoom()">
+              🚀 CREATE CODE
+            </button>
+          </div>
+
+          <!-- Join Side -->
+          <div style="background:rgba(15,23,42,0.9); border:2px solid #38bdf8; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px; justify-content:space-between;">
+            <div class="font-pixel" style="font-size:10px; color:#38bdf8;">JOIN A ROOM</div>
+            <input id="joinCodeInput" class="p-name-input" type="text" maxlength="6" placeholder="ENTER CODE" style="text-transform:uppercase; letter-spacing:3px;" />
+            <button id="joinRoomBtn" class="pixel-btn pixel-btn-cyan" style="font-size:10px;" onclick="OnlineNet.joinRoom()">
+              🔗 JOIN ROOM
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Room Code & Connection Status Panel -->
+        <div id="onlineRoomStatusBox" style="display:none; background:rgba(4,8,20,0.92); border:2px solid #fbbf24; border-radius:6px; padding:12px; flex-direction:column; gap:8px; align-items:center;">
+          <div id="onlineCodeWrapper" style="display:none; flex-direction:column; align-items:center; gap:6px;">
+            <div class="font-pixel" style="font-size:9px; color:#fde68a;">SHARE THIS ROOM CODE WITH YOUR RIVAL:</div>
+            <div id="hostedRoomCodeText" class="room-code-display">-----</div>
+            <button class="pixel-btn pixel-btn-gold" style="padding:6px 12px; font-size:9px;" onclick="OnlineNet.copyRoomCode()">
+              📋 COPY ROOM CODE
+            </button>
+          </div>
+          <div id="onlineStatusMsg" class="font-pixel" style="font-size:10px; color:#38bdf8; line-height:1.5;">
+            INITIALIZING ORBITAL RELAY...
+          </div>
+          <button id="onlineStartMatchBtn" class="pixel-btn pixel-btn-emerald" style="display:none;" onclick="OnlineNet.hostLaunchMatch()">
+            🚀 LAUNCH ONLINE MATCH!
+          </button>
+        </div>
+      </section>
+
+      <!-- 2B. MATCHMAKING / LOBBY OVERLAY -->
+      <section id="lobbyModal" class="modal-panel pixel-box pixel-box-cyan interactive" style="max-width:520px; text-align:center;">
+        <h2 id="lobbyTitle" class="font-pixel" style="font-size:14px; color:#38bdf8;">SCANNING ORBITAL RELAY...</h2>
+        <p id="lobbySub" style="font-size:21px; color:#cbd5e1;">Connecting 40 Space-Krill to Launch Tube...</p>
+        <div style="background:#040814; border:2px solid #334155; border-radius:4px; height:18px; overflow:hidden; margin:6px 0;">
+          <div id="lobbyProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg, #38bdf8, #fbbf24); transition:width 0.1s linear;"></div>
+        </div>
+        <div id="lobbyFeed" style="font-size:18px; color:#94a3b8; min-height:24px;"></div>
+      </section>
+
+      <!-- 2C. LOCAL PASS & PLAY COIN FLIP MODAL -->
+      <section id="passPlayModal" class="modal-panel pixel-box pixel-box-gold interactive" style="max-width:540px; text-align:center;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 class="font-pixel" style="font-size:13px; color:#fbbf24;">🎮 LOCAL PASS & PLAY</h2>
+          <button class="pixel-btn" style="padding:6px 10px; font-size:10px;" onclick="Game.returnToMenu()">✕ CLOSE</button>
+        </div>
+        <p style="font-size:19px; color:#cbd5e1;">
+          Enter pilot callsigns and flip the Cosmic Coin to decide who launches first!
+        </p>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <div class="font-pixel" style="font-size:9px; color:#38bdf8; margin-bottom:6px;">🟡 HEADS (SOLAR)</div>
+            <input id="p1NameInput" class="p-name-input" type="text" maxlength="14" value="PLAYER 1" placeholder="PLAYER 1" />
+          </div>
+          <div>
+            <div class="font-pixel" style="font-size:9px; color:#c084fc; margin-bottom:6px;">🟣 TAILS (VOID)</div>
+            <input id="p2NameInput" class="p-name-input" type="text" maxlength="14" value="PLAYER 2" placeholder="PLAYER 2" />
+          </div>
+        </div>
+
+        <div id="cosmicCoin" class="cosmic-coin">
+          <span id="coinFaceIcon" style="font-size:24px;">🦐</span>
+          <span id="coinFaceLabel" style="font-size:8px; margin-top:4px;">READY</span>
+        </div>
+
+        <div id="coinFlipResultText" class="font-pixel" style="font-size:11px; min-height:28px; line-height:1.5; color:#fde68a;">
+          FLIP TO DECIDE FIRST LAUNCH!
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+          <button id="flipCoinBtn" class="pixel-btn pixel-btn-gold" onclick="Game.flipPassPlayCoin()">
+            🪙 FLIP COSMIC COIN
+          </button>
+          <button id="startTurn1Btn" class="pixel-btn pixel-btn-emerald" style="display:none;" onclick="Game.startPassPlayTurn(1)">
+            🚀 START TURN 1 >>
+          </button>
+        </div>
+      </section>
+
+      <!-- 2D. LOCAL PASS & PLAY DEVICE HANDOFF MODAL -->
+      <section id="handoffModal" class="modal-panel pixel-box pixel-box-cyan interactive" style="max-width:540px; text-align:center;">
+        <h2 class="font-pixel" style="font-size:14px; color:#38bdf8;">🔄 PASS THE DEVICE!</h2>
+        <p id="handoffSummaryLine" style="font-size:21px; color:#fde68a;"></p>
+        <div style="background:rgba(15,23,42,0.92); border:2px solid #fbbf24; border-radius:6px; padding:12px; font-size:19px; color:#e2e8f0; line-height:1.4;">
+          <div id="handoffNextPlayerLine" class="font-pixel" style="font-size:12px; color:#34d399; margin-bottom:8px;">
+            NEXT UP: PLAYER 2
+          </div>
+          <div>You will play the <strong>exact same 7 prompts</strong>.</div>
+          <div style="color:#fca5a5; margin-top:4px;">⚠️ Any valid answer already used in Turn 1 is <strong>LOCKED OUT</strong>—you must find a different one!</div>
+        </div>
+        <button class="pixel-btn pixel-btn-gold" style="align-self:center; margin-top:4px;" onclick="Game.startPassPlayTurn(2)">
+          🚀 I'M READY — LAUNCH TURN 2 >>
+        </button>
+      </section>
+
+      <!-- 3. ACTIVE GAMEPLAY HUD -->
+      <section id="playScreen" class="modal-panel pixel-box pixel-box-cyan interactive">
+        <!-- Top Status Strip -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span id="roundCounterBadge" class="font-pixel" style="font-size:11px; color:#38bdf8;">PROMPT 1 / 7</span>
+            <span id="oxygenTanksBadge" style="display:none; font-size:20px;">🫧🫧🫧</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span id="clockText" class="font-pixel" style="font-size:13px; color:#34d399;">25.0s</span>
+            <button class="pixel-btn" style="padding:5px 8px; font-size:9px;" onclick="Game.abortToMenu()">✕ ABORT</button>
+          </div>
+        </div>
+
+        <!-- Multiplayer / Turn Status Banner -->
+        <div id="multiplayerLiveBar" style="display:none; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); border:2px solid #334155; border-radius:4px; padding:6px 10px; font-size:18px;"></div>
+
+        <!-- Countdown Bar -->
+        <div class="clock-bar-wrap">
+          <div id="clockFill"></div>
+        </div>
+
+        <!-- Prompt Card -->
+        <div class="prompt-box">
+          <div id="promptSectorTag" style="font-size:17px; color:#94a3b8; letter-spacing:1px;">SECTOR: SPACE & SCIENCE</div>
+          <div id="promptText">NAME A PLANET OR DWARF PLANET</div>
+        </div>
+
+        <!-- Input & Submit Row -->
+        <form id="answerForm" class="answer-row" onsubmit="Game.handleSubmit(event)">
+          <input id="answerInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="TYPE YOUR RAREST ANSWER..." />
+          <button id="submitAnswerBtn" type="submit" class="pixel-btn pixel-btn-gold">LAUNCH</button>
+        </form>
+
+        <!-- Validation Feedback Line -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:24px;">
+          <div id="feedbackMsg" style="font-size:19px; color:#cbd5e1;">
+            First valid answer locks in immediately!
+          </div>
+          <button id="passBtn" type="button" class="pixel-btn" style="padding:6px 10px; font-size:9px;" onclick="Game.passPrompt()">
+            ⏭️ PASS (0 LY)
+          </button>
+        </div>
+
+        <!-- Tier Lock-In Reveal Box -->
+        <div id="tierRevealBox">
+          <div id="revealTierTitle" class="font-pixel" style="font-size:13px; color:#fbbf24;">💎 1 IN A STAR-KRILLION! (+1,000 LY)</div>
+          <div id="revealAnswerDetail" style="font-size:20px; color:#f8fafc; margin-top:4px;"></div>
+          <div id="revealRarityHint" style="font-size:18px; color:#94a3b8; margin-top:4px;"></div>
+          <button id="nextPromptBtn" type="button" class="pixel-btn pixel-btn-emerald" style="margin-top:10px;" onclick="Game.advancePrompt()">
+            NEXT PROMPT >>
+          </button>
+        </div>
+      </section>
+
+      <!-- 4. RUN SUMMARY MODAL -->
+      <section id="summaryModal" class="modal-panel pixel-box pixel-box-gold interactive">
+        <div style="text-align:center;">
+          <h2 id="summaryHeadline" class="font-pixel" style="font-size:16px; color:#fde68a;">LAUNCH COMPLETE!</h2>
+          <p id="summarySub" style="font-size:21px; color:#bae6fd; margin-top:4px;">Reached 3,450 LY • Midnight Void</p>
+        </div>
+
+        <!-- Multiplayer Standings Box -->
+        <div id="summaryMultiplayerBox" style="display:none; background:rgba(15,23,42,0.92); border:2px solid #38bdf8; border-radius:6px; padding:10px; text-align:center;"></div>
+
+        <!-- Emoji Grid & Token Reward -->
+        <div style="display:flex; justify-content:space-around; align-items:center; flex-wrap:wrap; gap:10px; background:rgba(4,8,20,0.85); border:2px solid #334155; border-radius:6px; padding:10px;">
+          <div id="summaryEmojiGrid" style="font-size:26px; letter-spacing:4px;">🟦🟨🟩🟪💎⬛</div>
+          <div style="font-size:20px; color:#fbbf24;">+<span id="summaryTokensEarned">0</span> 🪙 STAR TOKENS</div>
+        </div>
+
+        <!-- Prompt-by-Prompt Breakdown -->
+        <div id="summaryBreakdown" class="breakdown-list"></div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+          <button class="pixel-btn pixel-btn-cyan" onclick="Game.shareResult()">📋 SHARE GRID</button>
+          <button id="playAgainBtn" class="pixel-btn pixel-btn-gold" onclick="Game.replayCurrentMode()">🔄 PLAY AGAIN</button>
+          <button class="pixel-btn" onclick="Game.returnToMenu()">🏠 MAIN MENU</button>
+        </div>
+      </section>
+
+      <!-- 5. COSMETICS LOCKER MODAL -->
+      <section id="lockerModal" class="modal-panel pixel-box pixel-box-cyan interactive">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 class="font-pixel" style="font-size:14px; color:#38bdf8;">🛸 KRILL COSMETICS LOCKER</h2>
+          <button class="pixel-btn" style="padding:6px 10px; font-size:10px;" onclick="Game.returnToMenu()">✕ CLOSE</button>
+        </div>
+
+        <div class="sector-bar">
+          <button class="sector-chip active" id="tabSkins" onclick="Game.switchLockerTab('skins')">🦐 KRILL SUITS</button>
+          <button class="sector-chip" id="tabDrones" onclick="Game.switchLockerTab('drones')">🛰️ DRONE BUDDIES</button>
+          <button class="sector-chip" id="tabEmotes" onclick="Game.switchLockerTab('emotes')">✨ EMOTES</button>
+        </div>
+
+        <div id="lockerGrid" class="locker-grid"></div>
+      </section>
+
+      <!-- 6. HOW TO PLAY / RULES MODAL -->
+      <section id="helpModal" class="modal-panel pixel-box pixel-box-cyan interactive">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 class="font-pixel" style="font-size:14px; color:#fbbf24;">📖 HOW TO DIVE</h2>
+          <button class="pixel-btn" style="padding:6px 10px; font-size:10px;" onclick="Game.returnToMenu()">✕ CLOSE</button>
+        </div>
+        <div style="font-size:20px; line-height:1.35; color:#e2e8f0; display:flex; flex-direction:column; gap:8px;">
+          <p>• <strong style="color:#38bdf8;">REVERSE POPULARITY:</strong> Don't type the obvious answer! Obscure, valid answers sink your Space-Krill <strong>10× deeper</strong> in Light-Years (LY).</p>
+          <p>• <strong style="color:#fbbf24;">ONE ACCEPTED SHOT:</strong> Wrong guesses shake the box so you can keep trying—but your <strong>first valid answer immediately locks in</strong>!</p>
+          <p>• <strong style="color:#34d399;">ONLINE MULTIPLAYER:</strong> Create a 5-letter Room Code in <strong>ONLINE MULTIPLAYER</strong> and send it to a friend on any device to race live!</p>
+          <div style="background:rgba(4,8,20,0.85); border:2px solid #334155; border-radius:6px; padding:10px; font-size:18px;">
+            <div>⬜ <strong>Stardust (10 pts | 100 LY):</strong> Obvious first instinct</div>
+            <div>🟨 <strong>Too Clever (15 pts | 150 LY):</strong> The 2nd-choice crowd trap</div>
+            <div>🟩 <strong>Orbit (30 pts | 300 LY):</strong> Solid, respectable pick</div>
+            <div>🟦 <strong>Rare (60 pts | 600 LY):</strong> Uncommon answer</div>
+            <div>🟪 <strong>Deep Space (85 pts | 850 LY):</strong> Specialist deep cut</div>
+            <div>💎 <strong>1 in a Star-Krillion (100 pts | 1,000 LY):</strong> Ultra-rare gem!</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- BOTTOM ZONE HUD -->
+    <footer id="bottomHud" class="interactive">
+      <div class="hud-pill" style="flex:1; min-width:240px; justify-content:space-between;">
+        <span id="zoneNameText" style="color:#fde68a;">☀️ SOLAR DAYLIGHT ZONE (0–200 LY)</span>
+        <span id="zoneProgressText" style="color:#94a3b8;">NEXT: 200 LY</span>
+      </div>
+      <button id="emoteTriggerBtn" class="pixel-btn" style="padding:7px 12px; font-size:11px;" onclick="Game.triggerEmote()">
+        🦐 EMOTE
+      </button>
+    </footer>
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. 16-BIT RETRO WEB AUDIO ENGINE (NO EXTERNAL AUDIO URLS)
+    ========================================================================= */
+    const SoundFX = {
+      ctx: null,
+      muted: false,
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      },
+
+      playTone(freq, duration = 0.08, type = 'square', gainVal = 0.06, delay = 0) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime + delay;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+
+        gain.gain.setValueAtTime(gainVal, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration + 0.01);
+      },
+
+      playTypeTick() {
+        this.playTone(420 + Math.random() * 140, 0.025, 'square', 0.025);
+      },
+
+      playInvalidBuzz() {
+        this.playTone(155, 0.11, 'sawtooth', 0.07, 0);
+        this.playTone(120, 0.14, 'sawtooth', 0.07, 0.09);
+      },
+
+      playCountdownTick(urgent = false) {
+        this.playTone(urgent ? 987.77 : 659.25, 0.055, 'square', urgent ? 0.07 : 0.04);
+      },
+
+      playCoinTick(step = 0) {
+        this.playTone(step % 2 === 0 ? 880 : 1174.66, 0.045, 'square', 0.06);
+      },
+
+      playCoinWinner() {
+        [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+          this.playTone(f, 0.13, 'square', 0.08, i * 0.075);
+        });
+      },
+
+      playTierChime(pts) {
+        const scales = {
+          0:   [220, 180],
+          10:  [330, 392],
+          15:  [349.23, 440],
+          30:  [440, 554.37, 659.25],
+          60:  [523.25, 659.25, 783.99, 1046.5],
+          85:  [587.33, 739.99, 880, 1174.66, 1479.98],
+          100: [523.25, 659.25, 783.99, 1046.5, 1318.51, 1567.98, 2093]
+        };
+        const notes = scales[pts] || scales[30];
+        notes.forEach((f, idx) => {
+          this.playTone(f, 0.12, 'square', 0.07, idx * 0.065);
+        });
+      }
+    };
+
+    /* =========================================================================
+       2. RARITY TIERS, COSMETICS & FUZZY VALIDATION HELPERS
+    ========================================================================= */
+    const TIERS = {
+      0:   { name: 'NO SIGNAL',            pts: 0,   ly: 0,    emoji: '⬛', color: '#64748b' },
+      10:  { name: 'STARDUST',             pts: 10,  ly: 100,  emoji: '⬜', color: '#cbd5e1' },
+      15:  { name: 'TOO CLEVER',           pts: 15,  ly: 150,  emoji: '🟨', color: '#facc15' },
+      30:  { name: 'ORBIT',                pts: 30,  ly: 300,  emoji: '🟩', color: '#4ade80' },
+      60:  { name: 'RARE',                 pts: 60,  ly: 600,  emoji: '🟦', color: '#38bdf8' },
+      85:  { name: 'DEEP SPACE',           pts: 85,  ly: 850,  emoji: '🟪', color: '#c084fc' },
+      100: { name: '1 IN A STAR-KRILLION', pts: 100, ly: 1000, emoji: '💎', color: '#fbbf24' }
+    };
+
+    const COSMETICS = {
+      skins: [
+        { id: 'coral',    name: 'Classic Coral',    cost: 0,    body: '#fb7185', accent: '#fda4af', visor: '#38bdf8' },
+        { id: 'astro',    name: 'Retro Astronaut',  cost: 150,  body: '#f8fafc', accent: '#f97316', visor: '#fbbf24' },
+        { id: 'alien',    name: 'Nebula Alien',     cost: 300,  body: '#4ade80', accent: '#a855f7', visor: '#fef08a' },
+        { id: 'cyber',    name: 'Cyber-Krill 9000', cost: 500,  body: '#38bdf8', accent: '#0284c7', visor: '#f43f5e' },
+        { id: 'void',     name: 'Void Phantom',     cost: 800,  body: '#a855f7', accent: '#4c1d95', visor: '#22d3ee' },
+        { id: 'golden',   name: 'Golden Leviathan', cost: 1200, body: '#fbbf24', accent: '#fef08a', visor: '#ffffff' }
+      ],
+      drones: [
+        { id: 'none',     name: 'No Drone',         cost: 0,   icon: '🚫' },
+        { id: 'sat',      name: 'Mini Sputnik',     cost: 200, icon: '🛰️' },
+        { id: 'wisp',     name: 'Star Wisp',        cost: 350, icon: '✨' },
+        { id: 'squid',    name: 'Holo-Squid',       cost: 550, icon: '🦑' },
+        { id: 'ufo',      name: 'Pocket Saucer',    cost: 850, icon: '🛸' }
+      ],
+      emotes: [
+        { id: '🦐', name: 'Krill Flex',      cost: 0 },
+        { id: '🚀', name: 'Full Burn',       cost: 100 },
+        { id: '💎', name: 'Deep Cut',        cost: 250 },
+        { id: '👽', name: 'Star Signal',     cost: 400 },
+        { id: '👑', name: 'Trench Royalty',  cost: 700 }
+      ]
+    };
+
+    function normalizeText(str) {
+      return String(str || '')
+        .toLowerCase()
+        .replace(/^(the|a|an)\s+/i, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function getVariants(norm) {
+      const set = new Set([norm]);
+      if (norm.endsWith('ies') && norm.length > 4) set.add(norm.slice(0, -3) + 'y');
+      if (norm.endsWith('es') && norm.length > 3) set.add(norm.slice(0, -2));
+      if (norm.endsWith('s') && norm.length > 3) set.add(norm.slice(0, -1));
+      set.add(norm + 's');
+      set.add(norm.replace(/-/g, ' '));
+      set.add(norm.replace(/\s+/g, ''));
+      return set;
+    }
+
+    function levenshtein(a, b) {
+      if (a === b) return 0;
+      const m = a.length, n = b.length;
+      if (!m) return n;
+      if (!n) return m;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+        }
+      }
+      return dp[m][n];
+    }
+
+    /* =========================================================================
+       3. 70 DISTINCT CATEGORIES (14 PER SECTOR) + LIVE WEB AI JUDGE METADATA
+    ========================================================================= */
+    const CATEGORIES = [
+      // --- SECTOR 1: SPACE & SCIENCE (14) ---
+      {
+        id: 'sci_planet', sector: 'Space & Science', prompt: 'Name a Planet or Dwarf Planet in our Solar System',
+        closedSet: true,
+        answers: {
+          10: ['Earth', 'Mars', 'Jupiter', 'Saturn'],
+          15: ['Venus', 'Mercury', 'Uranus', 'Neptune', 'Pluto'],
+          30: ['Ceres', 'Eris'],
+          60: ['Makemake', 'Haumea'],
+          85: ['Sedna', 'Quaoar', 'Orcus'],
+          100: ['Gonggong', 'Salacia', 'Varuna', 'Ixion', 'Varda']
+        }
+      },
+      {
+        id: 'sci_moon', sector: 'Space & Science', prompt: 'Name a Moon of Jupiter or Saturn',
+        webKeywords: ['moon of jupiter', 'moon of saturn', 'natural satellite', 'galilean'],
+        answers: {
+          10: ['Titan', 'Europa'],
+          15: ['Io', 'Ganymede', 'Callisto', 'Enceladus'],
+          30: ['Rhea', 'Iapetus', 'Dione', 'Tethys', 'Mimas'],
+          60: ['Hyperion', 'Phoebe', 'Amalthea', 'Himalia'],
+          85: ['Janus', 'Epimetheus', 'Pandora', 'Prometheus', 'Thebe'],
+          100: ['Methone', 'Daphnis', 'Pan', 'Sinope', 'Pasiphae', 'Carme']
+        }
+      },
+      {
+        id: 'sci_element', sector: 'Space & Science', prompt: 'Name a Chemical Element on the Periodic Table',
+        closedSet: true,
+        answers: {
+          10: ['Oxygen', 'Gold', 'Hydrogen', 'Carbon', 'Iron', 'Helium'],
+          15: ['Silver', 'Nitrogen', 'Copper', 'Neon', 'Uranium', 'Calcium'],
+          30: ['Titanium', 'Platinum', 'Cobalt', 'Argon', 'Lithium', 'Zinc', 'Mercury'],
+          60: ['Xenon', 'Bismuth', 'Tungsten', 'Gallium', 'Osmium', 'Iridium'],
+          85: ['Ytterbium', 'Molybdenum', 'Gadolinium', 'Technetium', 'Rhenium'],
+          100: ['Oganesson', 'Tennessine', 'Praseodymium', 'Dysprosium', 'Roentgenium']
+        }
+      },
+      {
+        id: 'sci_constellation', sector: 'Space & Science', prompt: 'Name One of the 88 Modern Constellations',
+        webKeywords: ['constellation', 'zodiac', 'celestial'],
+        answers: {
+          10: ['Orion', 'Ursa Major', 'Big Dipper', 'Leo', 'Scorpius'],
+          15: ['Cassiopeia', 'Gemini', 'Taurus', 'Andromeda', 'Aquarius', 'Aries'],
+          30: ['Cygnus', 'Lyra', 'Pegasus', 'Draco', 'Centaurus', 'Perseus'],
+          60: ['Canis Major', 'Bootes', 'Ophiuchus', 'Carina', 'Hydra', 'Crux'],
+          85: ['Monoceros', 'Vela', 'Puppis', 'Lacerta', 'Volans', 'Tucana'],
+          100: ['Chamaeleon', 'Horologium', 'Reticulum', 'Fornax', 'Telescopium', 'Antlia']
+        }
+      },
+      {
+        id: 'sci_dinosaurs', sector: 'Space & Science', prompt: 'Name a Prehistoric Dinosaur',
+        webKeywords: ['dinosaur', 'theropod', 'sauropod', 'cretaceous', 'jurassic', 'triassic'],
+        answers: {
+          10: ['Tyrannosaurus Rex', 'T-Rex', 'Triceratops', 'Velociraptor', 'Stegosaurus'],
+          15: ['Brachiosaurus', 'Brontosaurus', 'Pterodactyl', 'Spinosaurus', 'Diplodocus'],
+          30: ['Ankylosaurus', 'Allosaurus', 'Parasaurolophus', 'Iguanodon', 'Apatosaurus'],
+          60: ['Carnotaurus', 'Deinonychus', 'Pachycephalosaurus', 'Compsognathus', 'Gallimimus'],
+          85: ['Therizinosaurus', 'Baryonyx', 'Microraptor', 'Oviraptor', 'Giganotosaurus'],
+          100: ['Archaeopteryx', 'Quetzalcoatlus', 'Styracosaurus', 'Deinocheirus', 'Yi Qi']
+        }
+      },
+      {
+        id: 'sci_human_bone', sector: 'Space & Science', prompt: 'Name a Bone in the Human Body',
+        webKeywords: ['bone', 'skeleton', 'anatomy', 'skull', 'vertebra'],
+        answers: {
+          10: ['Femur', 'Skull', 'Rib', 'Spine', 'Humerus'],
+          15: ['Tibia', 'Fibula', 'Pelvis', 'Clavicle', 'Collarbone', 'Radius', 'Ulna'],
+          30: ['Patella', 'Kneecap', 'Sternum', 'Scapula', 'Mandible', 'Jawbone'],
+          60: ['Coccyx', 'Tailbone', 'Phalanges', 'Metacarpals', 'Tarsals', 'Maxilla'],
+          85: ['Hyoid', 'Zygomatic', 'Sphenoid', 'Ethmoid', 'Calcaneus'],
+          100: ['Stapes', 'Incus', 'Malleus', 'Pisiform', 'Trapezium', 'Navicular']
+        }
+      },
+      {
+        id: 'sci_spacecraft', sector: 'Space & Science', prompt: 'Name a Real Space Mission, Rover, or Space Telescope',
+        webKeywords: ['spacecraft', 'space telescope', 'mars rover', 'spaceflight', 'nasa', 'esa', 'probe'],
+        answers: {
+          10: ['Apollo 11', 'Hubble', 'James Webb', 'Curiosity', 'Perseverance'],
+          15: ['Voyager 1', 'Voyager 2', 'Sputnik', 'Challenger', 'Cassini', 'ISS'],
+          30: ['Opportunity', 'Spirit', 'New Horizons', 'Juno', 'Kepler', 'Gemini'],
+          60: ['Galileo', 'Rosetta', 'Philae', 'OSIRIS-REx', 'Ingenuity', 'Vostok 1'],
+          85: ['Hayabusa2', 'Chandrayaan-3', 'BepiColombo', 'Chang\'e 4', 'Parker Solar Probe'],
+          100: ['Venera 7', 'Huygens', 'NEAR Shoemaker', 'Akatsuki', 'Stardust']
+        }
+      },
+      {
+        id: 'sci_gemstone', sector: 'Space & Science', prompt: 'Name a Gemstone or Precious Mineral',
+        webKeywords: ['gemstone', 'mineral', 'quartz', 'crystal', 'precious stone'],
+        answers: {
+          10: ['Diamond', 'Ruby', 'Emerald', 'Sapphire'],
+          15: ['Amethyst', 'Pearl', 'Opal', 'Topaz', 'Jade', 'Turquoise'],
+          30: ['Garnet', 'Aquamarine', 'Peridot', 'Onyx', 'Quartz', 'Amber'],
+          60: ['Tourmaline', 'Citrine', 'Lapis Lazuli', 'Malachite', 'Moonstone', 'Tanzanite'],
+          85: ['Alexandrite', 'Spinel', 'Zircon', 'Labradorite', 'Rhodochrosite'],
+          100: ['Painite', 'Benitoite', 'Taaffeite', 'Grandidierite', 'Larimar']
+        }
+      },
+      {
+        id: 'sci_cloud', sector: 'Space & Science', prompt: 'Name a Type of Cloud',
+        webKeywords: ['cloud', 'meteorology', 'troposphere', 'cumulus', 'stratus'],
+        answers: {
+          10: ['Cumulus', 'Cirrus', 'Stratus', 'Cumulonimbus'],
+          15: ['Nimbus', 'Nimbostratus', 'Stratocumulus', 'Altocumulus'],
+          30: ['Cirrostratus', 'Cirrocumulus', 'Altostratus'],
+          60: ['Mammatus', 'Lenticular', 'Contrail', 'Fog'],
+          85: ['Noctilucent', 'Pileus', 'Kelvin-Helmholtz', 'Pyrocumulus'],
+          100: ['Asperitas', 'Nacreous', 'Actinoform', 'Volutus', 'Flammagenitus']
+        }
+      },
+      {
+        id: 'sci_scientist', sector: 'Space & Science', prompt: 'Name a Famous Physicist, Astronomer, or Chemist',
+        webKeywords: ['physicist', 'astronomer', 'chemist', 'nobel prize', 'scientist'],
+        answers: {
+          10: ['Albert Einstein', 'Isaac Newton', 'Marie Curie', 'Stephen Hawking', 'Galileo'],
+          15: ['Nikola Tesla', 'Carl Sagan', 'Neil deGrasse Tyson', 'Charles Darwin', 'Copernicus'],
+          30: ['Richard Feynman', 'Niels Bohr', 'Edwin Hubble', 'Johannes Kepler', 'Rosalind Franklin'],
+          60: ['Max Planck', 'Erwin Schrodinger', 'Werner Heisenberg', 'Michael Faraday', 'Dmitri Mendeleev'],
+          85: ['Enrico Fermi', 'Subrahmanyan Chandrasekhar', 'Jocelyn Bell Burnell', 'Lise Meitner', 'Tycho Brahe'],
+          100: ['Henrietta Swan Leavitt', 'Chien-Shiung Wu', 'Satyendra Nath Bose', 'Cecilia Payne-Gaposchkin']
+        }
+      },
+      {
+        id: 'sci_deep_sea', sector: 'Space & Science', prompt: 'Name a Deep-Sea Creature',
+        webKeywords: ['deep-sea', 'abyssal', 'bioluminescent', 'marine', 'fish', 'cephalopod', 'crustacean'],
+        answers: {
+          10: ['Anglerfish', 'Giant Squid', 'Jellyfish', 'Octopus', 'Shark'],
+          15: ['Blobfish', 'Vampire Squid', 'Goblin Shark', 'Oarfish', 'Lanternfish'],
+          30: ['Colossal Squid', 'Coelacanth', 'Nautilus', 'Gulper Eel', 'Dumbo Octopus'],
+          60: ['Barreleye', 'Frilled Shark', 'Viperfish', 'Dragonfish', 'Fangtooth'],
+          85: ['Isopod', 'Giant Isopod', 'Yeti Crab', 'Sea Pig', 'Hatchetfish'],
+          100: ['Siphonophore', 'Snailfish', 'Mariana Snailfish', 'Cusk Eel', 'Atolla Jellyfish']
+        }
+      },
+      {
+        id: 'sci_math_term', sector: 'Space & Science', prompt: 'Name a Branch of Mathematics or Famous Math Concept',
+        webKeywords: ['mathematics', 'geometry', 'algebra', 'calculus', 'theorem', 'number theory'],
+        answers: {
+          10: ['Algebra', 'Geometry', 'Calculus', 'Statistics', 'Trigonometry'],
+          15: ['Arithmetic', 'Probability', 'Pythagorean Theorem', 'Pi', 'Fibonacci'],
+          30: ['Linear Algebra', 'Topology', 'Number Theory', 'Combinatorics', 'Logarithm'],
+          60: ['Differential Equations', 'Game Theory', 'Set Theory', 'Fractal', 'Prime Number'],
+          85: ['Graph Theory', 'Abstract Algebra', 'Fourier Transform', 'Chaos Theory', 'Golden Ratio'],
+          100: ['Category Theory', 'Riemann Hypothesis', 'Euler\'s Identity', 'Homology', 'Manifold']
+        }
+      },
+      {
+        id: 'sci_organ', sector: 'Space & Science', prompt: 'Name an Internal Human Organ or Gland',
+        webKeywords: ['organ', 'gland', 'anatomy', 'human body', 'viscera'],
+        answers: {
+          10: ['Heart', 'Brain', 'Lungs', 'Liver', 'Stomach', 'Kidneys'],
+          15: ['Small Intestine', 'Large Intestine', 'Pancreas', 'Bladder', 'Appendix'],
+          30: ['Spleen', 'Gallbladder', 'Esophagus', 'Thyroid', 'Diaphragm'],
+          60: ['Pituitary Gland', 'Adrenal Gland', 'Thymus', 'Trachea', 'Duodenum'],
+          85: ['Pineal Gland', 'Hypothalamus', 'Parathyroid', 'Epiglottis', 'Ureter'],
+          100: ['Jejunum', 'Ileum', 'Cecum', 'Mesentery', 'Islets of Langerhans']
+        }
+      },
+      {
+        id: 'sci_star', sector: 'Space & Science', prompt: 'Name a Named Star (Other than the Sun)',
+        webKeywords: ['star', 'giant star', 'binary star', 'supergiant', 'constellation', 'red dwarf', 'white dwarf'],
+        webExclude: ['the sun', 'star at the center of the solar system'],
+        answers: {
+          10: ['Polaris', 'North Star', 'Sirius', 'Betelgeuse'],
+          15: ['Alpha Centauri', 'Vega', 'Rigel', 'Proxima Centauri'],
+          30: ['Antares', 'Aldebaran', 'Arcturus', 'Altair', 'Deneb'],
+          60: ['Bellatrix', 'Spica', 'Capella', 'Pollux', 'Castor'],
+          85: ['Fomalhaut', 'Canopus', 'Achernar', 'Regulus', 'Algol'],
+          100: ['UY Scuti', 'VY Canis Majoris', 'Barnard\'s Star', 'TRAPPIST-1', 'Tabby\'s Star']
+        }
+      },
+
+      // --- SECTOR 2: WORDS & LETTERS (14) ---
+      {
+        id: 'wrd_fruit_b', sector: 'Words & Letters', prompt: 'Name a Fruit That Starts With the Letter B',
+        startsWith: 'b', webKeywords: ['fruit', 'berry', 'edible', 'cultivar', 'citrus'],
+        answers: {
+          10: ['Banana'],
+          15: ['Blueberry', 'Blackberry'],
+          30: ['Blood Orange', 'Boysenberry'],
+          60: ['Breadfruit', 'Bilberry', 'Blackcurrant'],
+          85: ['Bergamot', 'Bael', 'Barberry'],
+          100: ['Babaco', 'Bignay', 'Biriba', 'Borojo', 'Burmese Grape']
+        }
+      },
+      {
+        id: 'wrd_animal_q', sector: 'Words & Letters', prompt: 'Name an Animal Starting With Q, X, Y, or Z',
+        startsWithAny: ['q', 'x', 'y', 'z'], webKeywords: ['animal', 'mammal', 'bird', 'fish', 'species', 'reptile', 'amphibian', 'insect'],
+        answers: {
+          10: ['Zebra', 'Yak'],
+          15: ['Quail', 'Quokka'],
+          30: ['Zebu', 'Yellowjacket', 'X-Ray Tetra'],
+          60: ['Quetzal', 'Quoll', 'Zander'],
+          85: ['Xenopus', 'Yellowfin Tuna', 'Zorilla'],
+          100: ['Xeme', 'Yapok', 'Zokor', 'Xenarthra', 'Quahog']
+        }
+      },
+      {
+        id: 'wrd_palindrome', sector: 'Words & Letters', prompt: 'Type an English Palindrome Word (4+ Letters)',
+        useDictionary: true,
+        customValidator: (norm) => {
+          const clean = norm.replace(/[^a-z]/g, '');
+          return clean.length >= 4 && clean === clean.split('').reverse().join('');
+        },
+        answers: {
+          10: ['Racecar', 'Kayak', 'Level', 'Madam', 'Radar'],
+          15: ['Civic', 'Refer', 'Rotor', 'Noon', 'Deed'],
+          30: ['Tenet', 'Sagas', 'Solos', 'Stats', 'Minim'],
+          60: ['Redder', 'Reviver', 'Rotator', 'Repaper'],
+          85: ['Deified', 'Malayalam', 'Murdrum'],
+          100: ['Tattarrattat', 'Kinikinik', 'Aibohphobia', 'Detartrated']
+        }
+      },
+      {
+        id: 'wrd_double_o', sector: 'Words & Letters', prompt: 'Name a Word Containing "OO" With 7+ Letters',
+        useDictionary: true,
+        customValidator: (norm) => {
+          const clean = norm.replace(/[^a-z]/g, '');
+          return clean.length >= 7 && clean.includes('oo');
+        },
+        answers: {
+          10: ['Balloon', 'Cartoon', 'Bedroom', 'Bathroom', 'Afternoon'],
+          15: ['Kangaroo', 'Mushroom', 'Moonlight', 'Football', 'Bookstore'],
+          30: ['Typhoon', 'Monsoon', 'Lagoon', 'Cocoon', 'Baboon'],
+          60: ['Raccoon', 'Pontoon', 'Heirloom', 'Basalt', 'Harpoon'],
+          85: ['Pantaloon', 'Spittoon', 'Macaroon', 'Doubloon', 'Poltroon'],
+          100: ['Oology', 'Zoomorphism', 'Bamboozle', 'Hullabaloo', 'Lagomorph']
+        }
+      },
+      {
+        id: 'wrd_bird', sector: 'Words & Letters', prompt: 'Name Any Species of Bird',
+        webKeywords: ['bird', 'species of bird', 'passerine', 'waterfowl', 'raptor', 'owl', 'parrot', 'penguin'],
+        answers: {
+          10: ['Eagle', 'Robin', 'Pigeon', 'Crow', 'Owl', 'Sparrow', 'Hawk'],
+          15: ['Penguin', 'Flamingo', 'Parrot', 'Blue Jay', 'Cardinal', 'Ostrich', 'Duck'],
+          30: ['Pelican', 'Albatross', 'Woodpecker', 'Hummingbird', 'Toucan', 'Falcon'],
+          60: ['Kingfisher', 'Puffin', 'Kookaburra', 'Cassowary', 'Kiwi', 'Ibis'],
+          85: ['Shoebill', 'Secretarybird', 'Kakapo', 'Hoatzin', 'Lyrebird', 'Ptarmigan'],
+          100: ['Potoo', 'Oilbird', 'Bearded Vulture', 'Lammergeier', 'Kagu', 'Jabiru']
+        }
+      },
+      {
+        id: 'wrd_dog_breed', sector: 'Words & Letters', prompt: 'Name a Dog Breed',
+        webKeywords: ['dog breed', 'breed of dog', 'canine', 'terrier', 'hound', 'retriever', 'shepherd'],
+        answers: {
+          10: ['Golden Retriever', 'Labrador', 'German Shepherd', 'Poodle', 'Bulldog'],
+          15: ['Beagle', 'Chihuahua', 'Husky', 'Pug', 'Dachshund', 'Rottweiler', 'Boxer'],
+          30: ['Corgi', 'Doberman', 'Shih Tzu', 'Border Collie', 'Great Dane', 'Dalmatian'],
+          60: ['Samoyed', 'Akita', 'Shiba Inu', 'Whippet', 'Basset Hound', 'Newfoundland'],
+          85: ['Basenji', 'Borzoi', 'Saluki', 'Vizsla', 'Papillon', 'Leonberger'],
+          100: ['Azawakh', 'Xoloitzcuintli', 'Lundehund', 'Komondor', 'Bergamasco', 'Sloughi']
+        }
+      },
+      {
+        id: 'wrd_pasta', sector: 'Words & Letters', prompt: 'Name a Shape or Type of Pasta',
+        webKeywords: ['pasta', 'italian', 'noodle', 'dumpling'],
+        answers: {
+          10: ['Spaghetti', 'Macaroni', 'Penne', 'Fettuccine', 'Lasagna'],
+          15: ['Ravioli', 'Linguine', 'Tortellini', 'Rigatoni', 'Fusilli', 'Rotini'],
+          30: ['Farfalle', 'Bowtie', 'Gnocchi', 'Orzo', 'Angel Hair', 'Capellini'],
+          60: ['Orecchiette', 'Pappardelle', 'Bucatini', 'Tagliatelle', 'Cannelloni', 'Manicotti'],
+          85: ['Cavatappi', 'Gemelli', 'Paccheri', 'Radiatori', 'Trofie', 'Ditalini'],
+          100: ['Strozzapreti', 'Mafaldine', 'Bigoli', 'Pici', 'Culurgiones', 'Fregula']
+        }
+      },
+      {
+        id: 'wrd_cheese', sector: 'Words & Letters', prompt: 'Name a Variety of Cheese',
+        webKeywords: ['cheese', 'dairy', 'curd'],
+        answers: {
+          10: ['Cheddar', 'Mozzarella', 'Swiss', 'Parmesan', 'American'],
+          15: ['Brie', 'Gouda', 'Feta', 'Provolone', 'Blue Cheese', 'Monterey Jack'],
+          30: ['Camembert', 'Gruyere', 'Gorgonzola', 'Ricotta', 'Havarti', 'Muenster'],
+          60: ['Manchego', 'Halloumi', 'Roquefort', 'Fontina', 'Asiago', 'Edam'],
+          85: ['Taleggio', 'Comte', 'Raclette', 'Burrata', 'Stilton', 'Pecorino'],
+          100: ['Epoisses', 'Mimolette', 'Casu Marzu', 'Brunost', 'Vacherin', 'Reblochon']
+        }
+      },
+      {
+        id: 'wrd_instrument', sector: 'Words & Letters', prompt: 'Name a Musical Instrument',
+        webKeywords: ['musical instrument', 'percussion', 'woodwind', 'brass instrument', 'string instrument'],
+        answers: {
+          10: ['Guitar', 'Piano', 'Drums', 'Violin', 'Flute', 'Trumpet'],
+          15: ['Saxophone', 'Clarinet', 'Cello', 'Trombone', 'Bass', 'Harp'],
+          30: ['Ukulele', 'Banjo', 'Accordion', 'Oboe', 'Tuba', 'Xylophone'],
+          60: ['Bassoon', 'Mandolin', 'Harpsichord', 'Bagpipes', 'Sitar', 'Marimba'],
+          85: ['Theremin', 'Didgeridoo', 'Ocarina', 'Hurdy-Gurdy', 'Kalimba', 'Dulcimer'],
+          100: ['Glass Armonica', 'Ondes Martenot', 'Nyckelharpa', 'Balalaika', 'Erhu', 'Gamelan']
+        }
+      },
+      {
+        id: 'wrd_phobia', sector: 'Words & Letters', prompt: 'Name a Specific Phobia (Ends in -phobia)',
+        webKeywords: ['phobia', 'fear of', 'anxiety disorder'],
+        answers: {
+          10: ['Arachnophobia', 'Claustrophobia', 'Acrophobia'],
+          15: ['Agoraphobia', 'Hydrophobia', 'Xenophobia', 'Homophobia'],
+          30: ['Trypophobia', 'Thalassophobia', 'Coulrophobia', 'Nyctophobia'],
+          60: ['Aerophobia', 'Megalophobia', 'Ophidiophobia', 'Hemophobia', 'Emetophobia'],
+          85: ['Submechanophobia', 'Ornithophobia', 'Chronophobia', 'Astrophobia', 'Cynophobia'],
+          100: ['Anatidaephobia', 'Hippopotomonstrosesquippedaliophobia', 'Aibohphobia', 'Nomophobia', 'Pogonophobia']
+        }
+      },
+      {
+        id: 'wrd_tree', sector: 'Words & Letters', prompt: 'Name a Type of Tree',
+        webKeywords: ['tree', 'conifer', 'deciduous', 'genus of flowering plants', 'woody plant'],
+        answers: {
+          10: ['Oak', 'Pine', 'Maple', 'Palm', 'Apple'],
+          15: ['Birch', 'Willow', 'Redwood', 'Cedar', 'Cherry', 'Spruce'],
+          30: ['Sycamore', 'Aspen', 'Cypress', 'Magnolia', 'Elm', 'Eucalyptus'],
+          60: ['Sequoia', 'Baobab', 'Banyan', 'Mahogany', 'Acacia', 'Hemlock'],
+          85: ['Ginkgo', 'Juniper', 'Yew', 'Alder', 'Poplar', 'Tamarack'],
+          100: ['Bristlecone Pine', 'Manchineel', 'Dragon Blood Tree', 'Jacaranda', 'Monkey Puzzle']
+        }
+      },
+      {
+        id: 'wrd_color_shade', sector: 'Words & Letters', prompt: 'Name a Specific Color or Shade (Not Basic Red/Blue/Green/Yellow)',
+        webKeywords: ['color', 'shade of', 'pigment', 'hue', 'tint'],
+        answers: {
+          10: ['Purple', 'Orange', 'Pink', 'Brown', 'Black', 'White', 'Gray'],
+          15: ['Turquoise', 'Magenta', 'Cyan', 'Maroon', 'Lavender', 'Teal', 'Indigo'],
+          30: ['Crimson', 'Scarlet', 'Emerald', 'Cobalt', 'Beige', 'Mauve', 'Coral'],
+          60: ['Chartreuse', 'Periwinkle', 'Burgundy', 'Ochre', 'Cerulean', 'Vermilion'],
+          85: ['Puce', 'Viridian', 'Sienna', 'Umber', 'Celadon', 'Taupe'],
+          100: ['Gamboge', 'Sarcoline', 'Coquelicot', 'Smaragdine', 'Feldgrau', 'Wenge']
+        }
+      },
+      {
+        id: 'wrd_dance', sector: 'Words & Letters', prompt: 'Name a Style of Dance',
+        webKeywords: ['dance', 'ballroom', 'choreography', 'folk dance'],
+        answers: {
+          10: ['Ballet', 'Hip Hop', 'Salsa', 'Tango', 'Tap'],
+          15: ['Waltz', 'Breakdancing', 'Jazz', 'Swing', 'Cha-Cha', 'Disco'],
+          30: ['Foxtrot', 'Flamenco', 'Rumba', 'Samba', 'Polka', 'Bachata'],
+          60: ['Merengue', 'Paso Doble', 'Charleston', 'Lindy Hop', 'Vogue', 'Capoeira'],
+          85: ['Bolero', 'Mazurka', 'Tarantella', 'Kathak', 'Krumping'],
+          100: ['Bharatanatyam', 'Cossack Dance', 'Fandango', 'Gavotte', 'Hopak', 'Butoh']
+        }
+      },
+      {
+        id: 'wrd_sport_no_ball', sector: 'Words & Letters', prompt: 'Name a Sport Played Without a Ball',
+        webKeywords: ['sport', 'olympic', 'athletics', 'combat sport', 'martial art', 'racing', 'skating', 'skiing'],
+        webExclude: ['ball sport', 'ball game', 'played with a ball', 'inflated ball', 'bat-and-ball'],
+        answers: {
+          10: ['Swimming', 'Running', 'Hockey', 'Ice Hockey', 'Boxing'],
+          15: ['Wrestling', 'Gymnastics', 'Track', 'Cycling', 'Skiing', 'Archery'],
+          30: ['Fencing', 'Rowing', 'Surfing', 'Skateboarding', 'Karate', 'Judo'],
+          60: ['Curling', 'Badminton', 'Equestrian', 'Luge', 'Bobsled'],
+          85: ['Biathlon', 'Taekwondo', 'Speed Skating', 'Weightlifting', 'Parkour'],
+          100: ['Sepak Takraw', 'Kabaddi', 'Kendo', 'Skeleton', 'Caber Toss']
+        }
+      },
+
+      // --- SECTOR 3: GEOGRAPHY (14) ---
+      {
+        id: 'geo_us_state_c', sector: 'Geography', prompt: 'Name a U.S. State Starting With C, M, or N',
+        closedSet: true,
+        startsWithAny: ['c', 'm', 'n'],
+        answers: {
+          10: ['California', 'New York', 'Colorado', 'Michigan'],
+          15: ['North Carolina', 'New Jersey', 'Minnesota', 'Missouri', 'Massachusetts'],
+          30: ['Connecticut', 'Maryland', 'Montana', 'Nevada', 'New Mexico'],
+          60: ['Mississippi', 'Maine', 'Nebraska', 'New Hampshire'],
+          85: ['North Dakota'],
+          100: []
+        }
+      },
+      {
+        id: 'geo_country_j_k_l', sector: 'Geography', prompt: 'Name a Country Starting With J, K, or L',
+        startsWithAny: ['j', 'k', 'l'], webKeywords: ['country', 'sovereign state', 'republic', 'kingdom'],
+        answers: {
+          10: ['Japan', 'Jamaica', 'Kenya', 'South Korea', 'North Korea'],
+          15: ['Jordan', 'Kuwait', 'Lebanon', 'Libya', 'Luxembourg'],
+          30: ['Kazakhstan', 'Laos', 'Latvia', 'Lithuania'],
+          60: ['Kyrgyzstan', 'Liberia', 'Liechtenstein'],
+          85: ['Lesotho', 'Kiribati'],
+          100: ['Kosovo']
+        }
+      },
+      {
+        id: 'geo_capital', sector: 'Geography', prompt: 'Name a National Capital City',
+        webKeywords: ['capital city', 'capital of', 'seat of government'],
+        answers: {
+          10: ['London', 'Paris', 'Tokyo', 'Washington DC', 'Rome', 'Berlin', 'Beijing'],
+          15: ['Moscow', 'Madrid', 'Ottawa', 'Cairo', 'Seoul', 'Athens', 'Dublin'],
+          30: ['Oslo', 'Stockholm', 'Helsinki', 'Vienna', 'Prague', 'Warsaw', 'Lima'],
+          60: ['Reykjavik', 'Nairobi', 'Kathmandu', 'Hanoi', 'Bogota', 'Santiago'],
+          85: ['Ulaanbaatar', 'Baku', 'Tbilisi', 'Astana', 'Addis Ababa', 'Tirana'],
+          100: ['Ouagadougou', 'Thimphu', 'Ngerulmud', 'Vaduz', 'Bandar Seri Begawan', 'Sucre']
+        }
+      },
+      {
+        id: 'geo_river', sector: 'Geography', prompt: 'Name a Major World River',
+        webKeywords: ['river', 'tributary', 'waterway', 'estuary'],
+        answers: {
+          10: ['Nile', 'Amazon', 'Mississippi', 'Thames', 'Colorado'],
+          15: ['Yangtze', 'Danube', 'Ganges', 'Rio Grande', 'Hudson', 'Missouri'],
+          30: ['Rhine', 'Seine', 'Volga', 'Mekong', 'Congo', 'Tigris', 'Euphrates'],
+          60: ['Zambezi', 'Indus', 'Yellow River', 'Yukon', 'Orinoco', 'Po'],
+          85: ['Lena', 'Yenisei', 'Ob', 'Brahmaputra', 'Dnieper', 'Murray'],
+          100: ['Irrawaddy', 'Okavango', 'Amur', 'Limpopo', 'Salween', 'Ebro']
+        }
+      },
+      {
+        id: 'geo_mountain', sector: 'Geography', prompt: 'Name a Famous Mountain or Mountain Range',
+        webKeywords: ['mountain', 'mountain range', 'peak', 'summit', 'volcano'],
+        answers: {
+          10: ['Mount Everest', 'Everest', 'Rocky Mountains', 'Rockies', 'Alps', 'Andes'],
+          15: ['Kilimanjaro', 'Mount Fuji', 'Himalayas', 'Appalachian Mountains', 'Mount Rushmore'],
+          30: ['K2', 'Denali', 'Mount McKinley', 'Matterhorn', 'Mount Rainier', 'Vesuvius'],
+          60: ['Mont Blanc', 'Olympus', 'Aconcagua', 'Ural Mountains', 'Pyrenees', 'Sierra Nevada'],
+          85: ['Kangchenjunga', 'Lhotse', 'Makalu', 'Elbrus', 'Eiger', 'Annapurna'],
+          100: ['Nanga Parbat', 'Gasherbrum', 'Vinson Massif', 'Puncak Jaya', 'Chimborazo']
+        }
+      },
+      {
+        id: 'geo_island', sector: 'Geography', prompt: 'Name an Island or Island Nation',
+        webKeywords: ['island', 'archipelago', 'atoll', 'island country'],
+        answers: {
+          10: ['Hawaii', 'Australia', 'Greenland', 'Iceland', 'Cuba', 'Japan'],
+          15: ['Madagascar', 'Puerto Rico', 'Jamaica', 'Ireland', 'New Zealand', 'Sicily'],
+          30: ['Borneo', 'Sumatra', 'Bali', 'Fiji', 'Tahiti', 'Crete', 'Sardinia'],
+          60: ['Tasmania', 'Corsica', 'Baffin Island', 'Zanzibar', 'Galapagos', 'Malta'],
+          85: ['Socotra', 'Svalbard', 'Reunion', 'Madeira', 'Okinawa', 'Palawan'],
+          100: ['Tristan da Cunha', 'Kerguelen', 'Novaya Zemlya', 'Pitcairn', 'Bouvet Island']
+        }
+      },
+      {
+        id: 'geo_desert', sector: 'Geography', prompt: 'Name a Desert',
+        webKeywords: ['desert', 'arid', 'dunes', 'ecoregion'],
+        answers: {
+          10: ['Sahara', 'Mojave', 'Gobi'],
+          15: ['Arabian Desert', 'Antarctica', 'Kalahari', 'Sonoran'],
+          30: ['Atacama', 'Death Valley', 'Chihuahuan', 'Patagonian'],
+          60: ['Great Basin', 'Namib', 'Thar', 'Karakum'],
+          85: ['Taklamakan', 'Rub al Khali', 'Negev', 'Syrian Desert'],
+          100: ['Danakil', 'Dasht-e Kavir', 'Kyzyikum', 'Simpson Desert', 'Registan']
+        }
+      },
+      {
+        id: 'geo_us_park', sector: 'Geography', prompt: 'Name a U.S. National Park',
+        webKeywords: ['national park', 'united states', 'nps'],
+        answers: {
+          10: ['Yellowstone', 'Yosemite', 'Grand Canyon', 'Zion'],
+          15: ['Rocky Mountain', 'Glacier', 'Acadia', 'Joshua Tree', 'Everglades'],
+          30: ['Grand Teton', 'Arches', 'Bryce Canyon', 'Olympic', 'Sequoia', 'Death Valley'],
+          60: ['Badlands', 'Shenandoah', 'Denali', 'Mount Rainier', 'Redwood', 'Crater Lake'],
+          85: ['Big Bend', 'Canyonlands', 'Capitol Reef', 'Mesa Verde', 'Carlsbad Caverns'],
+          100: ['Dry Tortugas', 'Isle Royale', 'Gates of the Arctic', 'Congaree', 'Kobuk Valley']
+        }
+      },
+      {
+        id: 'geo_sea_ocean', sector: 'Geography', prompt: 'Name an Ocean, Sea, Gulf, or Bay',
+        webKeywords: ['ocean', 'sea', 'gulf', 'bay', 'strait', 'body of water'],
+        answers: {
+          10: ['Pacific Ocean', 'Atlantic Ocean', 'Indian Ocean', 'Arctic Ocean', 'Mediterranean Sea'],
+          15: ['Red Sea', 'Black Sea', 'Caribbean Sea', 'Dead Sea', 'Gulf of Mexico', 'Southern Ocean'],
+          30: ['Baltic Sea', 'North Sea', 'South China Sea', 'Bering Sea', 'Persian Gulf', 'Hudson Bay'],
+          60: ['Aegean Sea', 'Adriatic Sea', 'Caspian Sea', 'Coral Sea', 'Arabian Sea', 'Bay of Bengal'],
+          85: ['Sargasso Sea', 'Tasman Sea', 'Barents Sea', 'Sea of Japan', 'Tyrrhenian Sea'],
+          100: ['Weddell Sea', 'Laptev Sea', 'Arafura Sea', 'Andaman Sea', 'Gulf of Carpentaria']
+        }
+      },
+      {
+        id: 'geo_south_america', sector: 'Geography', prompt: 'Name a Country in South America',
+        closedSet: true,
+        answers: {
+          10: ['Brazil', 'Argentina', 'Colombia', 'Peru', 'Chile'],
+          15: ['Venezuela', 'Ecuador', 'Bolivia'],
+          30: ['Uruguay', 'Paraguay'],
+          60: ['Guyana', 'Suriname'],
+          85: ['French Guiana'],
+          100: []
+        }
+      },
+      {
+        id: 'geo_canada_prov', sector: 'Geography', prompt: 'Name a Canadian Province or Territory',
+        closedSet: true,
+        answers: {
+          10: ['Ontario', 'Quebec', 'British Columbia', 'Alberta'],
+          15: ['Nova Scotia', 'Manitoba', 'Saskatchewan'],
+          30: ['Newfoundland and Labrador', 'New Brunswick', 'Yukon'],
+          60: ['Prince Edward Island', 'Northwest Territories'],
+          85: ['Nunavut'],
+          100: []
+        }
+      },
+      {
+        id: 'geo_lake', sector: 'Geography', prompt: 'Name a Famous Lake',
+        webKeywords: ['lake', 'great lakes', 'freshwater', 'reservoir'],
+        answers: {
+          10: ['Lake Michigan', 'Lake Superior', 'Loch Ness', 'Lake Tahoe', 'Lake Erie'],
+          15: ['Lake Huron', 'Lake Ontario', 'Great Salt Lake', 'Lake Victoria', 'Crater Lake'],
+          30: ['Lake Baikal', 'Lake Titicaca', 'Lake Geneva', 'Lake Como', 'Lake Mead'],
+          60: ['Lake Tanganyika', 'Lake Winnipeg', 'Lake Champlain', 'Lake Malawi', 'Lake Powell'],
+          85: ['Lake Balkhash', 'Great Bear Lake', 'Great Slave Lake', 'Lake Ladoga', 'Lake Nicaragua'],
+          100: ['Lake Vostok', 'Issyk-Kul', 'Lake Maracaibo', 'Lake Van', 'Lake Turkana']
+        }
+      },
+      {
+        id: 'geo_currency', sector: 'Geography', prompt: 'Name a World Currency',
+        webKeywords: ['currency', 'banknote', 'coin', 'legal tender'],
+        answers: {
+          10: ['Dollar', 'Euro', 'Pound', 'Yen', 'Peso'],
+          15: ['Rupee', 'Yuan', 'Franc', 'Ruble', 'Won', 'Canadian Dollar'],
+          30: ['Krone', 'Krona', 'Lira', 'Real', 'Rand', 'Dirham', 'Dinar'],
+          60: ['Baht', 'Riyal', 'Shekel', 'Zloty', 'Forint', 'Rupiah', 'Ringgit'],
+          85: ['Drachma', 'Shilling', 'Naira', 'Dong', 'Koruna', 'Guilder'],
+          100: ['Ngultrum', 'Tugrik', 'Kip', 'Quetzal', 'Balboa', 'Lempira', 'Pataca']
+        }
+      },
+      {
+        id: 'geo_landmark', sector: 'Geography', prompt: 'Name a World-Famous Architectural Landmark or Monument',
+        webKeywords: ['landmark', 'monument', 'unesco', 'tower', 'temple', 'palace', 'bridge'],
+        answers: {
+          10: ['Eiffel Tower', 'Statue of Liberty', 'Great Wall of China', 'Pyramids of Giza', 'Colosseum'],
+          15: ['Taj Mahal', 'Big Ben', 'Golden Gate Bridge', 'Stonehenge', 'Mount Rushmore', 'Leaning Tower of Pisa'],
+          30: ['Machu Picchu', 'Sydney Opera House', 'Burj Khalifa', 'Christ the Redeemer', 'Acropolis', 'Parthenon'],
+          60: ['Angkor Wat', 'Petra', 'Chichen Itza', 'Sagrada Familia', 'Neuschwanstein', 'Hagia Sophia'],
+          85: ['Alhambra', 'Kremlin', 'Brandenburg Gate', 'Moai', 'Easter Island', 'Borobudur'],
+          100: ['Potala Palace', 'Mezquita', 'Sigiriya', 'Stave Church', 'Derinkuyu', 'Nan Madol']
+        }
+      },
+
+      // --- SECTOR 4: MOVIES & TV (14) ---
+      {
+        id: 'mov_pixar', sector: 'Movies & TV', prompt: 'Name a Pixar Animated Feature Film',
+        webKeywords: ['pixar', 'animated film', 'walt disney'],
+        answers: {
+          10: ['Toy Story', 'Finding Nemo', 'The Incredibles', 'Cars', 'Monsters Inc'],
+          15: ['Up', 'Wall-E', 'Inside Out', 'Ratatouille', 'Coco', 'Finding Dory'],
+          30: ['Brave', 'Soul', 'Luca', 'Turning Red', 'Monsters University', 'A Bug\'s Life'],
+          60: ['Onward', 'Elemental', 'The Good Dinosaur', 'Lightyear', 'Toy Story 2'],
+          85: ['Toy Story 3', 'Toy Story 4', 'Incredibles 2', 'Inside Out 2'],
+          100: ['Elio', 'Hoppers', 'Cars 2', 'Cars 3']
+        }
+      },
+      {
+        id: 'mov_starwars', sector: 'Movies & TV', prompt: 'Name a Star Wars Character',
+        webKeywords: ['star wars', 'jedi', 'sith', 'galactic', 'skywalker'],
+        answers: {
+          10: ['Luke Skywalker', 'Darth Vader', 'Yoda', 'Princess Leia', 'Han Solo', 'Chewbacca'],
+          15: ['Obi-Wan Kenobi', 'R2-D2', 'C-3PO', 'Anakin Skywalker', 'Boba Fett', 'Grogu', 'Baby Yoda'],
+          30: ['Darth Maul', 'Mace Windu', 'Padme Amidala', 'Ahsoka Tano', 'Kylo Ren', 'Rey', 'Palpatine'],
+          60: ['Qui-Gon Jinn', 'Lando Calrissian', 'General Grievous', 'Count Dooku', 'Jabba the Hutt', 'Din Djarin'],
+          85: ['Grand Admiral Thrawn', 'Admiral Ackbar', 'Wedge Antilles', 'Cad Bane', 'Mon Mothma', 'Plo Koon'],
+          100: ['Salacious B. Crumb', 'Max Rebo', 'Nien Nunb', 'Kit Fisto', 'Watto', 'Sebulba', 'Bossk']
+        }
+      },
+      {
+        id: 'mov_sitcom', sector: 'Movies & TV', prompt: 'Name a Famous TV Sitcom',
+        webKeywords: ['sitcom', 'television series', 'comedy series'],
+        answers: {
+          10: ['Friends', 'The Office', 'Seinfeld', 'How I Met Your Mother', 'The Big Bang Theory'],
+          15: ['Parks and Recreation', 'Brooklyn Nine-Nine', 'Modern Family', 'Cheers', 'The Simpsons'],
+          30: ['Arrested Development', 'Community', 'It\'s Always Sunny in Philadelphia', 'Frasier', 'Scrubs', 'New Girl'],
+          60: ['30 Rock', 'Schitt\'s Creek', 'The Good Place', 'Curb Your Enthusiasm', 'Malcolm in the Middle', 'Ted Lasso'],
+          85: ['Silicon Valley', 'Veep', 'What We Do in the Shadows', 'The IT Crowd', 'Peep Show', 'Abbott Elementary'],
+          100: ['Spaced', 'Green Wing', 'Garth Marenghi\'s Darkplace', 'Better Off Ted', 'NewsRadio']
+        }
+      },
+      {
+        id: 'mov_director', sector: 'Movies & TV', prompt: 'Name a Famous Film Director',
+        webKeywords: ['film director', 'filmmaker', 'academy award', 'cinema'],
+        answers: {
+          10: ['Steven Spielberg', 'Christopher Nolan', 'Quentin Tarantino', 'Martin Scorsese', 'James Cameron'],
+          15: ['Alfred Hitchcock', 'Tim Burton', 'Stanley Kubrick', 'George Lucas', 'Ridley Scott', 'Wes Anderson'],
+          30: ['Denis Villeneuve', 'Guillermo del Toro', 'Francis Ford Coppola', 'Peter Jackson', 'David Fincher', 'Jordan Peele'],
+          60: ['Coen Brothers', 'Akira Kurosawa', 'Hayao Miyazaki', 'Bong Joon-ho', 'Greta Gerwig', 'Spike Lee'],
+          85: ['Ingmar Bergman', 'Federico Fellini', 'Wong Kar-wai', 'Andrei Tarkovsky', 'Werner Herzog', 'Park Chan-wook'],
+          100: ['Agnes Varda', 'Abbas Kiarostami', 'Satoshi Kon', 'Jean-Pierre Melville', 'Yasujiro Ozu']
+        }
+      },
+      {
+        id: 'mov_scifi_film', sector: 'Movies & TV', prompt: 'Name a Sci-Fi Movie',
+        webKeywords: ['science fiction film', 'sci-fi', 'space opera', 'cyberpunk'],
+        answers: {
+          10: ['Star Wars', 'Interstellar', 'The Matrix', 'Avatar', 'Inception', 'Alien'],
+          15: ['Blade Runner', 'Dune', 'Back to the Future', 'ET', 'Jurassic Park', 'Terminator'],
+          30: ['2001: A Space Odyssey', 'Arrival', 'The Martian', 'Star Trek', 'Ex Machina', 'District 9'],
+          60: ['Blade Runner 2049', 'Fifth Element', 'Loope', 'Looper', 'Children of Men', 'Gattaca', 'Edge of Tomorrow'],
+          85: ['Dark City', 'Moon', 'Sunshine', 'Annihilation', 'Akira', 'Ghost in the Shell'],
+          100: ['Primer', 'Solaris', 'Stalker', 'Coherence', 'Upstream Color', 'Timecrimes']
+        }
+      },
+      {
+        id: 'mov_disney_villain', sector: 'Movies & TV', prompt: 'Name a Classic Disney Animated Villain',
+        webKeywords: ['disney', 'villain', 'antagonist', 'animated'],
+        answers: {
+          10: ['Maleficent', 'Scar', 'Ursula', 'Jafar', 'Cruella de Vil'],
+          15: ['Captain Hook', 'Hades', 'Evil Queen', 'Gaston', 'Mother Gothel'],
+          30: ['Dr. Facilier', 'Yzma', 'Frollo', 'Claude Frollo', 'Shere Khan', 'Lady Tremaine'],
+          60: ['Shan Yu', 'Prince John', 'Governor Ratcliffe', 'Chernabog', 'Queen of Hearts'],
+          85: ['Professor Ratigan', 'Madame Medusa', 'Horned King', 'Clayton', 'Syndrome'],
+          100: ['McLeach', 'Percival C. McLeach', 'Stromboli', 'Amos Slade', 'Edgar Balthazar']
+        }
+      },
+      {
+        id: 'mov_harry_potter', sector: 'Movies & TV', prompt: 'Name a Harry Potter Character',
+        webKeywords: ['harry potter', 'hogwarts', 'wizard', 'wizarding world'],
+        answers: {
+          10: ['Harry Potter', 'Hermione Granger', 'Ron Weasley', 'Dumbledore', 'Voldemort', 'Snape'],
+          15: ['Hagrid', 'Draco Malfoy', 'Sirius Black', 'Dobby', 'Neville Longbottom', 'Luna Lovegood'],
+          30: ['Bellatrix Lestrange', 'Minerva McGonagall', 'Remus Lupin', 'Ginny Weasley', 'Fred Weasley', 'George Weasley'],
+          60: ['Cedric Diggory', 'Mad-Eye Moody', 'Dolores Umbridge', 'Cho Chang', 'Lucius Malfoy', 'Nymphadora Tonks'],
+          85: ['Newt Scamander', 'Gellert Grindelwald', 'Viktor Krum', 'Fleur Delacour', 'Arthur Weasley', 'Molly Weasley'],
+          100: ['Mundungus Fletcher', 'Garrick Ollivander', 'Bartemius Crouch', 'Regulus Black', 'Kingsley Shacklebolt', 'Peeves']
+        }
+      },
+      {
+        id: 'mov_anime', sector: 'Movies & TV', prompt: 'Name an Anime Series or Film',
+        webKeywords: ['anime', 'manga', 'japanese animated', 'shonen'],
+        answers: {
+          10: ['Naruto', 'Dragon Ball Z', 'One Piece', 'Attack on Titan', 'Pokemon', 'Demon Slayer'],
+          15: ['Death Note', 'My Hero Academia', 'Jujutsu Kaisen', 'Sailor Moon', 'Spirited Away', 'Fullmetal Alchemist'],
+          30: ['Cowboy Bebop', 'Hunter x Hunter', 'Bleach', 'Chainsaw Man', 'One Punch Man', 'Tokyo Ghoul'],
+          60: ['Neon Genesis Evangelion', 'Studio Ghibli', 'Princess Mononoke', 'JoJo\'s Bizarre Adventure', 'Code Geass', 'Steins;Gate'],
+          85: ['Vinland Saga', 'Mob Psycho 100', 'Berserk', 'Gurren Lagann', 'Samurai Champloo', 'Monster'],
+          100: ['Mushishi', 'Serial Experiments Lain', 'Paranoia Agent', 'Legend of the Galactic Heroes', 'Ping Pong the Animation']
+        }
+      },
+      {
+        id: 'mov_bond', sector: 'Movies & TV', prompt: 'Name a James Bond Movie or Actor Who Played 007',
+        webKeywords: ['james bond', '007', 'eon productions'],
+        answers: {
+          10: ['Sean Connery', 'Daniel Craig', 'Pierce Brosnan', 'Skyfall', 'Casino Royale', 'Goldfinger'],
+          15: ['Roger Moore', 'GoldenEye', 'No Time to Die', 'Dr. No', 'Timothy Dalton'],
+          30: ['George Lazenby', 'Spectre', 'Quantum of Solace', 'From Russia with Love', 'Thunderball'],
+          60: ['Diamonds Are Forever', 'Live and Let Die', 'The Spy Who Loved Me', 'Moonraker', 'Tomorrow Never Dies'],
+          85: ['On Her Majesty\'s Secret Service', 'The Living Daylights', 'Licence to Kill', 'Octopussy', 'A View to a Kill'],
+          100: ['For Your Eyes Only', 'The World Is Not Enough', 'Die Another Day', 'You Only Live Twice', 'The Man with the Golden Gun']
+        }
+      },
+      {
+        id: 'mov_lotr', sector: 'Movies & TV', prompt: 'Name a Lord of the Rings or Hobbit Character',
+        webKeywords: ['middle-earth', 'lord of the rings', 'hobbit', 'tolkien'],
+        answers: {
+          10: ['Frodo', 'Gandalf', 'Aragorn', 'Legolas', 'Gollum', 'Bilbo'],
+          15: ['Samwise Gamgee', 'Sam', 'Gimli', 'Sauron', 'Boromir', 'Saruman'],
+          30: ['Pippin', 'Merry', 'Elrond', 'Galadriel', 'Arwen', 'Smaug'],
+          60: ['Eowyn', 'Theoden', 'Faramir', 'Treebeard', 'Thorin Oakenshield', 'Radagast'],
+          85: ['Denethor', 'Grima Wormtongue', 'Tom Bombadil', 'Glorfindel', 'Haldir', 'Celeborn'],
+          100: ['Feanor', 'Beren', 'Luthien', 'Morgoth', 'Ungoliant', 'Cirdan']
+        }
+      },
+      {
+        id: 'mov_horror', sector: 'Movies & TV', prompt: 'Name a Famous Horror Movie or Horror Villain',
+        webKeywords: ['horror film', 'slasher', 'supernatural horror'],
+        answers: {
+          10: ['Halloween', 'Michael Myers', 'Friday the 13th', 'Jason Voorhees', 'Scream', 'Ghostface', 'Freddy Krueger'],
+          15: ['The Shining', 'The Exorcist', 'It', 'Pennywise', 'Chucky', 'Saw', 'Jigsaw'],
+          30: ['Alien', 'A Nightmare on Elm Street', 'Texas Chainsaw Massacre', 'Leatherface', 'Get Out', 'Hereditary'],
+          60: ['The Thing', 'Psycho', 'Norman Bates', 'Midsommar', 'The Conjuring', 'The Babadook'],
+          85: ['Suspiria', 'Rosemary\'s Baby', 'The Witch', 'The Lighthouse', 'Candyman', 'Pinhead'],
+          100: ['Nosferatu', 'The Cabinet of Dr. Caligari', 'Audition', 'Hausu', 'Martyrs', 'Possession']
+        }
+      },
+      {
+        id: 'mov_tv_network', sector: 'Movies & TV', prompt: 'Name a Major TV Network or Streaming Service',
+        webKeywords: ['television network', 'streaming service', 'video on demand', 'broadcast'],
+        answers: {
+          10: ['Netflix', 'Hulu', 'Disney+', 'HBO', 'NBC', 'CBS', 'ABC'],
+          15: ['Amazon Prime Video', 'Prime Video', 'Fox', 'ESPN', 'CNN', 'Apple TV+', 'Peacock'],
+          30: ['Paramount+', 'Max', 'Showtime', 'FX', 'AMC', 'Cartoon Network', 'Nickelodeon'],
+          60: ['BBC', 'PBS', 'Syfy', 'Comedy Central', 'Discovery', 'Crunchyroll', 'CW'],
+          85: ['Tubi', 'Pluto TV', 'Criterion Channel', 'Shudder', 'MUBI', 'IFC'],
+          100: ['BritBox', 'Acorn TV', 'Kanopy', 'Nebula', 'CuriosityStream', 'Dropout']
+        }
+      },
+      {
+        id: 'mov_marvel', sector: 'Movies & TV', prompt: 'Name an MCU (Marvel Cinematic Universe) Movie',
+        webKeywords: ['marvel cinematic universe', 'marvel studios', 'superhero film'],
+        answers: {
+          10: ['Iron Man', 'The Avengers', 'Avengers: Endgame', 'Black Panther', 'Spider-Man: No Way Home'],
+          15: ['Guardians of the Galaxy', 'Thor: Ragnarok', 'Captain America: Civil War', 'Avengers: Infinity War', 'Doctor Strange'],
+          30: ['Captain America: The Winter Soldier', 'Ant-Man', 'Captain Marvel', 'Black Widow', 'Shang-Chi'],
+          60: ['Eternals', 'Thor: The Dark World', 'Iron Man 2', 'Iron Man 3', 'Doctor Strange in the Multiverse of Madness'],
+          85: ['The Incredible Hulk', 'Ant-Man and the Wasp', 'Guardians of the Galaxy Vol. 2', 'Guardians of the Galaxy Vol. 3'],
+          100: ['The Marvels', 'Ant-Man and the Wasp: Quantumania', 'Thor: Love and Thunder', 'Deadpool & Wolverine']
+        }
+      },
+      {
+        id: 'mov_cartoon', sector: 'Movies & TV', prompt: 'Name a Classic Animated TV Series',
+        webKeywords: ['animated television series', 'cartoon', 'animated sitcom'],
+        answers: {
+          10: ['SpongeBob SquarePants', 'The Simpsons', 'Family Guy', 'Tom and Jerry', 'Scooby-Doo'],
+          15: ['Avatar: The Last Airbender', 'Looney Tunes', 'South Park', 'Rick and Morty', 'Adventure Time'],
+          30: ['Futurama', 'Gravity Falls', 'Regular Show', 'Teen Titans', 'Batman: The Animated Series', 'Rugrats'],
+          60: ['Phineas and Ferb', 'Steven Universe', 'BoJack Horseman', 'Dexter\'s Laboratory', 'Powerpuff Girls', 'Hey Arnold'],
+          85: ['Samurai Jack', 'Courage the Cowardly Dog', 'Over the Garden Wall', 'The Owl House', 'Animaniacs'],
+          100: ['Gargoyles', 'Infinity Train', 'Primal', 'Swat Kats', 'Freakazoid', 'Megas XLR']
+        }
+      },
+
+      // --- SECTOR 5: POP CULTURE & GAMES (14) ---
+      {
+        id: 'pop_superhero_team', sector: 'Pop Culture & Games', prompt: 'Name a Comic Book Superhero Team',
+        webKeywords: ['superhero team', 'marvel comics', 'dc comics'],
+        answers: {
+          10: ['The Avengers', 'Avengers', 'Justice League', 'X-Men'],
+          15: ['Fantastic Four', 'Guardians of the Galaxy', 'Teen Titans', 'Teenage Mutant Ninja Turtles', 'TMNT'],
+          30: ['Suicide Squad', 'Watchmen', 'The Boys', 'Inhumans', 'Defenders', 'Young Justice'],
+          60: ['Doom Patrol', 'Legion of Super-Heroes', 'Thunderbolts', 'Eternals', 'Birds of Prey', 'Justice Society'],
+          85: ['Alpha Flight', 'New Mutants', 'Midnight Sons', 'West Coast Avengers', 'Runaways', 'X-Force'],
+          100: ['Great Lakes Avengers', 'Nextwave', 'Authority', 'Planetary', 'Excalibur', 'Starjammers']
+        }
+      },
+      {
+        id: 'pop_board_game', sector: 'Pop Culture & Games', prompt: 'Name a Tabletop Board Game',
+        webKeywords: ['board game', 'tabletop game', 'strategy game'],
+        answers: {
+          10: ['Monopoly', 'Chess', 'Checkers', 'Scrabble', 'Clue', 'Risk'],
+          15: ['Catan', 'Settlers of Catan', 'Battleship', 'Sorry', 'Life', 'Ticket to Ride', 'Candy Land'],
+          30: ['Pandemic', 'Carcassonne', 'Stratego', 'Othello', 'Connect Four', 'Twister', 'Pictionary'],
+          60: ['Terraforming Mars', 'Wingspan', 'Azul', '7 Wonders', 'Dominion', 'Betrayal at House on the Hill'],
+          85: ['Gloomhaven', 'Scythe', 'Root', 'Twilight Imperium', 'Agricola', 'Puerto Rico'],
+          100: ['Brass: Birmingham', 'Spirit Island', 'Ark Nova', 'Dune: Imperium', 'Cosmic Encounter', 'Go']
+        }
+      },
+      {
+        id: 'pop_pokemon', sector: 'Pop Culture & Games', prompt: 'Name an Original 151 Kanto Pokémon',
+        closedSet: true,
+        answers: {
+          10: ['Pikachu', 'Charizard', 'Bulbasaur', 'Squirtle', 'Mewtwo'],
+          15: ['Eevee', 'Snorlax', 'Gengar', 'Jigglypuff', 'Meowth', 'Charmander'],
+          30: ['Gyarados', 'Dragonite', 'Blastoise', 'Venusaur', 'Lapras', 'Arcanine'],
+          60: ['Alakazam', 'Machamp', 'Vulpix', 'Cubone', 'Ditto', 'Scyther'],
+          85: ['Porygon', 'Aerodactyl', 'Magmar', 'Electabuzz', 'Tangela', 'Farfetch\'d'],
+          100: ['Exeggcute', 'Lickitung', 'Pinsir', 'Jynx', 'Mr. Mime', 'Omanyte']
+        }
+      },
+      {
+        id: 'pop_video_game', sector: 'Pop Culture & Games', prompt: 'Name a Video Game Franchise',
+        webKeywords: ['video game', 'franchise', 'nintendo', 'playstation', 'xbox'],
+        answers: {
+          10: ['Mario', 'Super Mario', 'Minecraft', 'Fortnite', 'Call of Duty', 'Grand Theft Auto', 'GTA'],
+          15: ['The Legend of Zelda', 'Zelda', 'Pokemon', 'Halo', 'Sonic', 'Tetris', 'FIFA'],
+          30: ['Final Fantasy', 'Skyrim', 'Elder Scrolls', 'Resident Evil', 'God of War', 'Overwatch', 'League of Legends'],
+          60: ['Dark Souls', 'Elden Ring', 'Mass Effect', 'Metroid', 'Kirby', 'Metal Gear', 'Fallout'],
+          85: ['Bioshock', 'Hollow Knight', 'Half-Life', 'Portal', 'Persona', 'Monster Hunter', 'Civ'],
+          100: ['Outer Wilds', 'Disco Elysium', 'Chrono Trigger', 'EarthBound', 'Suikoden', 'Xenoblade']
+        }
+      },
+      {
+        id: 'pop_console', sector: 'Pop Culture & Games', prompt: 'Name a Home Video Game Console or Handheld',
+        webKeywords: ['video game console', 'handheld game console', 'nintendo', 'sega', 'playstation', 'atari'],
+        answers: {
+          10: ['PlayStation 5', 'PS5', 'Xbox', 'Nintendo Switch', 'Switch', 'PS4', 'Wii'],
+          15: ['Game Boy', 'Nintendo DS', 'Xbox 360', 'PlayStation 2', 'PS2', 'N64', 'Nintendo 64'],
+          30: ['SNES', 'Super Nintendo', 'NES', 'Sega Genesis', 'PSP', '3DS', 'GameCube', 'Wii U'],
+          60: ['Sega Dreamcast', 'Dreamcast', 'Atari 2600', 'PlayStation Vita', 'PS Vita', 'Game Boy Advance'],
+          85: ['Sega Saturn', 'Neo Geo', 'TurboGrafx-16', 'Game Gear', 'Atari Jaguar'],
+          100: ['Virtual Boy', '3DO', 'ColecoVision', 'Intellivision', 'WonderSwan', 'Philips CD-i']
+        }
+      },
+      {
+        id: 'pop_rock_band', sector: 'Pop Culture & Games', prompt: 'Name a Famous Rock Band',
+        webKeywords: ['rock band', 'musical group', 'heavy metal', 'punk rock', 'alternative rock'],
+        answers: {
+          10: ['The Beatles', 'Beatles', 'Queen', 'Led Zeppelin', 'Nirvana', 'Rolling Stones'],
+          15: ['Pink Floyd', 'AC/DC', 'Metallica', 'Green Day', 'Linkin Park', 'Coldplay', 'Red Hot Chili Peppers'],
+          30: ['Radiohead', 'Foo Fighters', 'Blink-182', 'The Doors', 'The Who', 'Fleetwood Mac', 'Aerosmith'],
+          60: ['Tool', 'System of a Down', 'Smashing Pumpkins', 'Pearl Jam', 'Soundgarden', 'Muse', 'The Strokes'],
+          85: ['Rush', 'King Crimson', 'Pixies', 'Sonic Youth', 'The Velvet Underground', 'Black Sabbath'],
+          100: ['King Gizzard & the Lizard Wizard', 'My Bloody Valentine', 'Fugazi', 'Slint', 'Can', 'Opeth']
+        }
+      },
+      {
+        id: 'pop_myth_god', sector: 'Pop Culture & Games', prompt: 'Name a Greek or Roman God or Goddess',
+        webKeywords: ['greek mythology', 'roman mythology', 'olympian', 'deity'],
+        answers: {
+          10: ['Zeus', 'Poseidon', 'Hades', 'Athena', 'Apollo', 'Ares', 'Hercules'],
+          15: ['Aphrodite', 'Hermes', 'Artemis', 'Hera', 'Mars', 'Jupiter', 'Neptune', 'Venus'],
+          30: ['Hephaestus', 'Dionysus', 'Demeter', 'Persephone', 'Mercury', 'Minerva', 'Pluto'],
+          60: ['Hestia', 'Chronos', 'Atlas', 'Prometheus', 'Eros', 'Cupid', 'Vulcan', 'Bacchus'],
+          85: ['Hecate', 'Nemesis', 'Nike', 'Pan', 'Morpheus', 'Janus', 'Vesta'],
+          100: ['Hypnos', 'Thanatos', 'Eris', 'Asclepius', 'Tyche', 'Nyx', 'Aether']
+        }
+      },
+      {
+        id: 'pop_card_game', sector: 'Pop Culture & Games', prompt: 'Name a Playing Card Game or Trading Card Game',
+        webKeywords: ['card game', 'playing cards', 'trading card game', 'collectible card'],
+        answers: {
+          10: ['Poker', 'Uno', 'Blackjack', 'Go Fish', 'Solitaire', 'War'],
+          15: ['Magic: The Gathering', 'Magic', 'Pokemon TCG', 'Yu-Gi-Oh', 'Hearts', 'Spades', 'Crazy Eights'],
+          30: ['Bridge', 'Rummy', 'Gin Rummy', 'Texas Holdem', 'Old Maid', 'BS', 'Slapjack'],
+          60: ['Euchre', 'Cribbage', 'Pinochle', 'Canasta', 'Baccarat', 'Hearthstone'],
+          85: ['Gwent', 'Pai Gow', 'Skat', 'Twenty-Nine', 'Flesh and Blood'],
+          100: ['Netrunner', 'Android: Netrunner', 'Tarock', 'Belote', 'Durak', 'Hanafuda']
+        }
+      },
+      {
+        id: 'pop_book_series', sector: 'Pop Culture & Games', prompt: 'Name a Famous Book Series',
+        webKeywords: ['book series', 'novel series', 'fantasy series', 'trilogy'],
+        answers: {
+          10: ['Harry Potter', 'Lord of the Rings', 'The Hunger Games', 'Percy Jackson', 'Twilight'],
+          15: ['Game of Thrones', 'A Song of Ice and Fire', 'Chronicles of Narnia', 'Diary of a Wimpy Kid', 'Dune'],
+          30: ['Divergent', 'The Maze Runner', 'His Dark Materials', 'Wheel of Time', 'Sherlock Holmes'],
+          60: ['Mistborn', 'The Stormlight Archive', 'Discworld', 'Foundation', 'The Witcher', 'Redwall'],
+          85: ['Malazan Book of the Fallen', 'The Dark Tower', 'Earthsea', 'Ender\'s Game', 'Outlander'],
+          100: ['Book of the New Sun', 'Culture Series', 'Gormenghast', 'First Law', 'Hyperion Cantos']
+        }
+      },
+      {
+        id: 'pop_chess_piece', sector: 'Pop Culture & Games', prompt: 'Name a Chess Piece or Chess Opening',
+        webKeywords: ['chess', 'chess piece', 'chess opening', 'gambit'],
+        answers: {
+          10: ['King', 'Queen', 'Pawn', 'Knight', 'Rook', 'Bishop'],
+          15: ['Queen\'s Gambit', 'Sicilian Defense', 'Castle'],
+          30: ['Ruy Lopez', 'French Defense', 'King\'s Gambit', 'Caro-Kann'],
+          60: ['English Opening', 'Italian Game', 'London System', 'King\'s Indian Defense'],
+          85: ['Scandinavian Defense', 'Alekhine\'s Defense', 'Nimzo-Indian', 'Pirc Defense'],
+          100: ['Bongcloud', 'Grob\'s Attack', 'Evans Gambit', 'Grunfeld Defense', 'Benoni']
+        }
+      },
+      {
+        id: 'pop_nintendo_char', sector: 'Pop Culture & Games', prompt: 'Name a Nintendo Character',
+        webKeywords: ['nintendo', 'super mario', 'legend of zelda', 'smash bros'],
+        answers: {
+          10: ['Mario', 'Luigi', 'Princess Peach', 'Bowser', 'Link', 'Pikachu', 'Yoshi'],
+          15: ['Donkey Kong', 'Kirby', 'Zelda', 'Samus', 'Wario', 'Toad', 'Ganondorf'],
+          30: ['Waluigi', 'Fox McCloud', 'Captain Falcon', 'Isabelle', 'Tom Nook', 'Diddy Kong'],
+          60: ['Rosalina', 'Meta Knight', 'King Dedede', 'Ness', 'Pit', 'Marth', 'Inkling'],
+          85: ['Olimar', 'Ridley', 'Shulk', 'Little Mac', 'Falco', 'King K. Rool'],
+          100: ['Geno', 'Midna', 'Skull Kid', 'Chibi-Robo', 'Captain Toad', 'Mr. Game & Watch']
+        }
+      },
+      {
+        id: 'pop_arcade_game', sector: 'Pop Culture & Games', prompt: 'Name a Classic 1970s or 1980s Arcade Game',
+        webKeywords: ['arcade game', 'coin-operated', '1980', '1981', '1982', '1978', '1979'],
+        answers: {
+          10: ['Pac-Man', 'Donkey Kong', 'Space Invaders', 'Galaga', 'Tetris'],
+          15: ['Ms. Pac-Man', 'Asteroids', 'Centipede', 'Frogger', 'Street Fighter'],
+          30: ['Dig Dug', 'Q*bert', 'Joust', 'Defender', 'Pong', 'Contra'],
+          60: ['Tron', 'Dragon\'s Lair', 'Gauntlet', 'BurgerTime', 'Out Run', 'Tempest'],
+          85: ['Robotron: 2084', 'Sinistar', 'Gyruss', 'Mappy', 'Paperboy', '1942'],
+          100: ['Polybius', 'Xevious', 'Berzerk', 'Zaxxon', 'Tapper', 'Marble Madness']
+        }
+      },
+      {
+        id: 'pop_fast_food', sector: 'Pop Culture & Games', prompt: 'Name a Fast-Food Restaurant Chain',
+        webKeywords: ['fast food', 'restaurant chain', 'hamburger', 'drive-through'],
+        answers: {
+          10: ['McDonald\'s', 'Burger King', 'Wendy\'s', 'Taco Bell', 'Subway', 'KFC'],
+          15: ['Chick-fil-A', 'Chipotle', 'Popeyes', 'Arby\'s', 'Sonic', 'Dominos', 'Pizza Hut'],
+          30: ['In-N-Out', 'Five Guys', 'Culver\'s', 'Jack in the Box', 'Dairy Queen', 'Panera Bread'],
+          60: ['Whataburger', 'Raising Cane\'s', 'Shake Shack', 'Jimmy John\'s', 'Carl\'s Jr', 'Hardee\'s'],
+          85: ['Bojangles', 'Zaxby\'s', 'Del Taco', 'White Castle', 'Wingstop', 'El Pollo Loco'],
+          100: ['Cook Out', 'Jollibee', 'Checkers', 'Rally\'s', 'Portillo\'s', 'Freddy\'s']
+        }
+      },
+      {
+        id: 'pop_social_app', sector: 'Pop Culture & Games', prompt: 'Name a Social Media or Messaging Platform',
+        webKeywords: ['social media', 'social networking', 'messaging app', 'video sharing'],
+        answers: {
+          10: ['Instagram', 'TikTok', 'YouTube', 'Facebook', 'Snapchat', 'Twitter', 'X'],
+          15: ['Reddit', 'Discord', 'WhatsApp', 'LinkedIn', 'Pinterest', 'Twitch'],
+          30: ['Telegram', 'Tumblr', 'Threads', 'BeReal', 'Messenger', 'WeChat'],
+          60: ['Bluesky', 'Mastodon', 'Signal', 'Viber', 'Line', 'Quora'],
+          85: ['MySpace', 'Vine', 'Clubhouse', 'Flickr', 'Goodreads', 'Letterboxd'],
+          100: ['Friendster', 'Orkut', 'Yik Yak', 'Amino', 'KakaoTalk', 'Vero']
+        }
+      }
+    ];
+
+    /* =========================================================================
+       4. MULTI-SOURCE LIVE INTERNET GALACTIC ARCHIVES JUDGE
+          (Wikipedia Categories & Extracts + Wikidata Entities + Free Dictionary)
+    ========================================================================= */
+    const AnswerJudge = {
+      webEnabled: true,
+      cache: new Map(),
+
+      checkLocal(category, rawInput) {
+        const norm = normalizeText(rawInput);
+        if (!norm || norm.length < 2) return null;
+
+        // Structural custom rule check (e.g., Palindromes, Double-O words)
+        if (typeof category.customValidator === 'function') {
+          if (!category.customValidator(norm)) return null;
+          for (const pts of [10, 15, 30, 60, 85, 100]) {
+            const list = category.answers[pts] || [];
+            for (const item of list) {
+              if (normalizeText(item) === norm) {
+                return { display: item, pts, viaWeb: false };
+              }
+            }
+          }
+          if (!this.webEnabled && /[aeiouy]/.test(norm)) {
+            const pts = norm.length >= 9 ? 100 : norm.length >= 7 ? 85 : 60;
+            return { display: rawInput.trim().toUpperCase(), pts, viaWeb: false };
+          }
+          return null;
+        }
+
+        // Letter constraint check
+        if (category.startsWith && !norm.startsWith(category.startsWith)) return null;
+        if (category.startsWithAny && !category.startsWithAny.some(ch => norm.startsWith(ch))) return null;
+
+        const inputVariants = getVariants(norm);
+
+        // 1. Exact / Singular-Plural Variant Match
+        for (const pts of [10, 15, 30, 60, 85, 100]) {
+          const list = category.answers[pts] || [];
+          for (const item of list) {
+            const itemNorm = normalizeText(item);
+            const itemVariants = getVariants(itemNorm);
+            for (const iv of inputVariants) {
+              if (itemVariants.has(iv)) {
+                return { display: item, pts, viaWeb: false };
+              }
+            }
+          }
+        }
+
+        // 2. Fuzzy Typo Tolerance
+        for (const pts of [10, 15, 30, 60, 85, 100]) {
+          const list = category.answers[pts] || [];
+          for (const item of list) {
+            const itemNorm = normalizeText(item);
+            if (itemNorm.length < 5) continue;
+            const maxDist = itemNorm.length >= 8 ? 2 : 1;
+            if (levenshtein(norm, itemNorm) <= maxDist) {
+              return { display: item, pts, viaWeb: false };
+            }
+          }
+        }
+
+        return null;
+      },
+
+      isTitleMatch(candidateTitle, normInput, aliases = []) {
+        const rawLower = String(candidateTitle || '').toLowerCase().trim();
+        const baseTitle = rawLower.replace(/\s*\([^)]*\)\s*$/, '').trim();
+        const normBase = normalizeText(baseTitle);
+        const normFull = normalizeText(rawLower);
+
+        if (!normBase) return false;
+        if (normBase === normInput || normFull === normInput) return true;
+
+        const inputVars = getVariants(normInput);
+        const baseVars = getVariants(normBase);
+        for (const iv of inputVars) {
+          if (baseVars.has(iv)) return true;
+        }
+
+        for (const alias of aliases) {
+          const normAlias = normalizeText(alias);
+          if (normAlias === normInput) return true;
+          if (normInput.length >= 5 && normAlias.length >= 5 && levenshtein(normAlias, normInput) <= 1) {
+            return true;
+          }
+        }
+
+        if (normInput.length >= 5 && normBase.length >= 5) {
+          const maxDist = normInput.length >= 8 ? 2 : 1;
+          if (levenshtein(normBase, normInput) <= maxDist) return true;
+        }
+
+        return false;
+      },
+
+      buildKeywordSet(category) {
+        const stopWords = new Set(['name', 'type', 'with', 'that', 'starts', 'starting', 'letter', 'word', 'famous', 'real', 'other', 'than', 'from', 'into', 'played', 'without', 'containing', 'letters', 'home', 'original']);
+        const set = new Set((category.webKeywords || []).map(k => k.toLowerCase()));
+        const promptWords = normalizeText(category.prompt).split(' ');
+        for (const w of promptWords) {
+          if (w.length >= 4 && !stopWords.has(w)) set.add(w);
+        }
+        return Array.from(set);
+      },
+
+      async queryWikipediaRich(rawInput, signal) {
+        const q = encodeURIComponent(rawInput.trim());
+        const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${q}&gsrlimit=4&redirects=1&prop=extracts|categories|info|pageprops&exintro=1&explaintext=1&exsentences=3&cllimit=25&clshow=!hidden&inprop=length&format=json&origin=*`;
+        const res = await fetch(url, { signal });
+        if (!res.ok) return [];
+        const data = await res.json();
+        const pagesObj = (data && data.query && data.query.pages) || {};
+        return Object.values(pagesObj).sort((a, b) => (a.index || 99) - (b.index || 99));
+      },
+
+      async queryWikidata(rawInput, signal) {
+        const q = encodeURIComponent(rawInput.trim());
+        const url = `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${q}&language=en&limit=4&format=json&origin=*`;
+        const res = await fetch(url, { signal });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return (data && data.search) || [];
+      },
+
+      async queryDictionary(normWord, signal) {
+        const clean = normWord.replace(/[^a-z-]/g, '');
+        if (!clean || clean.includes(' ')) return null;
+        const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(clean)}`;
+        const res = await fetch(url, { signal });
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (!Array.isArray(data) || !data.length) return null;
+        const meaning = data[0].meanings && data[0].meanings[0];
+        const pos = meaning ? meaning.partOfSpeech : 'word';
+        const def = meaning && meaning.definitions && meaning.definitions[0] ? meaning.definitions[0].definition : '';
+        return { word: data[0].word || clean, pos, def };
+      },
+
+      async evaluate(category, rawInput) {
+        const localHit = this.checkLocal(category, rawInput);
+        if (localHit) return localHit;
+
+        if (!this.webEnabled || category.closedSet) return null;
+
+        const norm = normalizeText(rawInput);
+        if (!norm || norm.length < 2) return null;
+
+        if (category.startsWith && !norm.startsWith(category.startsWith)) return null;
+        if (category.startsWithAny && !category.startsWithAny.some(ch => norm.startsWith(ch))) return null;
+        if (typeof category.customValidator === 'function' && !category.customValidator(norm)) return null;
+
+        const cacheKey = `${category.id}::${norm}`;
+        if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3200);
+
+        try {
+          const keywords = this.buildKeywordSet(category);
+          const excludes = (category.webExclude || []).map(x => x.toLowerCase());
+
+          const tasks = [
+            this.queryWikipediaRich(rawInput, controller.signal),
+            this.queryWikidata(rawInput, controller.signal),
+            category.useDictionary ? this.queryDictionary(norm, controller.signal) : Promise.resolve(null)
+          ];
+
+          const [wikiRes, wdRes, dictRes] = await Promise.allSettled(tasks);
+          clearTimeout(timeoutId);
+
+          const wikiPages = wikiRes.status === 'fulfilled' ? wikiRes.value : [];
+          const wdItems = wdRes.status === 'fulfilled' ? wdRes.value : [];
+          const dictEntry = dictRes.status === 'fulfilled' ? dictRes.value : null;
+
+          if (category.useDictionary && dictEntry) {
+            const pts = norm.length >= 9 ? 100 : norm.length >= 7 ? 85 : 60;
+            const shortDef = dictEntry.def ? dictEntry.def.slice(0, 68) : dictEntry.pos;
+            const result = {
+              display: dictEntry.word.toUpperCase(),
+              pts,
+              viaWeb: true,
+              webNote: `Dictionary (${dictEntry.pos}): ${shortDef}`
+            };
+            this.cache.set(cacheKey, result);
+            return result;
+          }
+
+          for (const page of wikiPages) {
+            const matchingWd = wdItems.find(w =>
+              this.isTitleMatch(w.label, norm, w.aliases || []) ||
+              (page.pageprops && page.pageprops.wikibase_item === w.id)
+            );
+
+            const aliases = matchingWd && matchingWd.aliases ? matchingWd.aliases : [];
+            if (!this.isTitleMatch(page.title, norm, aliases)) continue;
+
+            const catNames = (page.categories || []).map(c => c.title.replace(/^Category:/i, '').toLowerCase());
+            const extractLower = String(page.extract || '').toLowerCase();
+            const wdDescLower = matchingWd && matchingWd.description ? matchingWd.description.toLowerCase() : '';
+            const titleParenMatch = String(page.title || '').match(/\(([^)]+)\)/);
+            const parenLower = titleParenMatch ? titleParenMatch[1].toLowerCase() : '';
+
+            const combinedCorpus = [parenLower, wdDescLower, catNames.join(' | '), extractLower].join(' • ');
+            if (excludes.some(ex => combinedCorpus.includes(ex))) continue;
+
+            let evidenceScore = 0;
+            let matchedClue = '';
+
+            for (const kw of keywords) {
+              if (parenLower.includes(kw) || wdDescLower.includes(kw)) {
+                evidenceScore += 3;
+                if (!matchedClue && matchingWd && matchingWd.description) matchedClue = matchingWd.description;
+              }
+              if (catNames.some(cn => cn.includes(kw))) {
+                evidenceScore += 2;
+                if (!matchedClue) {
+                  const bestCat = (page.categories || []).find(c => c.title.toLowerCase().includes(kw));
+                  if (bestCat) matchedClue = bestCat.title.replace(/^Category:/i, '');
+                }
+              }
+              if (extractLower.includes(kw)) {
+                evidenceScore += 1;
+              }
+            }
+
+            if (evidenceScore >= 2) {
+              const byteLen = page.length || 8000;
+              const pts = byteLen < 4800 ? 100 : byteLen < 16000 ? 85 : 60;
+              const cleanDisplay = page.title.replace(/\s*\([^)]*\)\s*$/, '');
+              const noteText = matchedClue
+                ? `Verified: ${matchedClue}`
+                : (matchingWd && matchingWd.description ? `Verified: ${matchingWd.description}` : 'Verified via Galactic Archives');
+
+              const result = {
+                display: cleanDisplay,
+                pts,
+                viaWeb: true,
+                webNote: noteText
+              };
+              this.cache.set(cacheKey, result);
+              return result;
+            }
+          }
+
+          for (const item of wdItems) {
+            if (!this.isTitleMatch(item.label, norm, item.aliases || [])) continue;
+            const desc = String(item.description || '').toLowerCase();
+            if (!desc || excludes.some(ex => desc.includes(ex))) continue;
+
+            if (keywords.some(kw => desc.includes(kw))) {
+              const result = {
+                display: item.label,
+                pts: 85,
+                viaWeb: true,
+                webNote: `Wikidata: ${item.description}`
+              };
+              this.cache.set(cacheKey, result);
+              return result;
+            }
+          }
+        } catch (_) {
+          // Graceful fallback if offline
+        } finally {
+          clearTimeout(timeoutId);
+        }
+
+        this.cache.set(cacheKey, null);
+        return null;
+      }
+    };
+
+    /* =========================================================================
+       5. SERVERLESS ONLINE MULTIPLAYER ENGINE (PEERJS / WEBRTC ROOM CODES)
+    ========================================================================= */
+    const OnlineNet = {
+      peer: null,
+      conn: null,
+      isHost: false,
+      roomCode: '',
+      myName: 'STAR-KRILL',
+      rivalName: 'RIVAL-KRILL',
+      rivalDepth: 0,
+      rivalRound: 0,
+      rivalFinished: false,
+      rivalTime: 0,
+      rivalLog: [],
+      connected: false,
+
+      generateCode() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = '';
+        for (let i = 0; i < 5; i++) {
+          code += chars[Math.floor(Math.random() * chars.length)];
+        }
+        return code;
+      },
+
+      setStatus(msg, color = '#38bdf8') {
+        const el = document.getElementById('onlineStatusMsg');
+        if (el) {
+          el.textContent = msg;
+          el.style.color = color;
+        }
+      },
+
+      hostRoom() {
+        this.disconnect();
+        if (typeof Peer === 'undefined') {
+          this.setStatus('WEBRTC UNAVAILABLE IN THIS BROWSER — TRY LOCAL PASS & PLAY!', '#f87171');
+          return;
+        }
+
+        const rawName = (document.getElementById('onlineCallsignInput').value || '').trim().toUpperCase();
+        this.myName = rawName || 'HOST-KRILL';
+        this.isHost = true;
+        this.roomCode = this.generateCode();
+
+        const box = document.getElementById('onlineRoomStatusBox');
+        const codeWrap = document.getElementById('onlineCodeWrapper');
+        box.style.display = 'flex';
+        codeWrap.style.display = 'flex';
+        document.getElementById('hostedRoomCodeText').textContent = this.roomCode;
+        document.getElementById('onlineStartMatchBtn').style.display = 'none';
+        this.setStatus('OPENING ORBITAL BEACON...', '#38bdf8');
+
+        const peerId = `starkrill-room-${this.roomCode}`;
+        this.peer = new Peer(peerId);
+
+        this.peer.on('open', () => {
+          this.setStatus('WAITING FOR RIVAL TO ENTER CODE...', '#fbbf24');
+        });
+
+        this.peer.on('connection', (connection) => {
+          this.conn = connection;
+          this.setupConnectionEvents();
+        });
+
+        this.peer.on('error', (err) => {
+          this.setStatus(`RELAY ERROR (${err.type || 'NETWORK'}) — TRY AGAIN`, '#f87171');
+        });
+      },
+
+      joinRoom() {
+        this.disconnect();
+        if (typeof Peer === 'undefined') {
+          this.setStatus('WEBRTC UNAVAILABLE IN THIS BROWSER — TRY LOCAL PASS & PLAY!', '#f87171');
+          return;
+        }
+
+        const code = (document.getElementById('joinCodeInput').value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (code.length < 4) {
+          Game.showToast('ENTER A 5-LETTER ROOM CODE!');
+          return;
+        }
+
+        const rawName = (document.getElementById('onlineCallsignInput').value || '').trim().toUpperCase();
+        this.myName = rawName || 'GUEST-KRILL';
+        this.isHost = false;
+        this.roomCode = code;
+
+        const box = document.getElementById('onlineRoomStatusBox');
+        const codeWrap = document.getElementById('onlineCodeWrapper');
+        box.style.display = 'flex';
+        codeWrap.style.display = 'none';
+        document.getElementById('onlineStartMatchBtn').style.display = 'none';
+        this.setStatus(`CONNECTING TO ROOM ${code}...`, '#38bdf8');
+
+        this.peer = new Peer();
+        this.peer.on('open', () => {
+          this.conn = this.peer.connect(`starkrill-room-${code}`, { reliable: true });
+          this.setupConnectionEvents();
+        });
+
+        this.peer.on('error', () => {
+          this.setStatus(`ROOM "${code}" NOT FOUND OR OFFLINE.`, '#f87171');
+        });
+      },
+
+      setupConnectionEvents() {
+        if (!this.conn) return;
+
+        this.conn.on('open', () => {
+          this.connected = true;
+          SoundFX.playCoinWinner();
+          this.send({ type: 'HELLO', name: this.myName });
+          if (this.isHost) {
+            this.setStatus('RIVAL CONNECTED! READY TO LAUNCH!', '#34d399');
+            document.getElementById('onlineStartMatchBtn').style.display = 'inline-flex';
+          } else {
+            this.setStatus('CONNECTED! WAITING FOR HOST TO LAUNCH...', '#34d399');
+          }
+        });
+
+        this.conn.on('data', (data) => {
+          if (!data || typeof data !== 'object') return;
+
+          if (data.type === 'HELLO') {
+            this.rivalName = String(data.name || 'RIVAL-KRILL').slice(0, 14);
+            if (this.isHost) {
+              this.setStatus(`✅ ${this.rivalName} JOINED! CLICK LAUNCH!`, '#34d399');
+            } else {
+              this.setStatus(`✅ LINKED WITH ${this.rivalName}! STANDBY...`, '#34d399');
+            }
+          } else if (data.type === 'START_MATCH') {
+            const promptObjs = (data.promptIds || [])
+              .map(id => CATEGORIES.find(c => c.id === id))
+              .filter(Boolean);
+            if (promptObjs.length) {
+              this.resetMatchStats();
+              Game.launchOnlineMatch(promptObjs);
+            }
+          } else if (data.type === 'PROGRESS') {
+            this.rivalDepth = data.depth || 0;
+            this.rivalRound = data.round || 0;
+            this.rivalLog = data.log || [];
+            if (data.finished) {
+              this.rivalFinished = true;
+              this.rivalTime = data.totalTime || 0;
+            }
+            Game.onOnlineRivalUpdate();
+          }
+        });
+
+        this.conn.on('close', () => {
+          this.connected = false;
+          if (Game.mode === 'online' && Game.state === 'playing') {
+            Game.showToast('RIVAL DISCONNECTED!');
+          }
+        });
+      },
+
+      resetMatchStats() {
+        this.rivalDepth = 0;
+        this.rivalRound = 0;
+        this.rivalFinished = false;
+        this.rivalTime = 0;
+        this.rivalLog = [];
+      },
+
+      hostLaunchMatch() {
+        if (!this.isHost || !this.connected) return;
+        const prompts = Game.pickPrompts(7, Game.selectedSector);
+        this.resetMatchStats();
+        this.send({
+          type: 'START_MATCH',
+          promptIds: prompts.map(p => p.id)
+        });
+        Game.launchOnlineMatch(prompts);
+      },
+
+      sendProgress(depth, round, log, finished, totalTime) {
+        this.send({
+          type: 'PROGRESS',
+          depth,
+          round,
+          log,
+          finished,
+          totalTime
+        });
+      },
+
+      send(payload) {
+        if (this.conn && this.conn.open) {
+          try {
+            this.conn.send(payload);
+          } catch (_) {}
+        }
+      },
+
+      copyRoomCode() {
+        if (!this.roomCode) return;
+        Game.copyTextToClipboard(this.roomCode, `ROOM CODE "${this.roomCode}" COPIED!`);
+      },
+
+      disconnect() {
+        this.connected = false;
+        if (this.conn) {
+          try { this.conn.close(); } catch (_) {}
+          this.conn = null;
+        }
+        if (this.peer) {
+          try { this.peer.destroy(); } catch (_) {}
+          this.peer = null;
+        }
+      }
+    };
+
+    /* =========================================================================
+       6. FULLSCREEN PIXEL-ART SPACE CANVAS RENDERER
+    ========================================================================= */
+    const PixelCanvas = {
+      canvas: null,
+      ctx: null,
+      width: 0,
+      height: 0,
+      stars: [],
+      asteroids: [],
+      jellyfish: [],
+      particles: [],
+      fleetBots: [],
+      visualDepth: 0,
+      targetDepth: 0,
+      time: 0,
+      emoteText: '',
+      emoteTimer: 0,
+
+      init() {
+        this.canvas = document.getElementById('bgCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+
+        // Populate parallax starfield
+        for (let i = 0; i < 110; i++) {
+          this.stars.push({
+            x: Math.random(),
+            y: Math.random(),
+            size: Math.random() < 0.75 ? 2 : 4,
+            speed: 0.02 + Math.random() * 0.08,
+            twinkle: Math.random() * Math.PI * 2,
+            color: ['#ffffff', '#bae6fd', '#fde68a', '#e9d5ff'][Math.floor(Math.random() * 4)]
+          });
+        }
+
+        // Populate pixel asteroids for Twilight Nebula
+        for (let i = 0; i < 12; i++) {
+          this.asteroids.push({
+            x: Math.random(),
+            y: Math.random(),
+            r: 8 + Math.floor(Math.random() * 14),
+            speed: 0.03 + Math.random() * 0.05
+          });
+        }
+
+        // Populate bioluminescent space jellyfish for Abyssal Dark Matter
+        for (let i = 0; i < 9; i++) {
+          this.jellyfish.push({
+            x: Math.random(),
+            y: Math.random(),
+            phase: Math.random() * Math.PI * 2,
+            color: i % 2 === 0 ? '#22d3ee' : '#c084fc'
+          });
+        }
+      },
+
+      resize() {
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        this.ctx.imageSmoothingEnabled = false;
+      },
+
+      spawnFleet(count = 39) {
+        this.fleetBots = [];
+        const colors = ['#38bdf8', '#4ade80', '#facc15', '#c084fc', '#fb923c', '#f472b6'];
+        for (let i = 0; i < count; i++) {
+          this.fleetBots.push({
+            xRatio: 0.08 + Math.random() * 0.84,
+            depth: 0,
+            skill: 0.35 + Math.random() * 0.65,
+            bobPhase: Math.random() * 6.28,
+            color: colors[i % colors.length]
+          });
+        }
+      },
+
+      triggerEmote(emoji) {
+        this.emoteText = emoji;
+        this.emoteTimer = 2.4;
+      },
+
+      burstThruster(count = 18, color = '#fbbf24') {
+        const cx = this.width * 0.14;
+        const cy = this.height * 0.45;
+        for (let i = 0; i < count; i++) {
+          this.particles.push({
+            x: cx + (Math.random() - 0.5) * 18,
+            y: cy - 16,
+            vx: (Math.random() - 0.5) * 90,
+            vy: -40 - Math.random() * 140,
+            size: Math.random() < 0.5 ? 4 : 6,
+            life: 0.6 + Math.random() * 0.5,
+            maxLife: 1.1,
+            color
+          });
+        }
+      },
+
+      getZoneColors(ly) {
+        if (ly < 200) {
+          return { top: '#0c4a6e', bot: '#0284c7', name: '☀️ SOLAR DAYLIGHT ZONE (0–200 LY)', next: '200 LY' };
+        } else if (ly < 1000) {
+          return { top: '#2e1065', bot: '#7c2d12', name: '🌅 TWILIGHT NEBULA (200–1,000 LY)', next: '1,000 LY' };
+        } else if (ly < 3500) {
+          return { top: '#090d26', bot: '#1e1b4b', name: '🌌 MIDNIGHT VOID (1,000–3,500 LY)', next: '3,500 LY' };
+        } else if (ly < 6000) {
+          return { top: '#02040a', bot: '#090d16', name: '👾 ABYSSAL DARK MATTER (3,500–6,000 LY)', next: '6,000 LY' };
+        } else {
+          return { top: '#05010d', bot: '#3b0764', name: '🕳️ THE SINGULARITY FLOOR (6,000–7,000+ LY)', next: 'MAX DEPTH!' };
+        }
+      },
+
+      update(dt) {
+        this.time += dt;
+        this.visualDepth += (this.targetDepth - this.visualDepth) * Math.min(1, dt * 4.5);
+
+        if (this.emoteTimer > 0) this.emoteTimer -= dt;
+
+        // Ambient thruster bubble/spark particles
+        if (Math.random() < 0.35) {
+          this.particles.push({
+            x: this.width * 0.14 + (Math.random() - 0.5) * 10,
+            y: this.height * 0.45 - 18,
+            vx: (Math.random() - 0.5) * 24,
+            vy: -35 - Math.random() * 45,
+            size: 4,
+            life: 0.65,
+            maxLife: 0.65,
+            color: '#38bdf8'
+          });
+        }
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= dt;
+          if (p.life <= 0) this.particles.splice(i, 1);
+        }
+      },
+
+      drawPixelKrill(ctx, x, y, skin, scale = 3, isRival = false, label = '') {
+        ctx.save();
+        ctx.translate(Math.round(x), Math.round(y));
+
+        // Thruster flame
+        const flameH = (Math.sin(this.time * 26) > 0 ? 3 : 2) * scale;
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(-2 * scale, -7 * scale - flameH, 4 * scale, flameH);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(-1 * scale, -7 * scale - flameH * 0.6, 2 * scale, flameH * 0.6);
+
+        // Segmented Krill Body
+        ctx.fillStyle = skin.body;
+        ctx.fillRect(-4 * scale, -5 * scale, 8 * scale, 9 * scale);
+        ctx.fillStyle = skin.accent;
+        ctx.fillRect(-5 * scale, -2 * scale, 10 * scale, 2 * scale);
+        ctx.fillRect(-4 * scale, 1 * scale, 8 * scale, 2 * scale);
+
+        // Tail fins
+        ctx.fillStyle = skin.accent;
+        ctx.fillRect(-6 * scale, -7 * scale, 3 * scale, 2 * scale);
+        ctx.fillRect(3 * scale, -7 * scale, 3 * scale, 2 * scale);
+
+        // Tiny legs
+        const legShift = Math.sin(this.time * 12) > 0 ? 1 : 0;
+        ctx.fillStyle = skin.accent;
+        ctx.fillRect((-6 - legShift) * scale, 0, 2 * scale, scale);
+        ctx.fillRect((4 + legShift) * scale, 0, 2 * scale, scale);
+        ctx.fillRect((-6 + legShift) * scale, 3 * scale, 2 * scale, scale);
+        ctx.fillRect((4 - legShift) * scale, 3 * scale, 2 * scale, scale);
+
+        // Astronaut Glass Helmet & Visor
+        ctx.fillStyle = 'rgba(224, 242, 254, 0.35)';
+        ctx.fillRect(-5 * scale, 3 * scale, 10 * scale, 7 * scale);
+        ctx.fillStyle = skin.visor;
+        ctx.fillRect(-3 * scale, 5 * scale, 6 * scale, 3 * scale);
+        // Visor shine
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-2 * scale, 5 * scale, 2 * scale, scale);
+
+        // Antennae
+        ctx.fillStyle = skin.body;
+        ctx.fillRect(-3 * scale, 10 * scale, scale, 3 * scale);
+        ctx.fillRect(2 * scale, 10 * scale, scale, 3 * scale);
+
+        if (label) {
+          ctx.font = 'bold 12px "Press Start 2P", monospace';
+          ctx.fillStyle = isRival ? '#34d399' : '#fde68a';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, 0, -11 * scale);
+        }
+
+        ctx.restore();
+      },
+
+      render() {
+        const ctx = this.ctx;
+        const w = this.width;
+        const h = this.height;
+        const ly = this.visualDepth;
+        const zone = this.getZoneColors(ly);
+
+        // 1. Sky / Space Gradient
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, zone.top);
+        grad.addColorStop(1, zone.bot);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        // 2. Zone-specific environmental pixel art
+        if (ly < 250) {
+          // Solar Daylight Sunbeams & Blue Horizon Arc
+          ctx.fillStyle = 'rgba(253, 224, 71, 0.10)';
+          for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.moveTo(w * (0.1 + i * 0.2), 0);
+            ctx.lineTo(w * (0.22 + i * 0.2), 0);
+            ctx.lineTo(w * (0.05 + i * 0.2), h);
+            ctx.lineTo(w * (-0.08 + i * 0.2), h);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // Planetary horizon at very top
+          const horizonOffset = ly * 1.4;
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(0, Math.max(-40, -horizonOffset), w, 14);
+        } else if (ly < 1100) {
+          // Twilight Nebula Pixel Clouds & Drifting Asteroids
+          ctx.fillStyle = 'rgba(192, 132, 252, 0.12)';
+          ctx.fillRect(w * 0.1, h * 0.2, w * 0.35, 60);
+          ctx.fillRect(w * 0.55, h * 0.6, w * 0.35, 80);
+
+          ctx.fillStyle = '#78716c';
+          for (const ast of this.asteroids) {
+            const ay = ((ast.y * h - ly * ast.speed * 4) % h + h) % h;
+            const ax = ast.x * w;
+            ctx.fillRect(ax, ay, ast.r, ast.r);
+            ctx.fillStyle = '#57534e';
+            ctx.fillRect(ax + 3, ay + 3, ast.r * 0.4, ast.r * 0.4);
+            ctx.fillStyle = '#78716c';
+          }
+        } else if (ly >= 3400 && ly < 6100) {
+          // Abyssal Dark Matter Bioluminescent Space Jellyfish
+          for (const jf of this.jellyfish) {
+            const jy = ((jf.y * h - ly * 0.08) % h + h) % h;
+            const jx = jf.x * w + Math.sin(this.time * 2 + jf.phase) * 14;
+            ctx.fillStyle = jf.color;
+            ctx.globalAlpha = 0.45;
+            ctx.fillRect(jx - 10, jy, 20, 10);
+            ctx.fillRect(jx - 6, jy - 4, 12, 4);
+            ctx.fillRect(jx - 6, jy + 10, 2, 10);
+            ctx.fillRect(jx, jy + 10, 2, 12);
+            ctx.fillRect(jx + 5, jy + 10, 2, 9);
+            ctx.globalAlpha = 1;
+          }
+        } else if (ly >= 6000) {
+          // The Singularity Floor Event Horizon
+          const floorY = h - Math.min(130, (ly - 5900) * 0.12);
+          ctx.fillStyle = '#581c87';
+          ctx.fillRect(0, floorY, w, h - floorY);
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(0, floorY, w, 6);
+          ctx.fillStyle = '#c084fc';
+          ctx.fillRect(0, floorY + 10, w, 4);
+        }
+
+        // 3. Parallax Twinkling Pixel Stars
+        for (const s of this.stars) {
+          const sy = ((s.y * h - ly * s.speed * 6) % h + h) % h;
+          const sx = s.x * w;
+          const alpha = 0.45 + 0.55 * Math.sin(this.time * 3 + s.twinkle);
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = s.color;
+          ctx.fillRect(Math.round(sx), Math.round(sy), s.size, s.size);
+        }
+        ctx.globalAlpha = 1;
+
+        // 4. Particles
+        for (const p of this.particles) {
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+        }
+        ctx.globalAlpha = 1;
+
+        // 5. Fleet Bots (in 40-Krill Fleet mode)
+        if (Game.mode === 'fleet' && Game.state === 'playing') {
+          for (const bot of this.fleetBots) {
+            const diffY = (bot.depth - ly) * 0.35;
+            const by = h * 0.45 + diffY + Math.sin(this.time * 4 + bot.bobPhase) * 5;
+            if (by > -30 && by < h + 30) {
+              this.drawPixelKrill(ctx, bot.xRatio * w, by, { body: bot.color, accent: '#ffffff', visor: '#38bdf8' }, 1.6);
+            }
+          }
+        }
+
+        // 6. Rival Krill (in Ranked 1v1 Duel OR Online Multiplayer)
+        if ((Game.mode === 'duel' || Game.mode === 'online') && Game.state === 'playing') {
+          const rivalLY = Game.mode === 'online' ? OnlineNet.rivalDepth : Game.rivalDepth;
+          const rivalTag = Game.mode === 'online' ? OnlineNet.rivalName : 'RIVAL';
+          const diffY = (rivalLY - ly) * 0.35;
+          const ry = Math.max(70, Math.min(h - 70, h * 0.45 + diffY + Math.cos(this.time * 3.5) * 6));
+          this.drawPixelKrill(
+            ctx,
+            w * 0.86,
+            ry,
+            { body: '#34d399', accent: '#059669', visor: '#fde68a' },
+            2.6,
+            true,
+            rivalTag
+          );
+        }
+
+        // 7. Player's Hero Space-Krill + Drone Buddy + Emote
+        const skin = COSMETICS.skins.find(s => s.id === Game.save.equippedSkin) || COSMETICS.skins[0];
+        const krillX = w * 0.14;
+        const krillY = h * 0.45 + Math.sin(this.time * 3.2) * 7;
+        this.drawPixelKrill(ctx, krillX, krillY, skin, 3.2);
+
+        const drone = COSMETICS.drones.find(d => d.id === Game.save.equippedDrone);
+        if (drone && drone.id !== 'none') {
+          ctx.font = '22px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(drone.icon, krillX + 34, krillY - 18 + Math.cos(this.time * 4) * 5);
+        }
+
+        if (this.emoteTimer > 0 && this.emoteText) {
+          ctx.font = '28px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(this.emoteText, krillX, krillY - 46);
+        }
+      }
+    };
+
+    /* =========================================================================
+       7. MAIN GAME STATE CONTROLLER
+    ========================================================================= */
+    const Game = {
+      state: 'menu', // 'menu' | 'playing' | 'summary'
+      mode: 'unlimited',
+      selectedSector: 'All',
+      prompts: [],
+      promptIdx: 0,
+      clockDuration: 25,
+      clockRemaining: 25,
+      promptStartTime: 0,
+      lastTickSecond: 25,
+      roundLocked: false,
+      isValidating: false,
+      depthLY: 0,
+      totalElapsedSec: 0,
+      runLog: [],
+      oxygenTanks: 3,
+      rivalDepth: 0,
+      rivalElapsedSec: 0,
+      deckBags: {},
+
+      // Local Pass & Play State
+      passPlay: {
+        p1Name: 'PLAYER 1',
+        p2Name: 'PLAYER 2',
+        turn1Player: 'PLAYER 1',
+        turn2Player: 'PLAYER 2',
+        currentTurn: 1,
+        sharedPrompts: [],
+        turn1Log: [],
+        turn1Depth: 0,
+        turn1Time: 0,
+        coinFlipping: false
+      },
+
+      // Persistent Save Data
+      save: {
+        tokens: 250,
+        streak: 0,
+        lastDailyDate: '',
+        dailyResult: null,
+        unlockedSkins: ['coral'],
+        unlockedDrones: ['none'],
+        unlockedEmotes: ['🦐'],
+        equippedSkin: 'coral',
+        equippedDrone: 'none',
+        equippedEmote: '🦐'
+      },
+
+      lockerTab: 'skins',
+
+      init() {
+        this.loadSave();
+        PixelCanvas.init();
+        this.updateTopHud();
+        this.updateZoneHud(0);
+        this.checkDailyBadge();
+
+        // Typing sound effect
+        const ansInput = document.getElementById('answerInput');
+        ansInput.addEventListener('input', () => {
+          SoundFX.playTypeTick();
+        });
+
+        let lastTime = performance.now();
+        const loop = (now) => {
+          const dt = Math.min(0.1, (now - lastTime) / 1000);
+          lastTime = now;
+          this.update(dt);
+          PixelCanvas.update(dt);
+          PixelCanvas.render();
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+      },
+
+      loadSave() {
+        try {
+          const raw = localStorage.getItem('star_krillion_save_v2');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            Object.assign(this.save, parsed);
+          }
+        } catch (_) {}
+      },
+
+      persistSave() {
+        try {
+          localStorage.setItem('star_krillion_save_v2', JSON.stringify(this.save));
+        } catch (_) {}
+      },
+
+      todayKey() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      },
+
+      checkDailyBadge() {
+        const badge = document.getElementById('dailyBadge');
+        if (this.save.lastDailyDate === this.todayKey()) {
+          badge.textContent = '✅ COMPLETED';
+          badge.style.color = '#34d399';
+        } else {
+          badge.textContent = '7 PROMPTS';
+          badge.style.color = '#fbbf24';
+        }
+      },
+
+      updateTopHud() {
+        document.getElementById('hudDepthText').textContent = `${this.depthLY.toLocaleString()} LY`;
+        document.getElementById('hudTokensText').textContent = this.save.tokens.toLocaleString();
+        document.getElementById('hudStreakText').textContent = `${this.save.streak}d`;
+        document.getElementById('emoteTriggerBtn').textContent = `${this.save.equippedEmote} EMOTE`;
+      },
+
+      updateZoneHud(ly) {
+        const z = PixelCanvas.getZoneColors(ly);
+        document.getElementById('zoneNameText').textContent = z.name;
+        document.getElementById('zoneProgressText').textContent = `NEXT: ${z.next}`;
+      },
+
+      showToast(msg) {
+        const banner = document.getElementById('toastBanner');
+        banner.textContent = msg;
+        banner.classList.add('show');
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => banner.classList.remove('show'), 2400);
+      },
+
+      hideAllModals() {
+        const ids = [
+          'menuScreen', 'onlineLobbyModal', 'lobbyModal',
+          'passPlayModal', 'handoffModal', 'playScreen',
+          'summaryModal', 'lockerModal', 'helpModal'
+        ];
+        ids.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      },
+
+      returnToMenu() {
+        this.state = 'menu';
+        this.depthLY = 0;
+        PixelCanvas.targetDepth = 0;
+        this.updateTopHud();
+        this.updateZoneHud(0);
+        this.hideAllModals();
+        document.getElementById('menuScreen').style.display = 'flex';
+      },
+
+      abortToMenu() {
+        if (this.mode === 'online') OnlineNet.disconnect();
+        this.returnToMenu();
+      },
+
+      toggleWebJudge() {
+        AnswerJudge.webEnabled = !AnswerJudge.webEnabled;
+        const btn = document.getElementById('webJudgeToggleBtn');
+        if (AnswerJudge.webEnabled) {
+          btn.textContent = '🌐 WEB AI: ON';
+          btn.style.borderColor = '#34d399';
+          btn.style.color = '#6ee7b7';
+          this.showToast('LIVE INTERNET AI JUDGE ENABLED');
+        } else {
+          btn.textContent = '📴 WEB AI: OFF';
+          btn.style.borderColor = '#64748b';
+          btn.style.color = '#94a3b8';
+          this.showToast('OFFLINE CURATED MODE ENABLED');
+        }
+      },
+
+      toggleMute() {
+        SoundFX.muted = !SoundFX.muted;
+        document.getElementById('muteBtn').textContent = SoundFX.muted ? '🔇' : '🔊';
+      },
+
+      triggerEmote() {
+        SoundFX.playTone(660, 0.08, 'square', 0.05);
+        PixelCanvas.triggerEmote(this.save.equippedEmote);
+      },
+
+      selectSector(sector) {
+        this.selectedSector = sector;
+        document.querySelectorAll('#sectorBar .sector-chip').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.sector === sector);
+        });
+        SoundFX.playTone(520, 0.06, 'square', 0.04);
+      },
+
+      pickPrompts(count, sector = 'All', dailySeed = null) {
+        const pool = sector === 'All'
+          ? CATEGORIES
+          : CATEGORIES.filter(c => c.sector === sector);
+
+        if (dailySeed !== null) {
+          // Deterministic daily shuffle
+          let s = dailySeed;
+          const rand = () => {
+            s = (s * 1664525 + 1013904223) % 4294967296;
+            return s / 4294967296;
+          };
+          const copy = [...pool];
+          for (let i = copy.length - 1; i > 0; i--) {
+            const j = Math.floor(rand() * (i + 1));
+            [copy[i], copy[j]] = [copy[j], copy[i]];
+          }
+          return copy.slice(0, count);
+        }
+
+        // Anti-repeat deck bag system per sector
+        if (!this.deckBags[sector] || this.deckBags[sector].length < count) {
+          const fresh = [...pool];
+          for (let i = fresh.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [fresh[i], fresh[j]] = [fresh[j], fresh[i]];
+          }
+          this.deckBags[sector] = fresh;
+        }
+        return this.deckBags[sector].splice(0, count);
+      },
+
+      openOnlineLobby() {
+        SoundFX.init();
+        this.hideAllModals();
+        document.getElementById('onlineRoomStatusBox').style.display = 'none';
+        document.getElementById('onlineLobbyModal').style.display = 'flex';
+      },
+
+      launchOnlineMatch(promptObjs) {
+        this.mode = 'online';
+        this.prompts = promptObjs;
+        this.clockDuration = 25;
+        this.beginRun();
+      },
+
+      startMode(mode) {
+        SoundFX.init();
+        this.mode = mode;
+
+        if (mode === 'daily') {
+          if (this.save.lastDailyDate === this.todayKey() && this.save.dailyResult) {
+            this.showToast('DAILY LAUNCH ALREADY COMPLETED TODAY!');
+            this.runLog = this.save.dailyResult.runLog;
+            this.depthLY = this.save.dailyResult.depthLY;
+            this.showSummary(0, true);
+            return;
+          }
+          const dateNum = parseInt(this.todayKey().replace(/-/g, ''), 10);
+          this.prompts = this.pickPrompts(7, 'All', dateNum);
+          this.clockDuration = 25;
+          this.beginRun();
+        } else if (mode === 'unlimited') {
+          this.prompts = this.pickPrompts(7, this.selectedSector);
+          this.clockDuration = 25;
+          this.beginRun();
+        } else if (mode === 'endless') {
+          this.prompts = this.pickPrompts(35, this.selectedSector);
+          this.clockDuration = 25;
+          this.oxygenTanks = 3;
+          this.beginRun();
+        } else if (mode === 'fleet') {
+          this.prompts = this.pickPrompts(7, this.selectedSector);
+          this.clockDuration = 25;
+          PixelCanvas.spawnFleet(39);
+          this.runLobbyAnimation('40-KRILL FLEET LOBBY', 'Syncing 39 Space-Krill Pilots to Launch Tube...', () => this.beginRun());
+        } else if (mode === 'duel') {
+          this.prompts = this.pickPrompts(7, this.selectedSector);
+          this.clockDuration = 15;
+          this.rivalDepth = 0;
+          this.rivalElapsedSec = 0;
+          this.runLobbyAnimation('RANKED 1V1 DUEL', 'Matching Cosmic ELO Rating • 15s Speed Clock...', () => this.beginRun());
+        } else if (mode === 'passplay') {
+          this.openPassPlaySetup();
+        }
+      },
+
+      runLobbyAnimation(title, sub, onComplete) {
+        this.hideAllModals();
+        const modal = document.getElementById('lobbyModal');
+        modal.style.display = 'flex';
+        document.getElementById('lobbyTitle').textContent = title;
+        document.getElementById('lobbySub').textContent = sub;
+        const bar = document.getElementById('lobbyProgressBar');
+        const feed = document.getElementById('lobbyFeed');
+        bar.style.width = '0%';
+
+        const callsigns = ['NebulaShrimp99', 'AstroPrawn', 'VoidKrill_X', 'StarPlankton', 'DeepCutDave', 'CosmicCrustacean'];
+        let pct = 0;
+        const iv = setInterval(() => {
+          pct += 14;
+          bar.style.width = `${Math.min(100, pct)}%`;
+          feed.textContent = `🛰️ ${callsigns[Math.floor(Math.random() * callsigns.length)]} locked into pod...`;
+          SoundFX.playTone(380 + pct * 4, 0.04, 'square', 0.03);
+          if (pct >= 100) {
+            clearInterval(iv);
+            setTimeout(onComplete, 220);
+          }
+        }, 120);
+      },
+
+      /* --- LOCAL PASS & PLAY (2P) FLOW --- */
+      openPassPlaySetup() {
+        this.hideAllModals();
+        this.passPlay.coinFlipping = false;
+        document.getElementById('coinFaceIcon').textContent = '🦐';
+        document.getElementById('coinFaceLabel').textContent = 'READY';
+        document.getElementById('coinFlipResultText').textContent = 'FLIP TO DECIDE FIRST LAUNCH!';
+        document.getElementById('flipCoinBtn').style.display = 'inline-flex';
+        document.getElementById('startTurn1Btn').style.display = 'none';
+        document.getElementById('passPlayModal').style.display = 'flex';
+      },
+
+      flipPassPlayCoin() {
+        if (this.passPlay.coinFlipping) return;
+        this.passPlay.coinFlipping = true;
+
+        const p1 = (document.getElementById('p1NameInput').value || '').trim().toUpperCase() || 'PLAYER 1';
+        const p2 = (document.getElementById('p2NameInput').value || '').trim().toUpperCase() || 'PLAYER 2';
+        this.passPlay.p1Name = p1;
+        this.passPlay.p2Name = p2;
+
+        const coin = document.getElementById('cosmicCoin');
+        const resText = document.getElementById('coinFlipResultText');
+        document.getElementById('flipCoinBtn').style.display = 'none';
+        coin.classList.add('flipping');
+        resText.textContent = 'FLIPPING IN ZERO GRAVITY...';
+
+        let ticks = 0;
+        const flipIv = setInterval(() => {
+          ticks++;
+          SoundFX.playCoinTick(ticks);
+          const isHeads = ticks % 2 === 0;
+          document.getElementById('coinFaceIcon').textContent = isHeads ? '🟡' : '🟣';
+          document.getElementById('coinFaceLabel').textContent = isHeads ? 'HEADS' : 'TAILS';
+
+          if (ticks >= 14) {
+            clearInterval(flipIv);
+            coin.classList.remove('flipping');
+            this.passPlay.coinFlipping = false;
+
+            const headsWins = Math.random() < 0.5;
+            document.getElementById('coinFaceIcon').textContent = headsWins ? '🟡' : '🟣';
+            document.getElementById('coinFaceLabel').textContent = headsWins ? 'HEADS' : 'TAILS';
+
+            this.passPlay.turn1Player = headsWins ? p1 : p2;
+            this.passPlay.turn2Player = headsWins ? p2 : p1;
+            this.passPlay.sharedPrompts = this.pickPrompts(7, this.selectedSector);
+
+            SoundFX.playCoinWinner();
+            resText.innerHTML = `${headsWins ? '🟡 HEADS' : '🟣 TAILS'}! <span style="color:#34d399;">${this.passPlay.turn1Player}</span> LAUNCHES FIRST!`;
+            const startBtn = document.getElementById('startTurn1Btn');
+            startBtn.textContent = `🚀 START ${this.passPlay.turn1Player} >>`;
+            startBtn.style.display = 'inline-flex';
+          }
+        }, 85);
+      },
+
+      startPassPlayTurn(turnNum) {
+        this.passPlay.currentTurn = turnNum;
+        this.prompts = [...this.passPlay.sharedPrompts];
+        this.clockDuration = 25;
+        this.beginRun();
+      },
+
+      isDuplicateOfTurn1(rawInput, matchedDisplay, promptIndex) {
+        if (this.mode !== 'passplay' || this.passPlay.currentTurn !== 2) return null;
+        const entry = this.passPlay.turn1Log[promptIndex];
+        if (!entry || entry.pts === 0) return null;
+
+        const normCandidate = normalizeText(matchedDisplay || rawInput);
+        const normUsed1 = normalizeText(entry.answer);
+        const normRaw1 = normalizeText(entry.rawInput || entry.answer);
+
+        if (normCandidate === normUsed1 || normCandidate === normRaw1) {
+          return entry.answer;
+        }
+        const candVars = getVariants(normCandidate);
+        const usedVars = getVariants(normUsed1);
+        for (const v of candVars) {
+          if (usedVars.has(v)) return entry.answer;
+        }
+        return null;
+      },
+
+      /* --- CORE GAMEPLAY LOOP --- */
+      beginRun() {
+        this.state = 'playing';
+        this.promptIdx = 0;
+        this.depthLY = 0;
+        this.totalElapsedSec = 0;
+        this.runLog = [];
+        PixelCanvas.targetDepth = 0;
+        this.updateTopHud();
+        this.updateZoneHud(0);
+        this.loadPrompt(0);
+      },
+
+      loadPrompt(idx) {
+        this.promptIdx = idx;
+        this.roundLocked = false;
+        this.isValidating = false;
+        this.clockRemaining = this.clockDuration;
+        this.promptStartTime = performance.now();
+        this.lastTickSecond = Math.ceil(this.clockDuration);
+
+        const cat = this.prompts[idx];
+        this.hideAllModals();
+        document.getElementById('playScreen').style.display = 'flex';
+
+        const totalLabel = this.mode === 'endless' ? '∞' : this.prompts.length;
+        document.getElementById('roundCounterBadge').textContent = `PROMPT ${idx + 1} / ${totalLabel}`;
+
+        const oxyBadge = document.getElementById('oxygenTanksBadge');
+        if (this.mode === 'endless') {
+          oxyBadge.style.display = 'inline';
+          oxyBadge.textContent = '🫧'.repeat(Math.max(0, this.oxygenTanks));
+        } else {
+          oxyBadge.style.display = 'none';
+        }
+
+        const mpBar = document.getElementById('multiplayerLiveBar');
+        if (this.mode === 'passplay') {
+          mpBar.style.display = 'flex';
+          const activeName = this.passPlay.currentTurn === 1 ? this.passPlay.turn1Player : this.passPlay.turn2Player;
+          mpBar.innerHTML = `<span style="color:#fbbf24;">🎮 TURN ${this.passPlay.currentTurn}/2: <strong>${activeName}</strong></span><span style="color:#38bdf8;">${this.passPlay.currentTurn === 2 ? '🚫 TURN 1 ANSWERS LOCKED' : 'FIRST LAUNCH'}</span>`;
+        } else if (this.mode === 'online') {
+          mpBar.style.display = 'flex';
+          this.refreshOnlineLiveBar();
+        } else if (this.mode === 'duel') {
+          mpBar.style.display = 'flex';
+          mpBar.innerHTML = `<span style="color:#38bdf8;">YOU: ${this.depthLY} LY</span><span style="color:#34d399;">RIVAL: ${this.rivalDepth} LY</span>`;
+        } else if (this.mode === 'fleet') {
+          mpBar.style.display = 'flex';
+          const rank = this.computeFleetRank();
+          mpBar.innerHTML = `<span style="color:#c084fc;">🦐 FLEET RANK: #${rank} / 40</span><span style="color:#38bdf8;">${this.depthLY} LY</span>`;
+        } else {
+          mpBar.style.display = 'none';
+        }
+
+        document.getElementById('promptSectorTag').textContent = `SECTOR: ${cat.sector.toUpperCase()}`;
+        document.getElementById('promptText').textContent = cat.prompt.toUpperCase();
+
+        const inputEl = document.getElementById('answerInput');
+        inputEl.value = '';
+        inputEl.disabled = false;
+        document.getElementById('submitAnswerBtn').disabled = false;
+        document.getElementById('passBtn').disabled = false;
+        document.getElementById('tierRevealBox').style.display = 'none';
+
+        const fb = document.getElementById('feedbackMsg');
+        fb.style.color = '#cbd5e1';
+        fb.textContent = 'First valid answer locks in immediately!';
+
+        setTimeout(() => inputEl.focus(), 40);
+      },
+
+      refreshOnlineLiveBar() {
+        const mpBar = document.getElementById('multiplayerLiveBar');
+        if (!mpBar || this.mode !== 'online') return;
+        const rivalStatus = OnlineNet.rivalFinished
+          ? `DONE (${OnlineNet.rivalDepth} LY)`
+          : `P${Math.min(7, OnlineNet.rivalRound + 1)}/7 (${OnlineNet.rivalDepth} LY)`;
+        mpBar.innerHTML = `<span style="color:#38bdf8;">YOU: <strong>${this.depthLY} LY</strong></span><span style="color:#34d399;">${OnlineNet.rivalName}: <strong>${rivalStatus}</strong></span>`;
+      },
+
+      onOnlineRivalUpdate() {
+        if (this.mode !== 'online') return;
+        this.refreshOnlineLiveBar();
+        if (this.state === 'summary') {
+          this.renderOnlineSummaryComparison();
+        }
+      },
+
+      computeFleetRank() {
+        let higher = 0;
+        for (const b of PixelCanvas.fleetBots) {
+          if (b.depth > this.depthLY) higher++;
+        }
+        return higher + 1;
+      },
+
+      update(dt) {
+        if (this.state !== 'playing' || this.roundLocked) return;
+
+        // Pause clock while awaiting live internet Web AI verification so slow connections never penalize the player
+        if (!this.isValidating) {
+          this.clockRemaining -= dt;
+        }
+
+        const pct = Math.max(0, (this.clockRemaining / this.clockDuration) * 100);
+        const fill = document.getElementById('clockFill');
+        fill.style.width = `${pct}%`;
+
+        if (this.clockRemaining <= 5) {
+          fill.style.background = '#f87171';
+        } else if (this.clockRemaining <= 10) {
+          fill.style.background = '#fbbf24';
+        } else {
+          fill.style.background = 'linear-gradient(90deg, #34d399, #38bdf8)';
+        }
+
+        document.getElementById('clockText').textContent = `${Math.max(0, this.clockRemaining).toFixed(1)}s`;
+        document.getElementById('clockText').style.color = this.clockRemaining <= 5 ? '#f87171' : '#34d399';
+
+        const secCeil = Math.ceil(this.clockRemaining);
+        if (secCeil < this.lastTickSecond && secCeil > 0 && secCeil <= 5) {
+          SoundFX.playCountdownTick(secCeil <= 3);
+        }
+        this.lastTickSecond = secCeil;
+
+        if (this.clockRemaining <= 0) {
+          this.handleTimeoutOrPass(false);
+        }
+      },
+
+      async handleSubmit(e) {
+        e.preventDefault();
+        if (this.state !== 'playing' || this.roundLocked || this.isValidating) return;
+
+        const inputEl = document.getElementById('answerInput');
+        const raw = inputEl.value.trim();
+        if (!raw) return;
+
+        const fb = document.getElementById('feedbackMsg');
+        this.isValidating = true;
+        fb.style.color = '#38bdf8';
+        fb.textContent = '📡 SCANNING GALACTIC ARCHIVES...';
+
+        const cat = this.prompts[this.promptIdx];
+        const match = await AnswerJudge.evaluate(cat, raw);
+        this.isValidating = false;
+
+        if (this.roundLocked || this.state !== 'playing') return;
+
+        if (!match) {
+          SoundFX.playInvalidBuzz();
+          fb.style.color = '#f87171';
+          fb.textContent = `"${raw.toUpperCase()}" UNRECOGNIZED — TRY AGAIN!`;
+          inputEl.classList.remove('shake');
+          void inputEl.offsetWidth;
+          inputEl.classList.add('shake');
+          inputEl.focus();
+          inputEl.select();
+          return;
+        }
+
+        // Block duplicate Turn 1 answers in Local Pass & Play Turn 2
+        const blockedAns = this.isDuplicateOfTurn1(raw, match.display, this.promptIdx);
+        if (blockedAns) {
+          SoundFX.playInvalidBuzz();
+          fb.style.color = '#fbbf24';
+          fb.textContent = `🚫 ALREADY USED BY ${this.passPlay.turn1Player} ("${blockedAns.toUpperCase()}") — PICK ANOTHER!`;
+          inputEl.classList.remove('shake');
+          void inputEl.offsetWidth;
+          inputEl.classList.add('shake');
+          inputEl.focus();
+          inputEl.select();
+          return;
+        }
+
+        const elapsed = Math.min(this.clockDuration, (performance.now() - this.promptStartTime) / 1000);
+        this.lockInRound(match.display, match.pts, elapsed, Boolean(match.viaWeb), raw, match.webNote || '');
+      },
+
+      passPrompt() {
+        if (this.state !== 'playing' || this.roundLocked || this.isValidating) return;
+        this.handleTimeoutOrPass(true);
+      },
+
+      handleTimeoutOrPass(wasPassed) {
+        const elapsed = this.clockDuration;
+        this.lockInRound(wasPassed ? '(PASSED)' : '(TIME EXPIRED)', 0, elapsed, false, '', '');
+      },
+
+      lockInRound(answerDisplay, pts, elapsedSec, viaWeb = false, rawInput = '', webNote = '') {
+        this.roundLocked = true;
+        const tier = TIERS[pts] || TIERS[0];
+        const cat = this.prompts[this.promptIdx];
+
+        document.getElementById('answerInput').disabled = true;
+        document.getElementById('submitAnswerBtn').disabled = true;
+        document.getElementById('passBtn').disabled = true;
+
+        this.depthLY += tier.ly;
+        this.totalElapsedSec += elapsedSec;
+        PixelCanvas.targetDepth = this.depthLY;
+        this.updateTopHud();
+        this.updateZoneHud(this.depthLY);
+
+        this.runLog.push({
+          prompt: cat.prompt,
+          answer: answerDisplay,
+          rawInput,
+          pts,
+          ly: tier.ly,
+          emoji: tier.emoji,
+          tierName: tier.name,
+          elapsed: elapsedSec,
+          viaWeb
+        });
+
+        // Simulate Fleet & AI Duel rivals on prompt lock-in
+        if (this.mode === 'fleet') {
+          const possibleTiers = [10, 10, 15, 15, 30, 30, 60, 85, 100];
+          for (const bot of PixelCanvas.fleetBots) {
+            const pickIdx = Math.min(possibleTiers.length - 1, Math.floor(Math.random() * possibleTiers.length * bot.skill + Math.random() * 2));
+            bot.depth += possibleTiers[pickIdx] * 10;
+          }
+          const rank = this.computeFleetRank();
+          document.getElementById('multiplayerLiveBar').innerHTML =
+            `<span style="color:#c084fc;">🦐 FLEET RANK: #${rank} / 40</span><span style="color:#38bdf8;">${this.depthLY} LY</span>`;
+        } else if (this.mode === 'duel') {
+          const duelPool = [10, 15, 30, 30, 60, 85];
+          const rivalPts = duelPool[Math.floor(Math.random() * duelPool.length)];
+          this.rivalDepth += rivalPts * 10;
+          this.rivalElapsedSec += 3.5 + Math.random() * 7.5;
+          document.getElementById('multiplayerLiveBar').innerHTML =
+            `<span style="color:#38bdf8;">YOU: ${this.depthLY} LY</span><span style="color:#34d399;">RIVAL: ${this.rivalDepth} LY</span>`;
+        } else if (this.mode === 'online') {
+          const isLast = this.promptIdx + 1 >= this.prompts.length;
+          OnlineNet.sendProgress(this.depthLY, this.promptIdx + 1, this.runLog, isLast, this.totalElapsedSec);
+          this.refreshOnlineLiveBar();
+        }
+
+        // Endless Oxygen Tank logic
+        let tankStatusMsg = '';
+        if (this.mode === 'endless') {
+          if (pts === 0) {
+            this.oxygenTanks = Math.max(0, this.oxygenTanks - 1);
+            tankStatusMsg = ` • 🫧 O₂ TANK LOST (${this.oxygenTanks} LEFT)`;
+          } else if (pts === 100 && this.oxygenTanks < 3) {
+            this.oxygenTanks++;
+            tankStatusMsg = ' • 🫧 +1 O₂ TANK REFILLED!';
+          }
+          document.getElementById('oxygenTanksBadge').textContent = '🫧'.repeat(Math.max(0, this.oxygenTanks));
+        }
+
+        SoundFX.playTierChime(pts);
+        if (pts >= 60) {
+          PixelCanvas.burstThruster(pts === 100 ? 36 : 20, tier.color);
+        }
+
+        const revealBox = document.getElementById('tierRevealBox');
+        revealBox.style.display = 'block';
+        revealBox.style.borderColor = tier.color;
+
+        const titleEl = document.getElementById('revealTierTitle');
+        titleEl.style.color = tier.color;
+        titleEl.textContent = `${tier.emoji} ${tier.name}! (+${tier.ly.toLocaleString()} LY)`;
+
+        document.getElementById('revealAnswerDetail').textContent =
+          `LOCKED IN: ${answerDisplay.toUpperCase()}${viaWeb ? ' 🌐 [WEB AI]' : ''}${tankStatusMsg}`;
+
+        const deepCuts = (cat.answers[100] && cat.answers[100].length)
+          ? cat.answers[100]
+          : (cat.answers[85] || []);
+        const hintEl = document.getElementById('revealRarityHint');
+        if (viaWeb && webNote) {
+          hintEl.textContent = `🛰️ ${webNote}`;
+        } else if (deepCuts.length && pts < 100) {
+          const sample = deepCuts[Math.floor(Math.random() * deepCuts.length)];
+          hintEl.textContent = `💎 Example 100-pt Deep Cut: "${sample}"`;
+        } else if (pts === 100) {
+          hintEl.textContent = '🚀 MAXIMUM THRUST! ULTRA-RARE COSMIC FIND!';
+        } else {
+          hintEl.textContent = '';
+        }
+
+        const nextBtn = document.getElementById('nextPromptBtn');
+        const outOfTanks = this.mode === 'endless' && this.oxygenTanks <= 0;
+        const isLastPrompt = this.promptIdx + 1 >= this.prompts.length;
+        nextBtn.textContent = (outOfTanks || isLastPrompt) ? '🏁 VIEW LAUNCH SUMMARY' : 'NEXT PROMPT >>';
+        setTimeout(() => nextBtn.focus(), 50);
+      },
+
+      advancePrompt() {
+        const outOfTanks = this.mode === 'endless' && this.oxygenTanks <= 0;
+        const isLastPrompt = this.promptIdx + 1 >= this.prompts.length;
+
+        if (outOfTanks || isLastPrompt) {
+          this.finishRun();
+        } else {
+          this.loadPrompt(this.promptIdx + 1);
+        }
+      },
+
+      finishRun() {
+        // Handle Local Pass & Play Turn 1 -> Handoff to Turn 2
+        if (this.mode === 'passplay' && this.passPlay.currentTurn === 1) {
+          this.passPlay.turn1Log = [...this.runLog];
+          this.passPlay.turn1Depth = this.depthLY;
+          this.passPlay.turn1Time = this.totalElapsedSec;
+
+          this.state = 'handoff';
+          this.hideAllModals();
+          document.getElementById('handoffSummaryLine').textContent =
+            `${this.passPlay.turn1Player} finished at ${this.depthLY.toLocaleString()} LY!`;
+          document.getElementById('handoffNextPlayerLine').textContent =
+            `NEXT UP: ${this.passPlay.turn2Player}`;
+          document.getElementById('handoffModal').style.display = 'flex';
+          return;
+        }
+
+        const earnedTokens = Math.max(15, Math.round(this.depthLY / 15));
+        this.save.tokens += earnedTokens;
+
+        if (this.mode === 'daily') {
+          const today = this.todayKey();
+          if (this.save.lastDailyDate !== today) {
+            this.save.streak += 1;
+            this.save.lastDailyDate = today;
+          }
+          this.save.dailyResult = {
+            depthLY: this.depthLY,
+            runLog: [...this.runLog]
+          };
+          this.checkDailyBadge();
+        }
+
+        this.persistSave();
+        this.updateTopHud();
+        this.showSummary(earnedTokens, false);
+      },
+
+      renderOnlineSummaryComparison() {
+        const mpBox = document.getElementById('summaryMultiplayerBox');
+        const breakdown = document.getElementById('summaryBreakdown');
+        mpBox.style.display = 'block';
+
+        if (!OnlineNet.rivalFinished) {
+          mpBox.innerHTML = `<div class="font-pixel" style="font-size:11px; color:#fbbf24;">⏳ WAITING FOR ${OnlineNet.rivalName} TO FINISH...</div>
+            <div style="font-size:18px; color:#94a3b8; margin-top:4px;">Rival is on Prompt ${Math.min(7, OnlineNet.rivalRound + 1)}/7 • Current Depth: ${OnlineNet.rivalDepth.toLocaleString()} LY</div>`;
+          return;
+        }
+
+        const iWon = this.depthLY > OnlineNet.rivalDepth ||
+          (this.depthLY === OnlineNet.rivalDepth && this.totalElapsedSec <= OnlineNet.rivalTime);
+        const winnerName = iWon ? OnlineNet.myName : OnlineNet.rivalName;
+
+        mpBox.innerHTML = `<div class="font-pixel" style="font-size:12px; color:#fde68a;">🏆 ${winnerName} WINS ONLINE DUEL!</div>
+          <div style="font-size:19px; color:#cbd5e1; margin-top:4px;">
+            ${OnlineNet.myName}: <strong>${this.depthLY.toLocaleString()} LY</strong> (${this.totalElapsedSec.toFixed(1)}s) &nbsp;vs&nbsp;
+            ${OnlineNet.rivalName}: <strong>${OnlineNet.rivalDepth.toLocaleString()} LY</strong> (${OnlineNet.rivalTime.toFixed(1)}s)
+          </div>`;
+
+        breakdown.innerHTML = this.runLog.map((item, idx) => {
+          const rItem = OnlineNet.rivalLog[idx] || { answer: '---', ly: 0, emoji: '⬛' };
+          return `<div class="breakdown-row" style="flex-direction:column; align-items:stretch; gap:4px;">
+            <div style="font-size:16px; color:#94a3b8;">${idx + 1}. ${item.prompt}</div>
+            <div style="display:flex; justify-content:space-between; font-size:18px;">
+              <span style="color:#38bdf8;">${item.emoji} ${OnlineNet.myName}: <strong>${item.answer}</strong> (+${item.ly})</span>
+              <span style="color:#34d399;">${rItem.emoji} ${OnlineNet.rivalName}: <strong>${rItem.answer}</strong> (+${rItem.ly})</span>
+            </div>
+          </div>`;
+        }).join('');
+      },
+
+      showSummary(earnedTokens, alreadyPlayedDaily) {
+        this.state = 'summary';
+        this.hideAllModals();
+        document.getElementById('summaryModal').style.display = 'flex';
+
+        const zone = PixelCanvas.getZoneColors(this.depthLY);
+        document.getElementById('summaryHeadline').textContent = alreadyPlayedDaily
+          ? '📅 TODAY\'S DAILY LAUNCH'
+          : '🚀 LAUNCH COMPLETE!';
+        document.getElementById('summarySub').textContent =
+          `Reached ${this.depthLY.toLocaleString()} LY • ${zone.name.replace(/^[^\s]+\s/, '')}`;
+
+        document.getElementById('summaryEmojiGrid').textContent =
+          this.runLog.map(r => r.emoji).join('');
+        document.getElementById('summaryTokensEarned').textContent = earnedTokens;
+
+        const mpBox = document.getElementById('summaryMultiplayerBox');
+        const breakdown = document.getElementById('summaryBreakdown');
+
+        if (this.mode === 'passplay') {
+          const d1 = this.passPlay.turn1Depth;
+          const d2 = this.depthLY;
+          const t1 = this.passPlay.turn1Time;
+          const t2 = this.totalElapsedSec;
+          const p1Won = d1 > d2 || (d1 === d2 && t1 <= t2);
+          const winner = p1Won ? this.passPlay.turn1Player : this.passPlay.turn2Player;
+
+          mpBox.style.display = 'block';
+          mpBox.innerHTML = `<div class="font-pixel" style="font-size:12px; color:#fde68a;">🏆 ${winner} WINS!</div>
+            <div style="font-size:19px; color:#cbd5e1; margin-top:4px;">
+              ${this.passPlay.turn1Player}: <strong>${d1.toLocaleString()} LY</strong> (${t1.toFixed(1)}s) &nbsp;vs&nbsp;
+              ${this.passPlay.turn2Player}: <strong>${d2.toLocaleString()} LY</strong> (${t2.toFixed(1)}s)
+            </div>`;
+
+          breakdown.innerHTML = this.runLog.map((item2, idx) => {
+            const item1 = this.passPlay.turn1Log[idx] || { answer: '---', ly: 0, emoji: '⬛' };
+            return `<div class="breakdown-row" style="flex-direction:column; align-items:stretch; gap:4px;">
+              <div style="font-size:16px; color:#94a3b8;">${idx + 1}. ${item2.prompt}</div>
+              <div style="display:flex; justify-content:space-between; font-size:18px;">
+                <span style="color:#38bdf8;">${item1.emoji} ${this.passPlay.turn1Player}: <strong>${item1.answer}</strong> (+${item1.ly})</span>
+                <span style="color:#c084fc;">${item2.emoji} ${this.passPlay.turn2Player}: <strong>${item2.answer}</strong> (+${item2.ly})</span>
+              </div>
+            </div>`;
+          }).join('');
+        } else if (this.mode === 'online') {
+          this.renderOnlineSummaryComparison();
+        } else if (this.mode === 'duel') {
+          const won = this.depthLY > this.rivalDepth ||
+            (this.depthLY === this.rivalDepth && this.totalElapsedSec <= this.rivalElapsedSec);
+          mpBox.style.display = 'block';
+          mpBox.innerHTML = `<div class="font-pixel" style="font-size:12px; color:${won ? '#34d399' : '#f87171'};">${won ? '🏆 VICTORY IN 1V1 DUEL!' : '💀 DEFEATED BY RIVAL!'}</div>
+            <div style="font-size:19px; color:#cbd5e1; margin-top:4px;">YOU: ${this.depthLY.toLocaleString()} LY (${this.totalElapsedSec.toFixed(1)}s) • RIVAL: ${this.rivalDepth.toLocaleString()} LY (${this.rivalElapsedSec.toFixed(1)}s)</div>`;
+          this.renderStandardBreakdown(breakdown);
+        } else if (this.mode === 'fleet') {
+          const rank = this.computeFleetRank();
+          mpBox.style.display = 'block';
+          mpBox.innerHTML = `<div class="font-pixel" style="font-size:12px; color:#c084fc;">🦐 FINAL FLEET PLACEMENT: #${rank} OUT OF 40</div>`;
+          this.renderStandardBreakdown(breakdown);
+        } else {
+          mpBox.style.display = 'none';
+          this.renderStandardBreakdown(breakdown);
+        }
+      },
+
+      renderStandardBreakdown(container) {
+        container.innerHTML = this.runLog.map((item, idx) => `
+          <div class="breakdown-row">
+            <div style="text-align:left;">
+              <div style="font-size:16px; color:#94a3b8;">${idx + 1}. ${item.prompt}</div>
+              <div style="color:#f8fafc;">${item.emoji} <strong>${item.answer}</strong> ${item.viaWeb ? '🌐' : ''}</div>
+            </div>
+            <div style="text-align:right; white-space:nowrap;">
+              <div style="color:#fbbf24; font-weight:bold;">+${item.ly} LY</div>
+              <div style="font-size:15px; color:#94a3b8;">${item.tierName}</div>
+            </div>
+          </div>
+        `).join('');
+      },
+
+      replayCurrentMode() {
+        if (this.mode === 'online') {
+          this.openOnlineLobby();
+        } else if (this.mode === 'daily') {
+          this.startMode('unlimited');
+        } else {
+          this.startMode(this.mode);
+        }
+      },
+
+      copyTextToClipboard(text, toastMessage = 'COPIED TO CLIPBOARD!') {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          this.showToast(toastMessage);
+        } catch (_) {
+          this.showToast('COPY FAILED');
+        }
+        document.body.removeChild(ta);
+      },
+
+      shareResult() {
+        const grid = this.runLog.map(r => r.emoji).join('');
+        const text = `🦐 1 in a Star-Krillion 🌌\nDepth: ${this.depthLY.toLocaleString()} LY\n${grid}`;
+        this.copyTextToClipboard(text, 'RARITY GRID COPIED!');
+      },
+
+      /* --- COSMETICS LOCKER & HELP --- */
+      openLocker() {
+        this.hideAllModals();
+        document.getElementById('lockerModal').style.display = 'flex';
+        this.renderLocker();
+      },
+
+      openHelp() {
+        this.hideAllModals();
+        document.getElementById('helpModal').style.display = 'flex';
+      },
+
+      switchLockerTab(tab) {
+        this.lockerTab = tab;
+        document.getElementById('tabSkins').classList.toggle('active', tab === 'skins');
+        document.getElementById('tabDrones').classList.toggle('active', tab === 'drones');
+        document.getElementById('tabEmotes').classList.toggle('active', tab === 'emotes');
+        this.renderLocker();
+      },
+
+      renderLocker() {
+        const grid = document.getElementById('lockerGrid');
+        const tab = this.lockerTab;
+        const items = COSMETICS[tab];
+
+        grid.innerHTML = items.map(item => {
+          const unlockedKey = tab === 'skins' ? 'unlockedSkins' : tab === 'drones' ? 'unlockedDrones' : 'unlockedEmotes';
+          const equippedKey = tab === 'skins' ? 'equippedSkin' : tab === 'drones' ? 'equippedDrone' : 'equippedEmote';
+          const isUnlocked = this.save[unlockedKey].includes(item.id);
+          const isEquipped = this.save[equippedKey] === item.id;
+
+          const preview = tab === 'skins'
+            ? `<div style="width:32px; height:32px; border-radius:4px; background:${item.body}; border:3px solid ${item.visor};"></div>`
+            : `<div style="font-size:28px;">${tab === 'drones' ? item.icon : item.id}</div>`;
+
+          const actionBtn = isEquipped
+            ? `<button class="pixel-btn pixel-btn-emerald" style="font-size:9px; padding:6px 10px;" disabled>EQUIPPED</button>`
+            : isUnlocked
+              ? `<button class="pixel-btn pixel-btn-cyan" style="font-size:9px; padding:6px 10px;" onclick="Game.equipCosmetic('${tab}', '${item.id}')">EQUIP</button>`
+              : `<button class="pixel-btn pixel-btn-gold" style="font-size:9px; padding:6px 10px;" onclick="Game.buyCosmetic('${tab}', '${item.id}', ${item.cost})">🪙 ${item.cost}</button>`;
+
+          return `<div class="locker-item ${isEquipped ? 'equipped' : ''}">
+            ${preview}
+            <div class="font-pixel" style="font-size:9px; line-height:1.4;">${item.name}</div>
+            ${actionBtn}
+          </div>`;
+        }).join('');
+      },
+
+      buyCosmetic(tab, id, cost) {
+        if (this.save.tokens < cost) {
+          SoundFX.playInvalidBuzz();
+          this.showToast('NOT ENOUGH STAR TOKENS!');
+          return;
+        }
+        const unlockedKey = tab === 'skins' ? 'unlockedSkins' : tab === 'drones' ? 'unlockedDrones' : 'unlockedEmotes';
+        this.save.tokens -= cost;
+        this.save[unlockedKey].push(id);
+        this.equipCosmetic(tab, id);
+        SoundFX.playCoinWinner();
+      },
+
+      equipCosmetic(tab, id) {
+        const equippedKey = tab === 'skins' ? 'equippedSkin' : tab === 'drones' ? 'equippedDrone' : 'equippedEmote';
+        this.save[equippedKey] = id;
+        this.persistSave();
+        this.updateTopHud();
+        this.renderLocker();
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      Game.init();
+    });
+  </script>
+</body>
+</html>
