@@ -3184,6 +3184,27 @@
       _hbTimer: null,
       _lastRxAt: 0,
       _hbWarnedAt: 0,
+      _lastJoinError: '',
+
+      // ICE servers for EVERY Peer constructed below (warm-up, host,
+      // guest). Left to its defaults, PeerJS has no dependable TURN
+      // relay: when a direct peer-to-peer path can't be punched —
+      // carrier-grade NAT on phones is the normal case — ICE never
+      // completes, the data channel never opens, and the guest's join
+      // dies without a word. The Open Relay Project's free public TURN
+      // servers give those peers a relay path so the connection can
+      // actually complete.
+      PEER_OPTS: {
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun.relay.metered.ca:80' },
+            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+          ]
+        }
+      },
 
       GAME_TYPE_DESCS: {
         duel: 'Classic 7-prompt duel — deepest dive wins, speed breaks ties.',
@@ -3243,7 +3264,7 @@
       warmUp() {
         if (typeof Peer === 'undefined' || this.peer || this._warmPeer) return;
         try {
-          this._warmPeer = new Peer();
+          this._warmPeer = new Peer(this.PEER_OPTS);
           this._warmPeer.on('error', () => {});
         } catch (_) {
           this._warmPeer = null;
@@ -3321,7 +3342,7 @@
 
       _createHostPeer() {
         this._roomOpen = false;
-        this.peer = new Peer(`starkrill-room-${this.roomCode}`);
+        this.peer = new Peer(`starkrill-room-${this.roomCode}`, this.PEER_OPTS);
         this._armJoinTimeout();
 
         this.peer.on('open', () => {
@@ -3359,6 +3380,11 @@
           }
           if (!this._roomOpen) {
             this.setStatus(`RELAY ERROR (${(err && err.type) || 'NETWORK'}) — TRY AGAIN`, '#f87171');
+          } else if (!this.connected) {
+            // Room is open and we're waiting in the lobby: surface relay
+            // errors here instead of swallowing them — silence on the
+            // host screen made dying rooms look perfectly fine.
+            this.setStatus(`⚠️ RELAY ERROR (${(err && err.type) || 'NETWORK'}) WHILE WAITING — IF YOUR RIVAL CAN'T GET IN, TAP "CREATE CODE" FOR A FRESH ROOM.`, '#f87171');
           }
         });
       },
@@ -3384,6 +3410,11 @@
           try { stale.close(); } catch (_) {}
         }
         this.conn = connection;
+        // Make the knock visible the moment it lands: the channel may
+        // still be negotiating (or may never finish opening), and a
+        // silent host screen made failed joins look like nothing ever
+        // knocked. 'open'/HELLO overwrite this when things go well.
+        this.setStatus('RIVAL CONNECTING...', '#38bdf8');
         this.setupConnectionEvents();
       },
 
@@ -3419,13 +3450,14 @@
         this._joinPhase = 'joining';
         this._joinCode = code;
         this._busyRefused = false;
+        this._lastJoinError = '';
         this._joinAttemptNo = 0;
         this._attemptSettled = true;
         this._joinDeadlineAt = Date.now() + 20000;
         this._deadlineTimer = setTimeout(() => this._failJoin(), 20500);
         this.setStatus(`LOOKING FOR ROOM "${code}"...`, '#38bdf8');
 
-        this.peer = new Peer();
+        this.peer = new Peer(this.PEER_OPTS);
         this.peer.on('open', () => {
           if (this._joinPhase === 'joining' && !this.conn && !this._retryTimer) {
             this._attemptJoin();
@@ -3440,6 +3472,9 @@
 
         this.peer.on('error', (err) => {
           if (this._joinPhase === 'joining') {
+            // Remember the most recent failure stage: the final join
+            // verdict reports it, so a dead join says WHY it died.
+            if (err && err.type) this._lastJoinError = String(err.type).toUpperCase();
             if (err && err.type === 'peer-unavailable') {
               // Room not registered (yet) — a failed knock, not a verdict.
               this._failAttempt();
@@ -3463,6 +3498,9 @@
         }
         this._joinAttemptNo++;
         this._attemptSettled = false;
+        // Per-attempt slate: the final verdict names what the LAST
+        // knock died of, not a stale error from an earlier one.
+        this._lastJoinError = '';
         if (this._joinAttemptNo > 1) {
           this.setStatus(`STILL LOOKING FOR ROOM "${this._joinCode}" — THE HOST MAY STILL BE STARTING UP...`, '#38bdf8');
         }
@@ -3508,7 +3546,7 @@
         if (dead) {
           try { dead.close(); } catch (_) {}
         }
-        this.setStatus(`⚠️ ROOM "${this._joinCode}" DIDN'T ANSWER AFTER 20 SECONDS OF KNOCKING — THE HOST MAY HAVE CLOSED IT, OR THE CODE IS WRONG. TAP "JOIN ROOM" TO RETRY.`, '#f87171');
+        this.setStatus(`⚠️ ROOM "${this._joinCode}" DIDN'T ANSWER AFTER 20 SECONDS OF KNOCKING — THE HOST MAY HAVE CLOSED IT, OR THE CODE IS WRONG. TAP "JOIN ROOM" TO RETRY. (LAST ERROR: ${this._lastJoinError || 'NONE — CONNECTION NEVER OPENED'})`, '#f87171');
       },
 
       _startHeartbeat() {
@@ -3693,9 +3731,22 @@
           }
         });
 
-        conn.on('error', () => {
+        conn.on('error', (err) => {
           if (this.conn !== conn) return;
-          if (!opened && this._joinPhase === 'joining') this._failAttempt();
+          if (!opened && this._joinPhase === 'joining') {
+            if (err) this._lastJoinError = String(err.type || err.message || 'CONNECTION ERROR').toUpperCase();
+            this._failAttempt();
+          }
+        });
+
+        conn.on('iceStateChanged', (state) => {
+          if (this.conn !== conn) return;
+          // ICE dying before the channel opens is the signature of a
+          // peer-to-peer path that couldn't be established — record
+          // the stage so the join verdict can name it.
+          if (!opened && this._joinPhase === 'joining' && (state === 'disconnected' || state === 'failed')) {
+            this._lastJoinError = `ICE-${String(state).toUpperCase()}`;
+          }
         });
       },
 
