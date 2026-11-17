@@ -6,13 +6,13 @@
   <title>1 in a Star-Krillion</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://0.peerjs.com">
-  <link rel="dns-prefetch" href="https://0.peerjs.com">
+  <link rel="preconnect" href="https://broker.emqx.io">
+  <link rel="dns-prefetch" href="https://broker.emqx.io">
   <link rel="preconnect" href="https://en.wikipedia.org">
   <link rel="preconnect" href="https://www.wikidata.org">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
-  <!-- PeerJS for Serverless Cross-Device Online Multiplayer (WebRTC) -->
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- MQTT.js for relayed cross-device online multiplayer (MQTT over WSS) -->
+  <script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
   <style>
     :root {
       --bg-void: #050814;
@@ -3142,11 +3142,18 @@
     };
 
     /* =========================================================================
-       5. SERVERLESS ONLINE MULTIPLAYER ENGINE (PEERJS / WEBRTC ROOM CODES)
+       5. RELAYED ONLINE MULTIPLAYER ENGINE (MQTT OVER WSS — PUBLIC BROKER)
+       Both phones connect OUT to a public MQTT broker over secure
+       websockets and swap game messages on two per-room topics
+       (starkrill/v1/<code>/to-host and starkrill/v1/<code>/to-guest).
+       No peer-to-peer connection is ever negotiated: the old WebRTC
+       transport died on carrier networks because no candidate pair
+       would validate and the free relays never produced a usable relay
+       candidate, while plain outbound websockets worked every time —
+       so now the whole game rides that kind of connection.
     ========================================================================= */
     const OnlineNet = {
-      peer: null,
-      conn: null,
+      client: null,
       isHost: false,
       roomCode: '',
       myName: 'STAR-KRILL',
@@ -3159,67 +3166,70 @@
       connected: false,
       lobbyGameType: 'duel',
       rivalForfeit: false,
-      _hostRetries: 0,
 
       /* --- Reliability machinery -------------------------------------------
-         _sendQueue:     messages produced before the data channel finished
-                         opening are held and flushed on 'open' instead of
-                         being silently dropped by PeerJS.
+         Transport: MQTT over secure websockets through a public broker
+         (see BROKERS below). Both phones make only OUTBOUND websocket
+         connections to the broker — the one kind of connection that
+         worked every time even on the worst carrier NAT — and all game
+         messages ride the room's two topics. There is no peer-to-peer
+         path to negotiate, so there is nothing for a NAT to kill.
+         _sendQueue:     messages produced before the channel is open
+                         are held and flushed on open instead of being
+                         silently dropped.
          _joinPhase:     guest join state machine — 'idle' | 'joining' |
-                         'joined'. While 'joining', failed knocks retry
-                         with backoff until the ~60s deadline.
-         _attemptIceState / _joinIceBest: furthest ICE negotiation stage
-                         reached by the current attempt / the whole join.
-                         An attempt whose ICE reached 'checking' is alive
-                         mid-negotiation, so the watchdog spares it (see
-                         _onAttemptWatchdog); the final verdict reports
-                         the furthest stage so a dead join says how far
-                         the connection actually got.
-         heartbeat:      PING/PONG every 10s while connected; missed traffic
-                         only raises an "unstable" warning, never a kick. */
+                         'joined'. While 'joining', the guest republishes
+                         its HELLO knock every few seconds until the
+                         host's first reply opens the channel or the
+                         ~60s deadline delivers the verdict.
+         _sessionId:     per-room stamp the host mints when the room
+                         opens and puts on every host message; the guest
+                         adopts it from the host's first reply, and both
+                         sides ignore traffic stamped with a wrong one —
+                         so two rooms that happen to share a code on the
+                         public broker never cross-talk. The guest also
+                         stamps a random _gid on its messages so the
+                         host can tell its own guest's knocks from a
+                         stranger's.
+         heartbeat:      PING/PONG every 10s while connected; missed
+                         traffic first raises an "unstable" warning, and
+                         only a full minute of silence is treated as the
+                         rival having left (their BYE usually says so
+                         sooner — see _onRivalGone). */
       _sendQueue: [],
       _joinPhase: 'idle',
       _joinCode: '',
       _joinDeadlineAt: 0,
       _joinAttemptNo: 0,
-      _attemptTimer: null,
-      _retryTimer: null,
+      _knockTimer: null,
       _deadlineTimer: null,
-      _attemptSettled: true,
       _busyRefused: false,
       _roomOpen: false,
       _hbTimer: null,
       _lastRxAt: 0,
       _hbWarnedAt: 0,
       _lastJoinError: '',
-      _attemptStartedAt: 0,
-      _attemptIceState: '',
-      _joinIceBest: '',
+      _channelOpen: false,
+      _sessionId: '',
+      _hostSid: '',
+      _guestGid: '',
+      _brokerGen: 0,
 
-      // ICE servers for EVERY Peer constructed below (warm-up, host,
-      // guest). Left to its defaults, PeerJS has no dependable TURN
-      // relay: when a direct peer-to-peer path can't be punched —
-      // carrier-grade NAT on phones is the normal case — ICE never
-      // completes, the data channel never opens, and the guest's join
-      // dies without a word. Two independent free public TURN providers
-      // (Open Relay Project + freeturn.net) give those peers a relay
-      // path so the connection can actually complete — and if one
-      // provider's shared endpoints are saturated and can't allocate,
-      // the other still can.
-      PEER_OPTS: {
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun.relay.metered.ca:80' },
-            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'stun:freeturn.net:3478' },
-            { urls: 'turn:freeturn.net:3478', username: 'free', credential: 'free' },
-            { urls: 'turn:freeturn.net:3478?transport=tcp', username: 'free', credential: 'free' }
-          ]
-        }
-      },
+      // Public MQTT brokers (secure websockets). The primary is tried
+      // first; if it errors or closes before the first connect lands,
+      // the fallback gets its one try. After a successful connect the
+      // MQTT library auto-reconnects to the same broker and resubscribes
+      // by itself, so a dropped phone connection heals without the room
+      // ever closing.
+      BROKERS: [
+        'wss://broker.emqx.io:8084/mqtt',
+        'wss://broker.hivemq.com:8884/mqtt'
+      ],
+
+      _topicToHost() { return `starkrill/v1/${this.roomCode}/to-host`; },
+      _topicToGuest() { return `starkrill/v1/${this.roomCode}/to-guest`; },
+      _peerTopic() { return this.isHost ? this._topicToGuest() : this._topicToHost(); },
+      _myTopic() { return this.isHost ? this._topicToHost() : this._topicToGuest(); },
 
       GAME_TYPE_DESCS: {
         duel: 'Classic 7-prompt duel — deepest dive wins, speed breaks ties.',
@@ -3271,25 +3281,33 @@
         }
       },
 
-      // Warm up the PeerJS broker connection (websocket + TLS) as soon as
-      // the multiplayer menu opens, so registration overlaps with the
-      // player reading the screen instead of starting cold on HOST/JOIN.
-      _warmPeer: null,
+      // Warm up the path to the broker (DNS + TLS + MQTT handshake) as
+      // soon as the multiplayer menu opens, so the real connect on
+      // HOST/JOIN starts warm instead of cold. The warm client never
+      // carries traffic — hosting or joining always opens its own
+      // client, exactly like the flow this replaced.
+      _warmClient: null,
       _joinTimer: null,
       warmUp() {
-        if (typeof Peer === 'undefined' || this.peer || this._warmPeer) return;
+        if (typeof mqtt === 'undefined' || this.client || this._warmClient) return;
         try {
-          this._warmPeer = new Peer(this.PEER_OPTS);
-          this._warmPeer.on('error', () => {});
+          const warm = mqtt.connect(this.BROKERS[0], {
+            clientId: `starkrill-warm-${Math.random().toString(36).slice(2, 10)}`,
+            clean: true,
+            connectTimeout: 8000,
+            reconnectPeriod: 0
+          });
+          warm.on('error', () => {});
+          this._warmClient = warm;
         } catch (_) {
-          this._warmPeer = null;
+          this._warmClient = null;
         }
       },
 
       _killWarm() {
-        if (this._warmPeer) {
-          try { this._warmPeer.destroy(); } catch (_) {}
-          this._warmPeer = null;
+        if (this._warmClient) {
+          try { this._warmClient.end(true); } catch (_) {}
+          this._warmClient = null;
         }
       },
 
@@ -3310,17 +3328,10 @@
         }
       },
 
-      _clearAttemptTimer() {
-        if (this._attemptTimer) {
-          clearTimeout(this._attemptTimer);
-          this._attemptTimer = null;
-        }
-      },
-
-      _clearRetryTimer() {
-        if (this._retryTimer) {
-          clearTimeout(this._retryTimer);
-          this._retryTimer = null;
+      _clearKnockTimer() {
+        if (this._knockTimer) {
+          clearInterval(this._knockTimer);
+          this._knockTimer = null;
         }
       },
 
@@ -3331,18 +3342,110 @@
         }
       },
 
+      // Connect to a broker, falling back ONCE to the second broker if
+      // the first errors or closes before its first connect lands.
+      // hooks: onReady(client, firstConnect), onMessage(topic, payload),
+      // onFallback(), onFatal(), onDown(). After the first connect the
+      // library's own auto-reconnect owns recovery; onReady fires again
+      // on each reconnect and must stay idempotent.
+      _connectBroker(hooks) {
+        const gen = ++this._brokerGen;
+        let idx = 0;
+        const attempt = () => {
+          if (gen !== this._brokerGen) return;
+          if (typeof mqtt === 'undefined') {
+            if (hooks.onFatal) hooks.onFatal();
+            return;
+          }
+          let settled = false;
+          let client = null;
+          const giveUp = () => {
+            if (gen !== this._brokerGen) return;
+            clearTimeout(deadline);
+            if (client) {
+              try { client.end(true); } catch (_) {}
+              if (this.client === client) this.client = null;
+            }
+            idx++;
+            if (idx < this.BROKERS.length) {
+              if (hooks.onFallback) hooks.onFallback();
+              attempt();
+            } else if (hooks.onFatal) {
+              hooks.onFatal();
+            }
+          };
+          const deadline = setTimeout(() => { if (!settled) giveUp(); }, 9000);
+          try {
+            client = mqtt.connect(this.BROKERS[idx], {
+              clientId: `starkrill-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`,
+              clean: true,
+              connectTimeout: 8000,
+              reconnectPeriod: 1000,
+              keepalive: 30
+            });
+          } catch (_) {
+            giveUp();
+            return;
+          }
+          this.client = client;
+          client.on('connect', () => {
+            if (gen !== this._brokerGen || this.client !== client) return;
+            const first = !settled;
+            settled = true;
+            clearTimeout(deadline);
+            hooks.onReady(client, first);
+          });
+          client.on('message', (topic, payload) => {
+            if (gen !== this._brokerGen || this.client !== client) return;
+            if (hooks.onMessage) hooks.onMessage(topic, payload);
+          });
+          client.on('error', () => {
+            // The library follows an error with its own reconnect
+            // attempts; the per-attempt deadline above and the 'close'
+            // handler decide when a broker is truly unreachable.
+          });
+          client.on('close', () => {
+            if (gen !== this._brokerGen || this.client !== client) return;
+            if (!settled) giveUp();
+            else if (hooks.onDown) hooks.onDown();
+          });
+          client.on('offline', () => {
+            if (gen !== this._brokerGen || this.client !== client) return;
+            if (settled && hooks.onDown) hooks.onDown();
+          });
+        };
+        attempt();
+      },
+
+      _subscribeMine(client, done) {
+        try {
+          client.subscribe(this._myTopic(), { qos: 0 }, (err) => { if (done) done(!err); });
+        } catch (_) {
+          if (done) done(false);
+        }
+      },
+
+      _onBrokerMessage(topic, payload) {
+        let msg = null;
+        try { msg = JSON.parse(payload.toString()); } catch (_) { return; }
+        if (!msg || typeof msg !== 'object' || !msg.type) return;
+        if (this.isHost) this._onHostMessage(msg);
+        else this._onGuestMessage(msg);
+      },
+
       hostRoom() {
         this.disconnect();
-        if (typeof Peer === 'undefined') {
-          this.setStatus('WEBRTC UNAVAILABLE IN THIS BROWSER — TRY LOCAL PASS & PLAY!', '#f87171');
+        if (typeof mqtt === 'undefined') {
+          this.setStatus('⚠️ MULTIPLAYER LIBRARY FAILED TO LOAD — CHECK YOUR CONNECTION AND RELOAD THE PAGE.', '#f87171');
           return;
         }
 
         const rawName = (document.getElementById('onlineCallsignInput').value || '').trim().toUpperCase();
         this.myName = rawName || 'HOST-KRILL';
         this.isHost = true;
-        this._hostRetries = 0;
         this.roomCode = this.generateCode();
+        this._sessionId = Math.random().toString(36).slice(2, 12);
+        this._guestGid = '';
 
         const box = document.getElementById('onlineRoomStatusBox');
         const codeWrap = document.getElementById('onlineCodeWrapper');
@@ -3352,91 +3455,118 @@
         document.getElementById('onlineStartMatchBtn').style.display = 'none';
         this.setStatus('OPENING ORBITAL BEACON...', '#38bdf8');
 
-        this._createHostPeer();
-      },
-
-      _createHostPeer() {
-        this._roomOpen = false;
-        this.peer = new Peer(`starkrill-room-${this.roomCode}`, this.PEER_OPTS);
         this._armJoinTimeout();
-
-        this.peer.on('open', () => {
-          this._clearJoinTimeout();
-          this._roomOpen = true;
-          this._hostRetries = 0;
-          if (!this.connected) {
-            this.setStatus('WAITING FOR RIVAL TO ENTER CODE OR OPEN YOUR INVITE LINK...', '#fbbf24');
-          }
-        });
-
-        this.peer.on('connection', (connection) => this._onHostConnection(connection));
-
-        this.peer.on('disconnected', () => {
-          // The broker socket dropped (mobile network switches do this
-          // constantly). The room id is ours — re-register it instead of
-          // letting the room silently stop being joinable.
-          try { this.peer.reconnect(); } catch (_) {}
-          if (!this.connected) {
-            this.setStatus('RELAY LINK LOST — RECONNECTING YOUR ROOM...', '#fbbf24');
-          }
-        });
-
-        this.peer.on('error', (err) => {
-          // Room-code collision on the public relay: silently mint a fresh
-          // code and re-open the beacon instead of dead-ending the host.
-          if (err && err.type === 'unavailable-id' && this.isHost && this._hostRetries < 5) {
-            this._hostRetries++;
-            this.roomCode = this.generateCode();
-            document.getElementById('hostedRoomCodeText').textContent = this.roomCode;
-            this.setStatus('CODE COLLISION — NEW CODE GENERATED!', '#fbbf24');
-            try { this.peer.destroy(); } catch (_) {}
-            this._createHostPeer();
-            return;
-          }
-          if (!this._roomOpen) {
-            this.setStatus(`RELAY ERROR (${(err && err.type) || 'NETWORK'}) — TRY AGAIN`, '#f87171');
-          } else if (!this.connected) {
-            // Room is open and we're waiting in the lobby: surface relay
-            // errors here instead of swallowing them — silence on the
-            // host screen made dying rooms look perfectly fine.
-            this.setStatus(`⚠️ RELAY ERROR (${(err && err.type) || 'NETWORK'}) WHILE WAITING — IF YOUR RIVAL CAN'T GET IN, TAP "CREATE CODE" FOR A FRESH ROOM.`, '#f87171');
-          }
+        this._connectBroker({
+          onReady: (client) => {
+            this._subscribeMine(client, (ok) => {
+              if (this.client !== client || !ok) return;
+              if (!this._roomOpen) {
+                this._clearJoinTimeout();
+                this._roomOpen = true;
+                if (!this.connected) {
+                  this.setStatus('WAITING FOR RIVAL TO ENTER CODE OR OPEN YOUR INVITE LINK...', '#fbbf24');
+                }
+              } else if (this._channelOpen) {
+                // Back from a broker drop: anything queued meanwhile
+                // goes out now.
+                this._flushQueue();
+              } else if (!this.connected) {
+                this.setStatus('WAITING FOR RIVAL TO ENTER CODE OR OPEN YOUR INVITE LINK...', '#fbbf24');
+              }
+            });
+          },
+          onFallback: () => {
+            // The second broker gets its own fresh window to open the room.
+            this._armJoinTimeout();
+          },
+          onFatal: () => {
+            this._clearJoinTimeout();
+            if (!this._roomOpen) {
+              this.setStatus('⚠️ RELAY ERROR (BROKER-UNREACHABLE) — TAP "CREATE CODE" TO RETRY.', '#f87171');
+            }
+          },
+          onDown: () => {
+            if (!this.connected && this._roomOpen) {
+              this.setStatus('RELAY LINK LOST — RECONNECTING YOUR ROOM...', '#fbbf24');
+            }
+          },
+          onMessage: (topic, payload) => this._onBrokerMessage(topic, payload)
         });
       },
 
-      _onHostConnection(connection) {
-        const inGame = Game.mode === 'online' && (Game.state === 'playing' || Game.state === 'summary');
-        if ((this.conn && this.conn.open) || inGame) {
-          // Already matched, or a match is underway: refuse fast and
-          // specifically instead of leaving the extra guest hanging on a
-          // channel nobody will ever answer.
-          connection.on('open', () => {
-            try { connection.send({ type: 'ROOM_BUSY' }); } catch (_) {}
-            setTimeout(() => { try { connection.close(); } catch (_) {} }, 350);
-          });
+      _onHostMessage(msg) {
+        // Session filter: a guest who latched onto a DIFFERENT room
+        // that shares our code stamps that room's session id, not ours.
+        if (msg._sid && msg._sid !== this._sessionId) return;
+        if (msg.type === 'HELLO') {
+          this._onGuestKnock(msg);
           return;
         }
-        if (this.conn) {
-          // A previous guest is still negotiating (channel never opened):
-          // the newest connection wins, the stale one is dropped. Its
-          // handlers are disarmed by the stale-connection guard.
-          const stale = this.conn;
-          this.conn = null;
-          try { stale.close(); } catch (_) {}
+        if (!this.connected) return; // before a match, only knocks matter
+        if (msg._gid && this._guestGid && msg._gid !== this._guestGid) return; // not our guest
+        this._handleData(msg);
+      },
+
+      _onGuestKnock(msg) {
+        const gid = msg._gid || '';
+        // An accepted guest is OUR guest for the life of the room:
+        // acceptance is recorded in _guestGid, and any further HELLO
+        // carrying that gid gets the welcome re-sent — in the lobby,
+        // mid-match, whenever. Guests republish their HELLO until the
+        // welcome lands, so re-knocks from our own guest are normal
+        // traffic, and answering one with ROOM_BUSY is the one
+        // response that can tear down a join that already succeeded:
+        // it must never happen, whatever state we're in.
+        if (gid && this._guestGid && gid === this._guestGid) {
+          this._publishNow({ type: 'HELLO', name: this.myName });
+          return;
         }
-        this.conn = connection;
-        // Make the knock visible the moment it lands: the channel may
-        // still be negotiating (or may never finish opening), and a
-        // silent host screen made failed joins look like nothing ever
-        // knocked. 'open'/HELLO overwrite this when things go well.
-        this.setStatus('RIVAL CONNECTING...', '#38bdf8');
-        this.setupConnectionEvents();
+        const inGame = Game.mode === 'online' && (Game.state === 'playing' || Game.state === 'summary');
+        if (this.connected || inGame) {
+          // A DIFFERENT guest knocking while we already have one, or
+          // while a match is underway: refuse fast and specifically
+          // instead of leaving them hanging on a room nobody will
+          // answer. The refusal is addressed to the knocking guest
+          // only (see the _to stamp), so our real guest never sees it.
+          this._publishNow({ type: 'ROOM_BUSY' }, { _to: gid });
+          return;
+        }
+        // First knock: on a relayed transport the knock IS the
+        // connection event — there is no separate channel to negotiate.
+        this._guestGid = msg._gid || '';
+        this.connected = true;
+        this._channelOpen = true;
+        this._clearJoinTimeout();
+        SoundFX.playCoinWinner();
+        this._startHeartbeat();
+        this.setStatus('RIVAL CONNECTED! READY TO LAUNCH!', '#34d399');
+        const startBtn = document.getElementById('onlineStartMatchBtn');
+        startBtn.textContent = this.lobbyGameType === 'moonrace'
+          ? '🌕 LAUNCH MOON RACE!'
+          : this.lobbyGameType === 'lastship'
+            ? '💀 LAUNCH LAST SHIP STANDING!'
+            : this.lobbyGameType === 'meteor'
+              ? '☄️ LAUNCH METEOR STORM!'
+              : '🚀 LAUNCH ONLINE MATCH!';
+        startBtn.style.display = 'inline-flex';
+        this._rawSend({ type: 'HELLO', name: this.myName });
+        this._flushQueue();
+        this._handleData(msg);
       },
 
       joinRoom() {
+        // Idempotent: the join fires itself the moment the 6th digit
+        // is typed, and a JOIN ROOM tap a moment later is the SAME
+        // join arriving twice. Restarting here would disconnect,
+        // publish a BYE, and — fatally — regenerate our guest id, so
+        // the host would see the re-knock as a stranger and refuse
+        // it. A join already in flight (or already established)
+        // swallows the extra call whole: no new id, no new timers,
+        // no second broker client.
+        if (this._joinPhase === 'joining' || this.connected) return;
         this.disconnect();
-        if (typeof Peer === 'undefined') {
-          this.setStatus('WEBRTC UNAVAILABLE IN THIS BROWSER — TRY LOCAL PASS & PLAY!', '#f87171');
+        if (typeof mqtt === 'undefined') {
+          this.setStatus('⚠️ MULTIPLAYER LIBRARY FAILED TO LOAD — CHECK YOUR CONNECTION AND RELOAD THE PAGE.', '#f87171');
           return;
         }
 
@@ -3457,156 +3587,112 @@
         codeWrap.style.display = 'none';
         document.getElementById('onlineStartMatchBtn').style.display = 'none';
 
-        // Forgiving join: the classic PeerJS failure is knocking before
-        // the host's room has finished registering with the relay — the
-        // relay answers 'peer-unavailable' and naive code declares the
-        // room dead. Instead, keep knocking with short backoff for up to
-        // ~60 seconds, and give each knock real time to connect (see
-        // _attemptJoin): the host is usually up within the first few
-        // tries, but a relayed connection can need most of that budget.
+        // Forgiving join: the classic failure is knocking before the
+        // host's room exists — the host may still be opening it, or a
+        // knock may simply get lost on the way. So the guest keeps
+        // knocking (republishing its HELLO) every few seconds for up
+        // to ~60 seconds; the host's first reply is what opens the
+        // channel.
         this._joinPhase = 'joining';
         this._joinCode = code;
         this._busyRefused = false;
         this._lastJoinError = '';
-        this._joinIceBest = '';
         this._joinAttemptNo = 0;
-        this._attemptSettled = true;
+        this._guestGid = Math.random().toString(36).slice(2, 10);
+        this._hostSid = '';
         this._joinDeadlineAt = Date.now() + 60000;
         this._deadlineTimer = setTimeout(() => this._failJoin(), 60500);
         this.setStatus(`LOOKING FOR ROOM "${code}"...`, '#38bdf8');
 
-        this.peer = new Peer(this.PEER_OPTS);
-        this.peer.on('open', () => {
-          if (this._joinPhase === 'joining' && !this.conn && !this._retryTimer) {
-            this._attemptJoin();
-          }
+        this._connectBroker({
+          onReady: (client) => {
+            this._subscribeMine(client, (ok) => {
+              if (this.client !== client || !ok) return;
+              if (this._joinPhase === 'joining') {
+                this._knock();
+                if (!this._knockTimer) {
+                  this._knockTimer = setInterval(() => {
+                    if (this._joinPhase === 'joining') this._knock();
+                  }, 4000);
+                }
+              } else if (this._channelOpen) {
+                // Back from a broker drop: anything queued meanwhile
+                // goes out now.
+                this._flushQueue();
+              }
+            });
+          },
+          onFallback: () => {},
+          onFatal: () => {
+            // Both brokers unreachable: the join deadline delivers the
+            // verdict with this tag.
+            this._lastJoinError = 'BROKER-UNREACHABLE';
+          },
+          onDown: () => {},
+          onMessage: (topic, payload) => this._onBrokerMessage(topic, payload)
         });
+      },
 
-        this.peer.on('disconnected', () => {
-          // Broker socket dropped mid-join: re-register and let the
-          // attempt loop carry on.
-          try { this.peer.reconnect(); } catch (_) {}
-        });
-
-        this.peer.on('error', (err) => {
-          if (this._joinPhase === 'joining') {
-            // Remember the most recent failure stage: the final join
-            // verdict reports it, so a dead join says WHY it died.
-            if (err && err.type) this._lastJoinError = String(err.type).toUpperCase();
-            if (err && err.type === 'peer-unavailable') {
-              // Room not registered (yet) — a failed knock, not a verdict.
-              this._failAttempt();
-            }
-            // Any other error while joining: the per-attempt watchdog and
-            // the 60s deadline deliver the final, specific verdict.
+      _onGuestMessage(msg) {
+        // Session filter: once we've adopted the host's session stamp,
+        // traffic stamped with any other one belongs to a different
+        // room that shares our code — ignore it.
+        if (this._hostSid && msg._sid && msg._sid !== this._hostSid) return;
+        // Addressed traffic: a message meant for a different guest of
+        // the same room (e.g. a ROOM_BUSY refusal) is not ours.
+        if (msg._to && msg._to !== this._guestGid) return;
+        if (!this.connected) {
+          if (this._joinPhase !== 'joining') return;
+          if (msg.type === 'ROOM_BUSY') {
+            this._handleData(msg);
             return;
           }
-          if (!this.connected) {
-            this.setStatus(`RELAY ERROR (${(err && err.type) || 'NETWORK'}) — TAP "JOIN ROOM" TO RETRY.`, '#f87171');
+          if (msg.type === 'BYE') {
+            // The host closed the room while we were knocking:
+            // remember it for the verdict, but keep knocking until the
+            // deadline in case a fresh room with this code opens.
+            this._lastJoinError = 'HOST-CLOSED';
+            return;
           }
-        });
-      },
-
-      // How far ICE negotiation got, ranked: an attempt that reached
-      // 'checking' is mid-negotiation (alive), not a dead knock.
-      _iceRank(state) {
-        switch (state) {
-          case 'checking': return 1;
-          case 'connected': return 2;
-          case 'completed': return 3;
-          default: return 0;
+          // The host's first reply IS the channel opening — there is
+          // no separate negotiation to wait for on a relayed transport.
+          this._onGuestChannelOpen(msg);
         }
+        this._handleData(msg);
       },
 
-      _attemptJoin() {
+      _onGuestChannelOpen(msg) {
+        if (msg._sid) this._hostSid = msg._sid;
+        this._joinPhase = 'joined';
+        this.connected = true;
+        this._channelOpen = true;
+        this._clearKnockTimer();
+        this._clearDeadlineTimer();
+        SoundFX.playCoinWinner();
+        this._startHeartbeat();
+        this.setStatus('CONNECTED! WAITING FOR HOST TO LAUNCH...', '#34d399');
+        this._flushQueue();
+      },
+
+      _knock() {
         if (this._joinPhase !== 'joining' || this.connected) return;
-        this._clearRetryTimer();
         if (Date.now() >= this._joinDeadlineAt) {
           this._failJoin();
           return;
         }
         this._joinAttemptNo++;
-        this._attemptSettled = false;
-        this._attemptStartedAt = Date.now();
-        this._attemptIceState = '';
-        // Per-attempt slate: the final verdict names what the LAST
-        // knock died of, not a stale error from an earlier one.
-        this._lastJoinError = '';
         if (this._joinAttemptNo > 1) {
           this.setStatus(`STILL LOOKING FOR ROOM "${this._joinCode}" — THE HOST MAY STILL BE STARTING UP... (TRY ${this._joinAttemptNo})`, '#38bdf8');
         }
-        try {
-          this.conn = this.peer.connect(`starkrill-room-${this._joinCode}`, { reliable: true });
-        } catch (_) {
-          this._failAttempt();
-          return;
-        }
-        this.setupConnectionEvents();
-        // Per-attempt watchdog: a knock with zero ICE progress after
-        // 15s counts as a failed attempt. 5s was far too eager — a
-        // relayed (TURN) connection on a mobile network can need
-        // longer than that just to allocate a relay, finish ICE
-        // negotiation and complete the DTLS handshake, and killing
-        // the attempt also tore down the channel the host was
-        // mid-negotiation with, so every retry started both sides
-        // over from zero.
-        this._clearAttemptTimer();
-        this._attemptTimer = setTimeout(() => this._onAttemptWatchdog(), 15000);
-      },
-
-      _onAttemptWatchdog() {
-        if (this._joinPhase !== 'joining' || this._attemptSettled) return;
-        // ICE is negotiating: this attempt is ALIVE, not a dead knock.
-        // Spare it up to a 30s hard cap from its start before calling
-        // it failed — the overall 60s join deadline still bounds the
-        // total wait, and a channel 'close'/'error' can still settle
-        // the attempt sooner.
-        if (this._iceRank(this._attemptIceState) >= this._iceRank('checking')) {
-          const remaining = 30000 - (Date.now() - this._attemptStartedAt);
-          if (remaining > 0) {
-            this._attemptTimer = setTimeout(() => this._failAttempt(), remaining);
-            return;
-          }
-        }
-        this._failAttempt();
-      },
-
-      _failAttempt() {
-        if (this._joinPhase !== 'joining' || this._attemptSettled) return;
-        this._attemptSettled = true;
-        this._clearAttemptTimer();
-        const dead = this.conn;
-        this.conn = null;
-        if (dead) {
-          try { dead.close(); } catch (_) {}
-        }
-        if (Date.now() >= this._joinDeadlineAt) {
-          this._failJoin();
-          return;
-        }
-        const backoff = Math.min(2500, 700 + this._joinAttemptNo * 450);
-        this._clearRetryTimer();
-        this._retryTimer = setTimeout(() => this._attemptJoin(), backoff);
+        this._publishNow({ type: 'HELLO', name: this.myName });
       },
 
       _failJoin() {
         if (this._joinPhase !== 'joining') return;
         this._joinPhase = 'idle';
-        this._clearAttemptTimer();
-        this._clearRetryTimer();
+        this._clearKnockTimer();
         this._clearDeadlineTimer();
-        const dead = this.conn;
-        this.conn = null;
-        if (dead) {
-          try { dead.close(); } catch (_) {}
-        }
-        let lastErr = this._lastJoinError || 'NONE — CONNECTION NEVER OPENED';
-        // If any knock got ICE mid-negotiation, say so: "never opened,
-        // but ICE REACHED CHECKING" points at the connection path
-        // itself, not at a wrong code or a closed room.
-        if (!lastErr.startsWith('ICE-') && this._iceRank(this._joinIceBest) >= this._iceRank('checking')) {
-          lastErr += `, ICE REACHED ${this._joinIceBest.toUpperCase()}`;
-        }
+        const lastErr = this._lastJoinError || 'NONE — NO ANSWER FROM HOST';
         this.setStatus(`⚠️ ROOM "${this._joinCode}" DIDN'T ANSWER AFTER 60 SECONDS OF KNOCKING — THE HOST MAY HAVE CLOSED IT, OR THE CODE IS WRONG. TAP "JOIN ROOM" TO RETRY. (LAST ERROR: ${lastErr})`, '#f87171');
       },
 
@@ -3614,13 +3700,20 @@
         this._stopHeartbeat();
         this._lastRxAt = Date.now();
         this._hbTimer = setInterval(() => {
-          if (!this.conn || !this.conn.open) return;
+          if (!this.connected) return;
           this._rawSend({ type: 'PING' });
-          // Warn only: a silent channel is often just a sleeping phone or
-          // a slow tower handover. Never auto-kick on missed pongs.
+          // Warn first: a silent channel is often just a sleeping phone
+          // or a slow tower handover, so missed traffic only raises an
+          // "unstable" warning. A FULL MINUTE of total silence is the
+          // one exception — on a relayed transport there is no channel
+          // to drop, so that silence is how a vanished rival (dead
+          // phone, closed tab, their BYE never got out) is detected.
           if (Date.now() - this._lastRxAt > 26000 && Date.now() - this._hbWarnedAt > 30000) {
             this._hbWarnedAt = Date.now();
             Game.showToast('⚠️ CONNECTION UNSTABLE — CHECK YOUR SIGNAL');
+          }
+          if (Date.now() - this._lastRxAt > 60000) {
+            this._onRivalGone();
           }
         }, 10000);
       },
@@ -3632,196 +3725,132 @@
         }
       },
 
-      setupConnectionEvents() {
-        if (!this.conn) return;
-        // Capture THIS connection: PeerJS channels can be replaced (guest
-        // retries, a newer guest knocking), and events arriving late from
-        // a stale channel must never touch live match state.
-        const conn = this.conn;
-        let opened = false;
-        this._sendQueue.length = 0;
+      // Every post-connection message, from either direction. The
+      // transport routers (_onHostMessage / _onGuestMessage) have
+      // already applied the session and address filters.
+      _handleData(data) {
+        if (!data || typeof data !== 'object') return;
+        this._lastRxAt = Date.now();
 
-        conn.on('open', () => {
-          if (this.conn !== conn) return;
-          opened = true;
-          this.connected = true;
-          this._clearJoinTimeout();
-          if (this._joinPhase === 'joining') {
-            this._joinPhase = 'joined';
-            this._attemptSettled = true;
-            this._clearAttemptTimer();
-            this._clearRetryTimer();
-            this._clearDeadlineTimer();
-          }
-          SoundFX.playCoinWinner();
-          this._startHeartbeat();
-          this._rawSend({ type: 'HELLO', name: this.myName });
-          this._flushQueue();
+        if (data.type === 'PING') {
+          this._rawSend({ type: 'PONG' });
+          return;
+        } else if (data.type === 'PONG') {
+          return;
+        } else if (data.type === 'BYE') {
+          // The rival left on purpose (closed the lobby, returned to
+          // the menu): the same handling as a vanished rival below.
+          this._onRivalGone();
+          return;
+        } else if (data.type === 'ROOM_BUSY') {
+          // A refusal only means anything while we're still knocking.
+          // Once the channel is open we are IN: a stray or stale
+          // refusal (the host answering an old re-knock, a second
+          // room sharing our code) must never override or tear down
+          // an established join.
+          if (this.connected) return;
+          // Host refused us: a match is already underway in that room.
+          // Terminal — stop knocking and say exactly why.
+          this._busyRefused = true;
+          this._joinPhase = 'idle';
+          this._clearKnockTimer();
+          this._clearDeadlineTimer();
+          this.setStatus('⛔ THAT ROOM ALREADY HAS A MATCH UNDERWAY — ASK THE HOST FOR A FRESH CODE ONCE THEIR GAME ENDS.', '#f87171');
+          return;
+        } else if (data.type === 'HELLO') {
+          this.rivalName = String(data.name || 'RIVAL-KRILL').slice(0, 14);
           if (this.isHost) {
-            this.setStatus('RIVAL CONNECTED! READY TO LAUNCH!', '#34d399');
-            const startBtn = document.getElementById('onlineStartMatchBtn');
-            startBtn.textContent = this.lobbyGameType === 'moonrace'
-              ? '🌕 LAUNCH MOON RACE!'
-              : this.lobbyGameType === 'lastship'
-                ? '💀 LAUNCH LAST SHIP STANDING!'
-                : this.lobbyGameType === 'meteor'
-                  ? '☄️ LAUNCH METEOR STORM!'
-                  : '🚀 LAUNCH ONLINE MATCH!';
-            startBtn.style.display = 'inline-flex';
+            this.setStatus(`✅ ${this.rivalName} JOINED! CLICK LAUNCH!`, '#34d399');
           } else {
-            this.setStatus('CONNECTED! WAITING FOR HOST TO LAUNCH...', '#34d399');
+            this.setStatus(`✅ LINKED WITH ${this.rivalName}! STANDBY...`, '#34d399');
           }
-        });
-
-        conn.on('data', (data) => {
-          if (this.conn !== conn) return;
-          if (!data || typeof data !== 'object') return;
-          this._lastRxAt = Date.now();
-
-          if (data.type === 'PING') {
-            this._rawSend({ type: 'PONG' });
-            return;
-          } else if (data.type === 'PONG') {
-            return;
-          } else if (data.type === 'ROOM_BUSY') {
-            // Host refused us: a match is already underway in that room.
-            // Terminal — stop knocking and say exactly why.
-            this._busyRefused = true;
-            this._joinPhase = 'idle';
-            this._clearAttemptTimer();
-            this._clearRetryTimer();
-            this._clearDeadlineTimer();
-            this.setStatus('⛔ THAT ROOM ALREADY HAS A MATCH UNDERWAY — ASK THE HOST FOR A FRESH CODE ONCE THEIR GAME ENDS.', '#f87171');
-            return;
-          } else if (data.type === 'HELLO') {
-            this.rivalName = String(data.name || 'RIVAL-KRILL').slice(0, 14);
-            if (this.isHost) {
-              this.setStatus(`✅ ${this.rivalName} JOINED! CLICK LAUNCH!`, '#34d399');
-            } else {
-              this.setStatus(`✅ LINKED WITH ${this.rivalName}! STANDBY...`, '#34d399');
-            }
-          } else if (data.type === 'START_MATCH') {
-            const promptObjs = (data.promptIds || [])
-              .map(id => CATEGORIES.find(c => c.id === id))
-              .filter(Boolean);
-            if (promptObjs.length) {
-              this.resetMatchStats();
-              Game.launchOnlineMatch(promptObjs);
-            }
-          } else if (data.type === 'START_RACE') {
-            const promptObjs = (data.promptIds || [])
-              .map(id => CATEGORIES.find(c => c.id === id))
-              .filter(Boolean);
-            if (promptObjs.length && data.gameType) {
-              this.resetMatchStats();
-              Game.launchRace(data.gameType, promptObjs, { windowSec: data.windowSec || 20 });
-            }
-          } else if (data.type === 'RACE_PROGRESS') {
-            Game.onRaceProgress(data);
-          } else if (data.type === 'RACE_FINISH') {
-            Game.onRaceFinish(data);
-          } else if (data.type === 'ROUND_RESULT') {
-            Game.onRaceRoundResult(data);
-          } else if (data.type === 'PROGRESS') {
-            this.rivalDepth = data.depth || 0;
-            this.rivalRound = data.round || 0;
-            this.rivalLog = data.log || [];
-            if (data.finished) {
-              this.rivalFinished = true;
-              this.rivalTime = data.totalTime || 0;
-            }
-            Game.onOnlineRivalUpdate();
+        } else if (data.type === 'START_MATCH') {
+          const promptObjs = (data.promptIds || [])
+            .map(id => CATEGORIES.find(c => c.id === id))
+            .filter(Boolean);
+          if (promptObjs.length) {
+            this.resetMatchStats();
+            Game.launchOnlineMatch(promptObjs);
           }
-        });
-
-        conn.on('close', () => {
-          if (this.conn !== conn) return; // stale channel — ignore it
-          this.conn = null;
-          this.connected = false;
-          this._stopHeartbeat();
-
-          if (!opened) {
-            // A knock that never became a connection: the join retry
-            // loop owns the messaging, this is just bookkeeping.
-            if (this._joinPhase === 'joining') this._failAttempt();
-            return;
+        } else if (data.type === 'START_RACE') {
+          const promptObjs = (data.promptIds || [])
+            .map(id => CATEGORIES.find(c => c.id === id))
+            .filter(Boolean);
+          if (promptObjs.length && data.gameType) {
+            this.resetMatchStats();
+            Game.launchRace(data.gameType, promptObjs, { windowSec: data.windowSec || 20 });
           }
-          if (this._busyRefused) return; // ROOM_BUSY already explained it
-
-          if (Game.race && Game.race.active) {
-            Game.onRaceRivalDisconnect();
-            return;
-          }
-          if (Game.mode === 'online' && Game.state === 'playing') {
-            // Rival quit mid-match: the match is decided by forfeit using
-            // the last progress the rival sent.
-            this.rivalForfeit = true;
+        } else if (data.type === 'RACE_PROGRESS') {
+          Game.onRaceProgress(data);
+        } else if (data.type === 'RACE_FINISH') {
+          Game.onRaceFinish(data);
+        } else if (data.type === 'ROUND_RESULT') {
+          Game.onRaceRoundResult(data);
+        } else if (data.type === 'PROGRESS') {
+          this.rivalDepth = data.depth || 0;
+          this.rivalRound = data.round || 0;
+          this.rivalLog = data.log || [];
+          if (data.finished) {
             this.rivalFinished = true;
-            Game.showToast('RIVAL DISCONNECTED — WIN BY FORFEIT!');
-            Game.onOnlineRivalUpdate();
-            return;
+            this.rivalTime = data.totalTime || 0;
           }
-          // Is the lobby what the player is actually looking at? (After a
-          // match, PLAY AGAIN reopens the lobby while mode/state still
-          // say 'online'/'summary' — a rival leaving THAT lobby is a
-          // lobby leave, not a result change.)
-          const lobbyEl = document.getElementById('onlineLobbyModal');
-          const inLobby = lobbyEl && lobbyEl.style.display === 'flex';
-          if (!inLobby && Game.mode === 'online' && Game.state === 'summary' && !this.rivalFinished) {
-            // I finished, the rival hadn't: their leaving settles it.
-            this.rivalForfeit = true;
-            this.rivalFinished = true;
-            Game.showToast('RIVAL DISCONNECTED — WIN BY FORFEIT!');
-            Game.onOnlineRivalUpdate();
-            return;
-          }
-          if (!inLobby && Game.mode === 'online' && Game.state === 'summary') {
-            // The match was already decided — a rival leaving the
-            // results screen must not flip it into a "forfeit win".
-            return;
-          }
-          // In the lobby: the other side left before launch. Say so and
-          // reset, instead of leaving a dead "READY TO LAUNCH!" state
-          // whose button silently does nothing.
-          this.rivalName = 'RIVAL-KRILL';
-          if (this.isHost) {
-            document.getElementById('onlineStartMatchBtn').style.display = 'none';
-            this.setStatus('RIVAL LEFT THE LOBBY — WAITING FOR A NEW RIVAL TO ENTER CODE OR OPEN YOUR INVITE LINK...', '#fbbf24');
-          } else {
-            this.setStatus('⚠️ HOST CLOSED THE ROOM — TAP "JOIN ROOM" TO RETRY, OR ASK FOR A FRESH CODE.', '#f87171');
-          }
-        });
+          Game.onOnlineRivalUpdate();
+        }
+      },
 
-        conn.on('error', (err) => {
-          if (this.conn !== conn) return;
-          if (!opened && this._joinPhase === 'joining') {
-            if (err) this._lastJoinError = String(err.type || err.message || 'CONNECTION ERROR').toUpperCase();
-            this._failAttempt();
-          }
-        });
+      // The rival is gone: their BYE arrived, or a full minute of
+      // heartbeat silence did. (The old transport learned this from the
+      // channel closing; on a relay there is no channel, so these two
+      // signals carry the news.)
+      _onRivalGone() {
+        if (!this.connected) return;
+        this.connected = false;
+        this._channelOpen = false;
+        this._stopHeartbeat();
 
-        conn.on('iceStateChanged', (state) => {
-          if (this.conn !== conn) return;
-          if (!opened && this._joinPhase === 'joining') {
-            const s = String(state);
-            // Track how far this attempt's ICE negotiation got: the
-            // join watchdog spares attempts that are mid-negotiation
-            // instead of cutting them down, and the final verdict
-            // reports the furthest stage any knock reached.
-            if (this._iceRank(s) > this._iceRank(this._attemptIceState)) {
-              this._attemptIceState = s;
-            }
-            if (this._iceRank(s) > this._iceRank(this._joinIceBest)) {
-              this._joinIceBest = s;
-            }
-            // ICE dying before the channel opens is the signature of
-            // a peer-to-peer path that couldn't be established —
-            // record the stage so the join verdict can name it.
-            if (s === 'disconnected' || s === 'failed') {
-              this._lastJoinError = `ICE-${s.toUpperCase()}`;
-            }
-          }
-        });
+        if (Game.race && Game.race.active) {
+          Game.onRaceRivalDisconnect();
+          return;
+        }
+        if (Game.mode === 'online' && Game.state === 'playing') {
+          // Rival quit mid-match: the match is decided by forfeit using
+          // the last progress the rival sent.
+          this.rivalForfeit = true;
+          this.rivalFinished = true;
+          Game.showToast('RIVAL DISCONNECTED — WIN BY FORFEIT!');
+          Game.onOnlineRivalUpdate();
+          return;
+        }
+        // Is the lobby what the player is actually looking at? (After a
+        // match, PLAY AGAIN reopens the lobby while mode/state still
+        // say 'online'/'summary' — a rival leaving THAT lobby is a
+        // lobby leave, not a result change.)
+        const lobbyEl = document.getElementById('onlineLobbyModal');
+        const inLobby = lobbyEl && lobbyEl.style.display === 'flex';
+        if (!inLobby && Game.mode === 'online' && Game.state === 'summary' && !this.rivalFinished) {
+          // I finished, the rival hadn't: their leaving settles it.
+          this.rivalForfeit = true;
+          this.rivalFinished = true;
+          Game.showToast('RIVAL DISCONNECTED — WIN BY FORFEIT!');
+          Game.onOnlineRivalUpdate();
+          return;
+        }
+        if (!inLobby && Game.mode === 'online' && Game.state === 'summary') {
+          // The match was already decided — a rival leaving the
+          // results screen must not flip it into a "forfeit win".
+          return;
+        }
+        // In the lobby: the other side left before launch. Say so and
+        // reset, instead of leaving a dead "READY TO LAUNCH!" state
+        // whose button silently does nothing.
+        this.rivalName = 'RIVAL-KRILL';
+        if (this.isHost) {
+          this._guestGid = '';
+          document.getElementById('onlineStartMatchBtn').style.display = 'none';
+          this.setStatus('RIVAL LEFT THE LOBBY — WAITING FOR A NEW RIVAL TO ENTER CODE OR OPEN YOUR INVITE LINK...', '#fbbf24');
+        } else {
+          this.setStatus('⚠️ HOST CLOSED THE ROOM — TAP "JOIN ROOM" TO RETRY, OR ASK FOR A FRESH CODE.', '#f87171');
+        }
       },
 
       resetMatchStats() {
@@ -3871,32 +3900,55 @@
         });
       },
 
-      _rawSend(payload) {
-        if (this.conn && this.conn.open) {
-          try {
-            this.conn.send(payload);
-            return true;
-          } catch (_) {}
+      // Stamp a payload with the identity/routing fields the shared
+      // public broker makes necessary (see the _sessionId note in the
+      // fields block): host messages carry the room's session stamp
+      // and, once a guest is matched, that guest's address; guest
+      // messages carry the guest's knock id and either the adopted
+      // session stamp or, before it has one, the room code.
+      _envelope(payload, overrides) {
+        const msg = { ...payload };
+        if (this.isHost) {
+          msg._sid = this._sessionId;
+          if (this._guestGid) msg._to = this._guestGid;
+        } else {
+          msg._gid = this._guestGid;
+          if (this._hostSid) msg._sid = this._hostSid;
+          else if (this.roomCode) msg._code = this.roomCode;
         }
-        return false;
+        if (overrides) Object.assign(msg, overrides);
+        return msg;
+      },
+
+      _publishNow(payload, overrides) {
+        if (!this.client || !this.client.connected) return false;
+        try {
+          this.client.publish(this._peerTopic(), JSON.stringify(this._envelope(payload, overrides)), { qos: 0 });
+          return true;
+        } catch (_) {
+          return false;
+        }
+      },
+
+      _rawSend(payload) {
+        if (!this._channelOpen) return false;
+        return this._publishNow(payload);
       },
 
       _flushQueue() {
-        if (!this.conn || !this.conn.open) return;
+        if (!this._channelOpen) return;
         const pending = this._sendQueue.splice(0, this._sendQueue.length);
         for (const payload of pending) {
-          try {
-            this.conn.send(payload);
-          } catch (_) {}
+          this._publishNow(payload);
         }
       },
 
       send(payload) {
         if (this._rawSend(payload)) return;
-        // Channel not open yet: QUEUE the message instead of dropping it.
-        // PeerJS silently discards anything sent before 'open', which
-        // used to eat launch and progress messages whole.
-        if (this.conn) {
+        // Channel not open yet: QUEUE the message instead of dropping
+        // it. A publish attempted before the channel opens would go
+        // nowhere, which used to eat launch and progress messages whole.
+        if (this.client) {
           this._sendQueue.push(payload);
           if (this._sendQueue.length > 100) {
             this._sendQueue.splice(0, this._sendQueue.length - 100);
@@ -3910,25 +3962,31 @@
       },
 
       disconnect() {
+        // Say goodbye first, best effort: on a relayed transport the
+        // rival has no dropped connection to notice, so this BYE is
+        // how they learn we left (a minute of heartbeat silence is the
+        // backstop if it never arrives).
+        if (this.client && this.client.connected && (this.connected || this._joinPhase === 'joining')) {
+          try {
+            this.client.publish(this._peerTopic(), JSON.stringify(this._envelope({ type: 'BYE' })), { qos: 0 });
+          } catch (_) {}
+        }
         this.connected = false;
+        this._channelOpen = false;
         this._joinPhase = 'idle';
         this._busyRefused = false;
         this._roomOpen = false;
         this._clearJoinTimeout();
-        this._clearAttemptTimer();
-        this._clearRetryTimer();
+        this._clearKnockTimer();
         this._clearDeadlineTimer();
         this._stopHeartbeat();
         this._sendQueue.length = 0;
         this._killWarm();
-        const conn = this.conn;
-        this.conn = null;
-        if (conn) {
-          try { conn.close(); } catch (_) {}
-        }
-        if (this.peer) {
-          try { this.peer.destroy(); } catch (_) {}
-          this.peer = null;
+        this._brokerGen++;
+        const client = this.client;
+        this.client = null;
+        if (client) {
+          try { client.end(true); } catch (_) {}
         }
       }
     };
@@ -4896,7 +4954,7 @@
 
       /* =====================================================================
          ONLINE RACE ENGINE — MOON RACE / LAST SHIP STANDING / METEOR STORM
-         Runs on the existing 1-host + 1-guest PeerJS connection. The host
+         Runs on the existing 1-host + 1-guest MQTT relay connection. The host
          picks the prompt sequence and sends the category ids in START_RACE,
          so both ships fly the exact same prompts (same approach as the
          classic duel's START_MATCH). Moon Race prompts advance on each
