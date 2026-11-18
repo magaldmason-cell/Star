@@ -1329,8 +1329,9 @@
           <p style="font-size:18px; color:#94a3b8; text-align:center; line-height:1.3;">
             Add pilots by their <strong>pilot name</strong>, see who's online, and invite them straight into your party — no codes to type!
           </p>
-          <div style="display:flex; justify-content:center;">
+          <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
             <button class="pixel-btn pixel-btn-emerald" style="font-size:10px;" onclick="Game.openFriends()">👥 OPEN FRIENDS PANEL<span id="friendsBadge" style="display:none; color:#fde68a;"></span></button>
+            <button id="whoOnlineBtn" class="pixel-btn pixel-btn-cyan" style="font-size:10px; display:none;" onclick="Game.openOnlinePilots()">🌐 WHO'S ONLINE</button>
           </div>
         </div>
       </section>
@@ -1364,6 +1365,17 @@
         <div style="display:flex; justify-content:center;">
           <button class="pixel-btn" style="font-size:10px;" onclick="Game.openAccount()">← BACK TO ACCOUNT</button>
         </div>
+      </section>
+
+      <!-- 7C. ONLINE PILOTS MODAL (OWNER-ONLY — live presence board, kept
+           fully separate from the friends/crew panel) -->
+      <section id="onlinePilotsModal" class="modal-panel pixel-box pixel-box-cyan interactive" style="max-width:560px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 class="font-pixel" style="font-size:14px; color:#38bdf8;">🌐 WHO'S ONLINE</h2>
+          <button class="pixel-btn" style="padding:6px 10px; font-size:10px;" onclick="Game.returnToMenu()">✕ CLOSE</button>
+        </div>
+        <div id="onlinePilotsListBox" style="display:flex; flex-direction:column; gap:6px;"></div>
+        <div id="onlinePilotsMsg" class="font-pixel" style="font-size:9px; color:#94a3b8; text-align:center; line-height:1.6; min-height:14px;"></div>
       </section>
 
       <!-- 8. PILOT STATS MODAL -->
@@ -4471,6 +4483,7 @@
               if (!this._roomOpen) {
                 this._clearJoinTimeout();
                 this._roomOpen = true;
+                try { Social.publishStatus(); } catch (_) {}
                 if (!this.connected) {
                   this.setStatus('WAITING FOR RIVAL TO ENTER CODE OR OPEN YOUR INVITE LINK...', '#fbbf24');
                 }
@@ -4548,6 +4561,7 @@
         SoundFX.playCoinWinner();
         this._startHeartbeat();
         this.setStatus('RIVAL CONNECTED! READY TO LAUNCH!', '#34d399');
+        try { Social.publishStatus(); } catch (_) {}
         const startBtn = document.getElementById('onlineStartMatchBtn');
         startBtn.textContent = this.lobbyGameType === 'moonrace'
           ? '🌕 LAUNCH MOON RACE!'
@@ -4706,6 +4720,7 @@
         SoundFX.playCoinWinner();
         this._startHeartbeat();
         this.setStatus('CONNECTED! WAITING FOR HOST TO LAUNCH...', '#34d399');
+        try { Social.publishStatus(); } catch (_) {}
         this._flushQueue();
       },
 
@@ -5545,6 +5560,7 @@
                 this.setStatus('🎉 PARTY OPEN — SHARE THE CODE! THE ROOM TAKES EVERYONE UNTIL YOU LAUNCH.', '#34d399');
                 this._renderRoster();
                 this._startHostPresence();
+                try { Social.publishStatus(); } catch (_) {}
               }
             });
           },
@@ -5767,6 +5783,7 @@
             SoundFX.playCoinWinner();
             this.setStatus('🎉 YOU ARE IN THE PARTY — WAITING FOR THE HOST TO LAUNCH…', '#34d399');
             this._startGuestPresence();
+            try { Social.publishStatus(); } catch (_) {}
           }
           if (!this.inMatch) this._renderRoster();
           return;
@@ -7146,6 +7163,8 @@
       auth: null,
       db: null,
       user: null,
+      anonUser: null,        // silent anonymous sign-in (guest presence only — never a cloud account)
+      _anonKickTried: false,
       available: false,
       pilotName: null,       // display name carried by the cloud account (Firestore users/{uid}.pilotName)
       _nameUid: null,        // uid the pilotName belongs to (guards mid-session account switches)
@@ -7212,13 +7231,38 @@
           !!save.lastDailyDate;
       },
 
+      // Guests publish presence through a silent anonymous sign-in.
+      // Purely additive: if the provider is disabled in the console
+      // (or the network is down) this fails quietly and guests just
+      // don't appear on the owner's board — the pre-guest behavior.
+      _kickAnonymous() {
+        if (!this.available || !this.auth || this._anonKickTried) return;
+        this._anonKickTried = true;
+        try {
+          const p = this.auth.signInAnonymously();
+          if (p && p.catch) p.catch(() => {});
+        } catch (_) {}
+      },
+
       async _onAuth(user) {
+        // Anonymous (guest-presence) sign-ins ride the same auth
+        // listener but are NOT cloud accounts: one must never reach
+        // the save sync, the account panel, or the friends system.
+        if (user && user.isAnonymous) {
+          this.anonUser = user;
+          this.user = null;
+          if (typeof Presence !== 'undefined') Presence.refresh();
+          return;
+        }
+        if (user) { this.anonUser = null; this._anonKickTried = false; }
         this.user = user || null;
+        if (!user) this._kickAnonymous();
         try { if (typeof Game !== 'undefined' && Game.renderCloudPanel) Game.renderCloudPanel(); } catch (_) {}
         if (!user) {
           this.pilotName = null;
           this._nameUid = null;
           if (typeof Social !== 'undefined') Social.detach();
+          if (typeof Presence !== 'undefined') Presence.refresh();
           return;
         }
         // A different cloud account signing in mid-session must never
@@ -7295,6 +7339,7 @@
             this.setMsg('☁️ SIGNED IN — SAVE WILL SYNC AS YOU PLAY!');
           }
           if (typeof Social !== 'undefined') Social.attach(user.uid);
+          if (typeof Presence !== 'undefined') Presence.refresh();
           if (nameTaken) {
             this.setMsg('🚫 THAT PILOT NAME IS TAKEN — SET A DIFFERENT ONE IN THE CLOUD BOX!');
             try { Game.showToast('🚫 THAT PILOT NAME IS TAKEN!'); } catch (_) {}
@@ -7416,7 +7461,8 @@
 
       async logout() {
         if (this._pushTimer) { clearTimeout(this._pushTimer); this._pushTimer = null; }
-        if (typeof Social !== 'undefined') Social.detach();
+        if (typeof Social !== 'undefined') { Social.signOutPresence(); Social.detach(); }
+        if (typeof Presence !== 'undefined') Presence.removeMine();
         this.pilotName = null;
         this._nameUid = null;
         this._pendingPilotName = null;
@@ -7430,10 +7476,17 @@
        6D. FRIENDS + PARTY INVITES (SOCIAL LAYER — FIRESTORE)
        Rides on CloudSync's Firebase app. Data surface:
          • usernames/{cleanedName} — public directory + presence
-           {uid, pilotName, lastSeen}. Claimed transactionally: the doc
-           points at exactly one uid, and a name owned by someone else
-           can never be activated. lastSeen refreshes on sign-in and on
-           a ~45s heartbeat; ONLINE means seen within ~90 seconds.
+           {uid, pilotName, lastSeen, cos, status}. Claimed
+           transactionally: the doc points at exactly one uid, and a
+           name owned by someone else can never be activated. lastSeen
+           refreshes on sign-in and on a ~45s heartbeat; ONLINE means
+           seen within ~90 seconds. status is the pilot's live
+           activity (IN MENU / IN PARTY LOBBY / PLAYING: …), derived
+           from game state on every presence touch and republished
+           immediately at activity transitions. The rules allow
+           usernames LIST queries for OWNER_UID only — doc GETs stay
+           public. (The ONLINE PILOTS board itself reads the separate
+           presence collection — see 6E below.)
          • friendRequests/{fromUid}_{toUid} — {fromUid, fromName, toUid,
            toName, status, createdAt}. The accepter adds the requester
            and flips status to 'accepted'; the requester's own listener
@@ -7459,11 +7512,25 @@
        Everything degrades to nothing when signed out or offline: no
        listeners, no heartbeat, and the panel shows the sign-in note.
     ========================================================================= */
+    // The ONLINE PILOTS board (live directory of everyone online) is
+    // an owner-only tool, gated twice: this client renders the
+    // section (and starts the presence collection listener) only
+    // when the signed-in uid IS the owner's, and the Firestore rules
+    // allow LIST queries on the presence collection (and on the
+    // usernames directory) for that same uid only. Single-doc GETs
+    // stay open to any signed-in pilot — add-friend-by-name and
+    // per-friend presence depend on them. Gate on the UID, never the
+    // pilot name (names can change).
+    const OWNER_UID = 'CWXlpScrn1MZHjT8y13YG51KnRs1';
+
     const Social = {
       friends: [],
       incoming: [],
       outgoing: [],
       presence: {},
+      directory: {},
+      _dirUnsub: null,
+      _dirTick: null,
       pendingCount: 0,
       _uid: null,
       _friendsSeededFor: null,
@@ -7558,7 +7625,7 @@
           await db.runTransaction(async (tx) => {
             const snap = await tx.get(ref);
             if (snap.exists && snap.data() && snap.data().uid !== uid) { taken = true; return; }
-            tx.set(ref, { uid, pilotName: display, lastSeen: firebase.firestore.FieldValue.serverTimestamp(), cos: this._myCos() });
+            tx.set(ref, { uid, pilotName: display, lastSeen: firebase.firestore.FieldValue.serverTimestamp(), cos: this._myCos(), status: this.computeStatus() });
           });
           return taken ? 'taken' : 'ok';
         } catch (_) { return 'error'; }
@@ -7584,6 +7651,7 @@
       // see the fresh outfit without waiting for the heartbeat.
       publishCos() {
         this._touchPresence();
+        if (typeof Presence !== 'undefined') Presence.publish();
       },
 
       _touchPresence() {
@@ -7592,7 +7660,7 @@
         if (!db || !me || !cleaned) return;
         try {
           db.collection('usernames').doc(cleaned)
-            .update({ lastSeen: firebase.firestore.FieldValue.serverTimestamp(), cos: this._myCos() })
+            .update({ lastSeen: firebase.firestore.FieldValue.serverTimestamp(), cos: this._myCos(), status: this.computeStatus() })
             .catch(() => { this.claimName(cleaned, this.myName()); });
         } catch (_) {}
       },
@@ -7639,10 +7707,150 @@
         return (Date.now() - p.lastSeenMs) < 90000;
       },
 
+      /* ---------------- online pilots board (OWNER-ONLY) ---------------- */
+      isOwner() {
+        const me = this.me;
+        return !!(me && me.uid === OWNER_UID);
+      },
+
+      SOLO_LABELS: {
+        daily: 'DAILY', unlimited: 'UNLIMITED', endless: 'ENDLESS',
+        fleet: 'FLEET', duel: 'RANKED DUEL', passplay: 'PASS & PLAY',
+        lightspeed: 'LIGHTSPEED', chain: 'CHAIN REACTION', onelife: 'ONE LIFE'
+      },
+
+      _plainLabel(type) {
+        const raw = this.GAME_LABELS[type] || String(type || '').toUpperCase();
+        return raw.replace(/^[^A-Za-z]+/, '');
+      },
+
+      // What am I doing right now, in one short line for the board.
+      // Derived live from game state every time presence is touched,
+      // so the heartbeat can never carry a stale activity. Summary
+      // screens count as IN MENU by design.
+      computeStatus() {
+        try {
+          if (typeof Game === 'undefined') return 'IN MENU';
+          const st = Game.state;
+          if (st === 'playing' || st === 'handoff') {
+            if (Game.mode === 'party') return 'PLAYING: ' + this._plainLabel(Game.partyType || 'party');
+            if (Game.mode === 'online') {
+              let t = 'duel';
+              if (Game.raceType) t = Game.raceType;
+              else if (Game.chainDuel) t = 'chain';
+              return 'PLAYING: ' + this._plainLabel(t);
+            }
+            return 'PLAYING SOLO: ' + (this.SOLO_LABELS[Game.mode] || String(Game.mode || '').toUpperCase());
+          }
+          if (st === 'summary') return 'IN MENU';
+          if (typeof PartyNet !== 'undefined' && (PartyNet._roomOpen || PartyNet.connected)) return 'IN PARTY LOBBY';
+          if (typeof OnlineNet !== 'undefined' && (OnlineNet._roomOpen || OnlineNet.connected)) return 'IN DUEL LOBBY';
+          return 'IN MENU';
+        } catch (_) { return 'IN MENU'; }
+      },
+
+      // Immediate presence refresh at activity transitions (lobby
+      // enter/leave, match start/end, back to menu), so the board is
+      // never stuck a heartbeat behind at the moments that matter.
+      // Just a presence touch — the status is derived live inside it.
+      publishStatus() {
+        this._touchPresence();
+        if (typeof Presence !== 'undefined') Presence.publish();
+      },
+
+      // Best-effort goodbye on sign-out: stamp my directory entry
+      // stale so the owner's board drops me at once instead of after
+      // the online window. A closed tab can't do this — the ~90s
+      // window is the backstop there.
+      signOutPresence() {
+        const db = this.db, me = this.me, cleaned = this.myCleaned();
+        if (!db || !me || !cleaned) return;
+        try {
+          db.collection('usernames').doc(cleaned)
+            .update({ status: 'OFFLINE', lastSeen: firebase.firestore.Timestamp.fromMillis(0) })
+            .catch(() => {});
+        } catch (_) {}
+      },
+
+      _startDirectory() {
+        if (this._dirUnsub || !this.isOwner()) return;
+        const db = this.db;
+        if (!db) return;
+        try {
+          this._dirUnsub = db.collection('presence').onSnapshot(snap => {
+            const dir = {};
+            snap.forEach(doc => {
+              const d = doc.data() || {};
+              dir[doc.id] = {
+                uid: doc.id,
+                name: d.name || 'PILOT',
+                cleaned: d.cleaned || '',
+                guest: !!d.guest,
+                lastSeenMs: this._tsMs(d.lastSeen),
+                cos: d.cos || '', status: d.status || ''
+              };
+            });
+            this.directory = dir;
+            this._notify();
+          }, () => { this._dirUnsub = null; });
+        } catch (_) {}
+        // Freshness ticker: a pilot whose heartbeat stops must age
+        // off the board even when no new snapshot arrives.
+        if (!this._dirTick) {
+          this._dirTick = setInterval(() => { if (this.isOwner()) this._notify(); }, 15000);
+        }
+      },
+
+      _stopDirectory() {
+        if (this._dirUnsub) { try { this._dirUnsub(); } catch (_) {} this._dirUnsub = null; }
+        if (this._dirTick) { clearInterval(this._dirTick); this._dirTick = null; }
+        this.directory = {};
+      },
+
+      // Everyone inside the ~90s online window, me first, then
+      // account pilots, then guests. My own row always reflects my
+      // live-computed status (my presence doc can lag a beat behind
+      // a transition I just published).
+      onlinePilots() {
+        const now = Date.now();
+        const out = [];
+        Object.keys(this.directory).forEach(uid => {
+          const p = this.directory[uid];
+          if (!p || !p.lastSeenMs || (now - p.lastSeenMs) >= 90000) return;
+          out.push({
+            uid, name: p.name || 'PILOT', cleaned: p.cleaned || '',
+            guest: !!p.guest,
+            cos: p.cos || '', status: p.status || 'IN MENU'
+          });
+        });
+        const me = this.me;
+        if (me) {
+          const mine = out.find(p => p.uid === me.uid);
+          if (mine) {
+            mine.status = this.computeStatus();
+            if (!mine.cos) mine.cos = this._myCos();
+          } else {
+            out.push({
+              uid: me.uid, name: this.myName() || 'PILOT',
+              cleaned: this.myCleaned(), guest: false,
+              cos: this._myCos(), status: this.computeStatus()
+            });
+          }
+        }
+        out.sort((a, b) => {
+          const am = me && a.uid === me.uid ? 0 : 1;
+          const bm = me && b.uid === me.uid ? 0 : 1;
+          if (am !== bm) return am - bm;
+          if (a.guest !== b.guest) return a.guest ? 1 : -1;
+          return a.name.localeCompare(b.name);
+        });
+        return out;
+      },
+
       /* ---------------- listeners lifecycle ---------------- */
       attach(uid) {
         if (!uid) return;
-        if (this._uid === uid) { this._startHeartbeat(); return; }
+        if (this._uid === uid) { this._startHeartbeat(); this._startDirectory(); return; }
         this.detach();
         this._uid = uid;
         const db = this.db;
@@ -7655,12 +7863,14 @@
         sub(db.collection('partyInvites').where('toUid', '==', uid), snap => this._onInvitesSnap(snap));
         this._syncPresenceListeners();
         this._startHeartbeat();
+        this._startDirectory();
         this._notify();
       },
 
       detach() {
         this._unsubs.forEach(u => { try { u(); } catch (_) {} });
         this._unsubs = [];
+        this._stopDirectory();
         Object.values(this._presenceUnsubs).forEach(u => { try { u(); } catch (_) {} });
         this._presenceUnsubs = {};
         if (this._hbTimer) { clearInterval(this._hbTimer); this._hbTimer = null; }
@@ -7975,10 +8185,102 @@
         try {
           if (typeof Game !== 'undefined') {
             if (Game.renderFriendsBadge) Game.renderFriendsBadge();
+            if (Game.renderOnlineBtn) Game.renderOnlineBtn();
             const fm = document.getElementById('friendsModal');
             if (fm && fm.style.display !== 'none' && Game.renderFriendsPanel) Game.renderFriendsPanel();
+            const om = document.getElementById('onlinePilotsModal');
+            if (om && om.style.display !== 'none' && Game.renderOnlinePilotsPanel) Game.renderOnlinePilotsPanel();
           }
         } catch (_) {}
+      }
+    };
+
+    /* =========================================================================
+       6E. LIVE PRESENCE (presence/{uid}) — ACCOUNTS + GUESTS
+       The owner's ONLINE PILOTS board reads this collection. Every
+       player publishes one doc keyed by their Firebase uid:
+       {name, cleaned, guest, status, cos, lastSeen}. Cloud pilots
+       publish under their account uid (guest:false, name = pilot
+       name); players without a cloud account publish under a silent
+       ANONYMOUS sign-in (guest:true) that exists only for this — it
+       never touches the account panel, local pilots, the friends
+       system, or the usernames directory (no name claims are made
+       and a guest uid is per-browser, so there is no stable identity
+       to friend). If anonymous sign-in is disabled in the console,
+       or the presence rules have not been published yet, every write
+       fails silently and guests simply don't appear — the pre-guest
+       behavior, with no visible errors anywhere.
+       Rules: create/update/delete only by the doc's own uid (any
+       authenticated user, anonymous included); list only for
+       OWNER_UID; get only by the owner or the doc's own uid.
+    ========================================================================= */
+    const Presence = {
+      _hbTimer: null,
+      _uid: null,
+
+      get db() { return (typeof CloudSync !== 'undefined' && CloudSync.available) ? CloudSync.db : null; },
+
+      authUser() {
+        try { return (typeof CloudSync !== 'undefined' && CloudSync.auth) ? CloudSync.auth.currentUser : null; }
+        catch (_) { return null; }
+      },
+
+      // The name this player currently flies under: the cloud pilot
+      // name for accounts; for guests, their local pilot name, else
+      // the multiplayer callsign in the lobby box, else plain GUEST.
+      displayName(user) {
+        if (user && !user.isAnonymous) {
+          return (typeof CloudSync !== 'undefined' && CloudSync.pilotName) || 'PILOT';
+        }
+        try {
+          const local = (typeof Accounts !== 'undefined') ? Accounts.displayName() : 'GUEST';
+          if (local && local !== 'GUEST') return local;
+          const inp = document.getElementById('onlineCallsignInput');
+          const cs = inp ? String(inp.value || '').trim() : '';
+          if (cs) return cs.toUpperCase();
+        } catch (_) {}
+        return 'GUEST';
+      },
+
+      _payload(user) {
+        const guest = !!(user && user.isAnonymous);
+        return {
+          name: this.displayName(user),
+          cleaned: guest ? '' : ((typeof CloudSync !== 'undefined' && CloudSync.pilotName)
+            ? Accounts.cleanUsername(CloudSync.pilotName) : ''),
+          guest,
+          status: (typeof Social !== 'undefined') ? Social.computeStatus() : 'IN MENU',
+          cos: (typeof Social !== 'undefined') ? Social._myCos() : '',
+          lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+        };
+      },
+
+      publish() {
+        const db = this.db, user = this.authUser();
+        if (!db || !user) return;
+        try {
+          db.collection('presence').doc(user.uid).set(this._payload(user), { merge: true }).catch(() => {});
+        } catch (_) {}
+      },
+
+      removeMine() {
+        const db = this.db, user = this.authUser();
+        if (!db || !user) return;
+        try { db.collection('presence').doc(user.uid).delete().catch(() => {}); } catch (_) {}
+      },
+
+      // Called on every auth change: (re)aim the heartbeat at the
+      // current identity (account, anonymous, or none) and publish
+      // immediately, so a sign-in or a guest's arrival shows at once.
+      refresh() {
+        const user = this.authUser();
+        const uid = user ? user.uid : null;
+        if (uid !== this._uid) {
+          this._uid = uid;
+          if (this._hbTimer) { clearInterval(this._hbTimer); this._hbTimer = null; }
+          if (uid) this._hbTimer = setInterval(() => this.publish(), 45000);
+        }
+        if (uid) this.publish();
       }
     };
 
@@ -8372,7 +8674,7 @@
           'menuScreen', 'onlineLobbyModal', 'lobbyModal',
           'passPlayModal', 'handoffModal', 'playScreen',
           'summaryModal', 'lockerModal', 'helpModal',
-          'accountModal', 'statsModal', 'friendsModal'
+          'accountModal', 'statsModal', 'friendsModal', 'onlinePilotsModal'
         ];
         ids.forEach(id => {
           const el = document.getElementById(id);
@@ -8394,6 +8696,7 @@
         this.updateZoneHud(0);
         this.hideAllModals();
         document.getElementById('menuScreen').style.display = 'flex';
+        try { Social.publishStatus(); } catch (_) {}
       },
 
       abortToMenu() {
@@ -8583,6 +8886,7 @@
         if (nameInput && Accounts.currentKey() && nameInput.value.trim().toUpperCase() === 'STAR-KRILL') {
           nameInput.value = Accounts.displayName();
         }
+        try { Social.publishStatus(); } catch (_) {}
       },
 
       openPartyLobby(gameType) {
@@ -8648,6 +8952,7 @@
         this.updateZoneHud(0);
         this.loadRacePrompt(0);
         SoundFX.playCoinWinner();
+        try { Social.publishStatus(); } catch (_) {}
       },
 
       loadRacePrompt(idx) {
@@ -9154,6 +9459,7 @@
         race.active = false;
         if (race.winTimer) clearTimeout(race.winTimer);
         this.state = 'summary';
+        try { Social.publishStatus(); } catch (_) {}
 
         const iWon = result.winner === 'me';
         const isDraw = result.winner === 'draw';
@@ -9277,6 +9583,7 @@
         fb.textContent = `${players.length} pilots in the room — first prompt drops any second!`;
         this.refreshPartyBar();
         SoundFX.playCoinWinner();
+        try { Social.publishStatus(); } catch (_) {}
       },
 
       partyPlayer(pid) {
@@ -9581,6 +9888,7 @@
         party.active = false;
         party.over = true;
         this.state = 'summary';
+        try { Social.publishStatus(); } catch (_) {}
 
         const standings = PartyRules.standings(party.players);
         const me = this.partyPlayer(party.myPid);
@@ -9730,6 +10038,7 @@
           this.chainRender();
         }
         SoundFX.playCoinWinner();
+        try { Social.publishStatus(); } catch (_) {}
       },
 
       chainBroadcastState(extra) {
@@ -10070,6 +10379,7 @@
         cd.over = true;
         if (cd.hostTimer) clearTimeout(cd.hostTimer);
         this.state = 'summary';
+        try { Social.publishStatus(); } catch (_) {}
 
         const myRole = OnlineNet.isHost ? 'host' : 'guest';
         const iWon = winnerRole === myRole;
@@ -10346,6 +10656,7 @@
         this.updateTopHud();
         this.updateZoneHud(0);
         this.loadPrompt(0);
+        try { Social.publishStatus(); } catch (_) {}
       },
 
       loadPrompt(idx) {
@@ -11036,6 +11347,7 @@
 
       showSummary(earnedTokens, alreadyPlayedDaily) {
         this.state = 'summary';
+        try { Social.publishStatus(); } catch (_) {}
         this.hideAllModals();
         document.getElementById('summaryModal').style.display = 'flex';
 
@@ -11313,6 +11625,7 @@
         }
         if (wasHost) PartyNet._broadcastRoster();
         PartyNet._renderRoster();
+        try { Social.publishStatus(); } catch (_) {}
       },
 
       async copyTextToClipboard(text, toastMessage = 'COPIED TO CLIPBOARD!') {
@@ -11438,6 +11751,7 @@
         }
         this.renderCloudPanel();
         this.renderFriendsBadge();
+        this.renderOnlineBtn();
       },
 
       fillAccountName(name) {
@@ -11622,6 +11936,63 @@
         this.renderFriendsPanel();
       },
 
+      // The WHO'S ONLINE button exists only for the game owner —
+      // for everyone else it is never shown at all.
+      renderOnlineBtn() {
+        const btn = document.getElementById('whoOnlineBtn');
+        if (!btn) return;
+        btn.style.display = (typeof Social !== 'undefined' && Social.isOwner()) ? 'inline-flex' : 'none';
+      },
+
+      openOnlinePilots() {
+        if (typeof Social === 'undefined' || !Social.isOwner()) return;
+        this.hideAllModals();
+        document.getElementById('onlinePilotsModal').style.display = 'flex';
+        this.renderOnlinePilotsPanel();
+      },
+
+      renderOnlinePilotsPanel() {
+        const box = document.getElementById('onlinePilotsListBox');
+        if (!box) return;
+        if (typeof Social === 'undefined' || !Social.isOwner()) {
+          box.innerHTML = '';
+          return;
+        }
+        const pilots = Social.onlinePilots();
+        box.innerHTML = `<div class="font-pixel" style="font-size:9px; color:#38bdf8; text-align:center;">🌐 ONLINE PILOTS — ${pilots.length} ONLINE:</div>` +
+          (pilots.length ? pilots.map(p => {
+            const isMe = !!(Social.me && p.uid === Social.me.uid);
+            const tag = p.guest
+              ? `<span class="font-pixel" style="font-size:8px; color:#fbbf24;">🎭 GUEST</span>`
+              : `<span class="font-pixel" style="font-size:8px; color:#38bdf8;">☁️ ACCOUNT</span>`;
+            let action;
+            if (isMe) {
+              action = `<span style="font-size:14px; color:#38bdf8;">YOU</span>`;
+            } else if (p.guest) {
+              // No stable identity to friend — the tag is the marker.
+              action = '';
+            } else if (Social.friends.some(f => f.uid === p.uid)) {
+              action = `<span style="font-size:14px; color:#34d399;">⭐ CREW</span>`;
+            } else if (Social.outgoing.some(r => r.toUid === p.uid)) {
+              action = `<span style="font-size:14px; color:#94a3b8;">⏳ SENT</span>`;
+            } else {
+              const addName = p.cleaned || Accounts.cleanUsername(p.name);
+              action = `<button class="pixel-btn pixel-btn-emerald" style="padding:5px 9px; font-size:9px;" onclick="Game.doAddFromOnline('${addName}')">➕ ADD</button>`;
+            }
+            return `<div class="breakdown-row">
+              <span>${AvatarKit.img(p.cos)} 🟢 ${this.escHtml(p.name)} ${tag}</span>
+              <span style="display:flex; gap:8px; align-items:center;">
+                <span style="font-size:14px; color:#94a3b8;">${this.escHtml(p.status)}</span>${action}
+              </span>
+            </div>`;
+          }).join('') : `<div style="font-size:17px; color:#94a3b8; text-align:center;">Nobody else is flying right now.</div>`);
+      },
+
+      setOnlineMsg(text) {
+        const el = document.getElementById('onlinePilotsMsg');
+        if (el) el.textContent = text || '';
+      },
+
       renderFriendsBadge() {
         const badge = document.getElementById('friendsBadge');
         if (!badge) return;
@@ -11703,6 +12074,21 @@
         SoundFX.playCoinWinner();
         this.showToast('👥 FRIEND REQUEST SENT!');
         this.renderFriendsPanel();
+      },
+
+      async doAddFromOnline(cleaned) {
+        this.setOnlineMsg('👥 SEARCHING THE GALAXY...');
+        const err = await Social.addFriend(cleaned);
+        if (err) {
+          SoundFX.playInvalidBuzz();
+          this.setOnlineMsg(err);
+          this.showToast(err);
+          return;
+        }
+        this.setOnlineMsg('👥 FRIEND REQUEST SENT!');
+        SoundFX.playCoinWinner();
+        this.showToast('👥 FRIEND REQUEST SENT!');
+        this.renderOnlinePilotsPanel();
       },
 
       async doAcceptRequest(id) {
