@@ -1238,7 +1238,7 @@
           <p>• <strong style="color:#c084fc;">🎉 STAR PARTY / 💀 KNOCKOUT / 👥 TEAM CLASH:</strong> Party Rooms (inside ONLINE MULTIPLAYER) take 2 to unlimited pilots! Star Party: 10 rounds, everyone answers at once. Knockout: the most common answer and blanks cost hull — last ship wins. Team Clash: 4+ pilots split into CRIMSON and AZURE crews and pool their LY.</p>
           <p>• <strong style="color:#fb923c;">🔗 CHAIN REACTION (ONLINE):</strong> Turn-based 1v1 chain — a fresh prompt every turn, and your answer must start with the last letter of the previous answer. A miss or timeout is a strike; 3 strikes and you lose!</p>
           <p>• <strong style="color:#f87171;">☠️ ONE LIFE:</strong> Solo sudden death — endless prompts, but a single judged miss or a single timeout ends the run. Chase your personal best!</p>
-          <p>• <strong style="color:#38bdf8;">🎨 CUSTOMIZE YOUR KRILL:</strong> Open the <strong>LOCKER</strong> and dress your pilot: pick a COLOR, a HAT, a SKIN pattern, a PET that flies with you, and a TRAIL for your thruster. Colors are free, plenty of gear is free, and the rest costs Star Tokens you earn by flying. Your look shows everywhere — in game, in party lobbies and leaderboards, in duels, and next to your name on friends' screens!</p>
+          <p>• <strong style="color:#38bdf8;">🎨 CUSTOMIZE YOUR KRILL:</strong> Open the <strong>LOCKER</strong> and dress your pilot: pick a COLOR, a HAT, a SKIN pattern, a PET that flies with you, and a TRAIL for your thruster. Your starter look is yours forever — every other color and piece of gear is bought with Star Tokens you earn by flying. Your look shows everywhere — in game, in party lobbies and leaderboards, in duels, and next to your name on friends' screens!</p>
           <div style="background:rgba(4,8,20,0.85); border:2px solid #334155; border-radius:6px; padding:10px; font-size:18px;">
             <div class="font-pixel" style="font-size:10px; color:#38bdf8; margin-bottom:6px;">🌕 MOON RACE — DISTANCE PER ANSWER (GOAL: 384,400 KM)</div>
             <div>⬜ <strong>Stardust (10 pts):</strong> 2,400 km</div>
@@ -1509,23 +1509,23 @@
          as the migration source: mergeSave maps them onto these
          slots, so nothing a pilot already owns is ever lost. */
       colors: [
-        { id: 'coral',  name: 'Classic Coral', cost: 0, body: '#fb7185', accent: '#fda4af', visor: '#38bdf8' },
-        { id: 'red',    name: 'Rocket Red',    cost: 0, body: '#ef4444', accent: '#fca5a5', visor: '#38bdf8' },
-        { id: 'blue',   name: 'Ion Blue',      cost: 0, body: '#3b82f6', accent: '#93c5fd', visor: '#38bdf8' },
-        { id: 'green',  name: 'Nebula Green',  cost: 0, body: '#22c55e', accent: '#86efac', visor: '#38bdf8' },
-        { id: 'pink',   name: 'Bubblegum Pink', cost: 0, body: '#f472b6', accent: '#fbcfe8', visor: '#38bdf8' },
-        { id: 'orange', name: 'Solar Orange',  cost: 0, body: '#fb923c', accent: '#fed7aa', visor: '#38bdf8' },
-        { id: 'yellow', name: 'Comet Yellow',  cost: 0, body: '#facc15', accent: '#fef08a', visor: '#38bdf8' },
-        { id: 'black',  name: 'Void Black',    cost: 0, body: '#475569', accent: '#94a3b8', visor: '#38bdf8' },
-        { id: 'white',  name: 'Lunar White',   cost: 0, body: '#f1f5f9', accent: '#cbd5e1', visor: '#38bdf8' },
-        { id: 'purple', name: 'Quasar Purple', cost: 0, body: '#a855f7', accent: '#d8b4fe', visor: '#38bdf8' },
-        { id: 'cyan',   name: 'Plasma Cyan',   cost: 0, body: '#22d3ee', accent: '#a5f3fc', visor: '#38bdf8' },
-        { id: 'lime',   name: 'Alien Lime',    cost: 0, body: '#84cc16', accent: '#bef264', visor: '#38bdf8' }
+        { id: 'coral',  name: 'Classic Coral', cost: 0,   body: '#fb7185', accent: '#fda4af', visor: '#38bdf8' },
+        { id: 'red',    name: 'Rocket Red',    cost: 25,  body: '#ef4444', accent: '#fca5a5', visor: '#38bdf8' },
+        { id: 'blue',   name: 'Ion Blue',      cost: 25,  body: '#3b82f6', accent: '#93c5fd', visor: '#38bdf8' },
+        { id: 'green',  name: 'Nebula Green',  cost: 50,  body: '#22c55e', accent: '#86efac', visor: '#38bdf8' },
+        { id: 'pink',   name: 'Bubblegum Pink', cost: 50, body: '#f472b6', accent: '#fbcfe8', visor: '#38bdf8' },
+        { id: 'orange', name: 'Solar Orange',  cost: 50,  body: '#fb923c', accent: '#fed7aa', visor: '#38bdf8' },
+        { id: 'yellow', name: 'Comet Yellow',  cost: 75,  body: '#facc15', accent: '#fef08a', visor: '#38bdf8' },
+        { id: 'cyan',   name: 'Plasma Cyan',   cost: 75,  body: '#22d3ee', accent: '#a5f3fc', visor: '#38bdf8' },
+        { id: 'lime',   name: 'Alien Lime',    cost: 100, body: '#84cc16', accent: '#bef264', visor: '#38bdf8' },
+        { id: 'purple', name: 'Quasar Purple', cost: 100, body: '#a855f7', accent: '#d8b4fe', visor: '#38bdf8' },
+        { id: 'black',  name: 'Void Black',    cost: 150, body: '#475569', accent: '#94a3b8', visor: '#38bdf8' },
+        { id: 'white',  name: 'Lunar White',   cost: 200, body: '#f1f5f9', accent: '#cbd5e1', visor: '#38bdf8' }
       ],
       hats: [
         { id: 'none',    name: 'No Hat',        cost: 0 },
-        { id: 'party',   name: 'Party Hat',     cost: 0 },
-        { id: 'sprout',  name: 'Sprout Antenna', cost: 0 },
+        { id: 'party',   name: 'Party Hat',     cost: 50 },
+        { id: 'sprout',  name: 'Sprout Antenna', cost: 75 },
         { id: 'captain', name: 'Captain Hat',   cost: 50 },
         { id: 'cowboy',  name: 'Cowboy Hat',    cost: 100 },
         { id: 'halo',    name: 'Halo',          cost: 150 },
@@ -1534,7 +1534,7 @@
       ],
       suits: [
         { id: 'plain',   name: 'Plain Hull',      cost: 0 },
-        { id: 'stripes', name: 'Racing Stripes',  cost: 0 },
+        { id: 'stripes', name: 'Racing Stripes',  cost: 75 },
         { id: 'stars',   name: 'Starfield',       cost: 75 },
         { id: 'camo',    name: 'Nebula Camo',     cost: 125 },
         { id: 'astro',   name: 'Retro Astronaut', cost: 150 },
@@ -1545,7 +1545,7 @@
       ],
       pets: [
         { id: 'none',      name: 'No Pet',      cost: 0 },
-        { id: 'babykrill', name: 'Baby Krill',  cost: 0 },
+        { id: 'babykrill', name: 'Baby Krill',  cost: 75 },
         { id: 'star',      name: 'Star Buddy',  cost: 75 },
         { id: 'ufo',       name: 'Pocket Saucer', cost: 150 },
         { id: 'rocket',    name: 'Mini Rocket', cost: 200 },
@@ -1553,7 +1553,7 @@
       ],
       trails: [
         { id: 'flame',   name: 'Classic Flame', cost: 0,   outer: '#f97316', inner: '#fef08a' },
-        { id: 'bubbles', name: 'Bubble Trail',  cost: 0,   outer: '#7dd3fc', inner: '#e0f2fe' },
+        { id: 'bubbles', name: 'Bubble Trail',  cost: 75,  outer: '#7dd3fc', inner: '#e0f2fe' },
         { id: 'ice',     name: 'Ice Burn',      cost: 75,  outer: '#22d3ee', inner: '#f0fdff' },
         { id: 'sparkle', name: 'Sparkle Dust',  cost: 125, outer: '#fbbf24', inner: '#fff7cc' },
         { id: 'shadow',  name: 'Shadow Wake',   cost: 200, outer: '#7c3aed', inner: '#2e1065' },
@@ -1585,6 +1585,25 @@
       golden: ['yellow', 'gold']
     };
     const LEGACY_DRONE_MAP = { none: 'none', sat: 'rocket', wisp: 'star', squid: 'squid', ufo: 'ufo' };
+
+    /* Economy gate (v18): before this build, every color was free and
+       a few items per slot were granted to all pilots (party/sprout
+       hats, stripes suit, baby krill pet, bubble trail). The design
+       call now: everything beyond the starter look is BOUGHT with
+       star tokens. `starter` is what a pilot owns by definition;
+       `wasFree` lists the pre-gate free grants per slot. mergeSave
+       runs the gate exactly once per save (flagged cosGateV18): a
+       pre-gate save keeps the starter set, whatever it currently has
+       EQUIPPED (nobody's look breaks), and anything not in `wasFree`
+       — those items always cost tokens, so owning one means it was
+       bought. Unequipped free grants re-lock as purchasables. */
+    const COS_GATE_V18 = {
+      colors: { starter: ['coral'], wasFree: ['red', 'blue', 'green', 'pink', 'orange', 'yellow', 'black', 'white', 'purple', 'cyan', 'lime'] },
+      hats:   { starter: ['none'],  wasFree: ['party', 'sprout'] },
+      suits:  { starter: ['plain'], wasFree: ['stripes'] },
+      pets:   { starter: ['none'],  wasFree: ['babykrill'] },
+      trails: { starter: ['flame'], wasFree: ['bubbles'] }
+    };
 
     /* Resolved-look helpers. A "look" is the fully-resolved render
        input for PixelCanvas.drawCharacter: color paint + hat + suit
@@ -7185,10 +7204,11 @@
           (save.unlockedSkins || []).length > 1 ||
           (save.unlockedDrones || []).length > 1 ||
           (save.unlockedEmotes || []).length > 1 ||
-          (save.unlockedHats || []).length > 3 ||
-          (save.unlockedSuits || []).length > 2 ||
-          (save.unlockedPets || []).length > 2 ||
-          (save.unlockedTrails || []).length > 2 ||
+          (save.unlockedColors || []).length > 1 ||
+          (save.unlockedHats || []).length > 1 ||
+          (save.unlockedSuits || []).length > 1 ||
+          (save.unlockedPets || []).length > 1 ||
+          (save.unlockedTrails || []).length > 1 ||
           !!save.lastDailyDate;
       },
 
@@ -8081,16 +8101,17 @@
           equippedSkin: 'coral',
           equippedDrone: 'none',
           equippedEmote: '🦐',
-          unlockedColors: COSMETICS.colors.map(c => c.id),
-          unlockedHats: ['none', 'party', 'sprout'],
-          unlockedSuits: ['plain', 'stripes'],
-          unlockedPets: ['none', 'babykrill'],
-          unlockedTrails: ['flame', 'bubbles'],
+          unlockedColors: ['coral'],
+          unlockedHats: ['none'],
+          unlockedSuits: ['plain'],
+          unlockedPets: ['none'],
+          unlockedTrails: ['flame'],
           equippedColor: 'coral',
           equippedHat: 'none',
           equippedSuit: 'plain',
           equippedPet: 'none',
           equippedTrail: 'flame',
+          cosGateV18: true,
           seenPrompts: [],
           stats: this.defaultStats()
         };
@@ -8119,8 +8140,8 @@
         }
         // One-time legacy migration: a save written before the five
         // customization slots existed carries only skins/drones. Map
-        // everything the pilot owned (and wore) onto the new slots —
-        // colors are all free, and every mapped suit/pet is granted.
+        // everything the pilot owned (and wore) onto the new slots;
+        // the v18 economy gate below then decides what stays owned.
         const hasNewSlots = typeof parsed.equippedColor === 'string' ||
           Array.isArray(parsed.unlockedHats) || Array.isArray(parsed.unlockedSuits) ||
           Array.isArray(parsed.unlockedPets) || Array.isArray(parsed.unlockedTrails);
@@ -8136,6 +8157,26 @@
           const eqPet = LEGACY_DRONE_MAP[base.equippedDrone];
           if (eqPet) base.equippedPet = eqPet;
         }
+        // One-time economy gate (v18, see COS_GATE_V18): a save from
+        // before the token shop keeps, per slot, only the starter
+        // set + the item currently EQUIPPED + anything that already
+        // cost tokens (proof of purchase). Unequipped free grants
+        // re-lock as purchasables. Flagged so it runs exactly once —
+        // anything bought after the gate stays owned forever.
+        if (parsed.cosGateV18 !== true) {
+          for (const [slot, cfg] of Object.entries(COS_GATE_V18)) {
+            const def = AVATAR_SLOTS[slot];
+            if (!def) continue;
+            const keep = new Set(cfg.starter);
+            if (base[def.equipped]) keep.add(base[def.equipped]);
+            base[def.unlocked] = (base[def.unlocked] || []).filter(
+              id => keep.has(id) || !cfg.wasFree.includes(id));
+            for (const id of keep) {
+              if (!base[def.unlocked].includes(id)) base[def.unlocked].push(id);
+            }
+          }
+        }
+        base.cosGateV18 = true;
         if (Array.isArray(parsed.seenPrompts)) {
           base.seenPrompts = parsed.seenPrompts.filter(x => typeof x === 'string').slice(-150);
         }
