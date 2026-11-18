@@ -1183,11 +1183,17 @@
           </div>
 
           <div id="cloudSignedOut" style="display:flex; flex-direction:column; gap:8px; max-width:320px; margin:0 auto; width:100%;">
+            <input id="cloudPilotNameInput" class="p-name-input" type="text" maxlength="14" placeholder="PILOT NAME (FOR SIGN UP)" autocomplete="off" />
             <input id="cloudEmailInput" class="p-name-input" type="email" maxlength="64" placeholder="EMAIL" autocomplete="email" />
             <input id="cloudPasswordInput" class="p-name-input" type="password" maxlength="64" placeholder="CLOUD PASSWORD" autocomplete="current-password" />
           </div>
 
           <div id="cloudSignedIn" style="display:none; text-align:center; font-size:18px; color:#fde68a; line-height:1.4;"></div>
+
+          <div id="cloudNameBox" style="display:none; flex-direction:column; gap:8px; max-width:320px; margin:0 auto; width:100%;">
+            <input id="cloudNameInput" class="p-name-input" type="text" maxlength="14" placeholder="SET YOUR PILOT NAME!" autocomplete="off" />
+            <button class="pixel-btn pixel-btn-cyan" style="font-size:10px;" onclick="Game.doCloudSetName()">🪪 SET / CHANGE PILOT NAME</button>
+          </div>
 
           <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
             <button id="cloudLoginBtn" class="pixel-btn pixel-btn-emerald" style="font-size:10px;" onclick="Game.doCloudLogin()">☁️ LOG IN</button>
@@ -5740,7 +5746,11 @@
       },
 
       userList() {
-        return Object.keys(this.data.users).map(k => this.data.users[k].name);
+        // Cloud pilots are not on-device password accounts — they never
+        // appear in the local pilots list (they sign in via the cloud box).
+        return Object.keys(this.data.users)
+          .filter(k => !this.data.users[k].cloud)
+          .map(k => this.data.users[k].name);
       },
 
       cleanUsername(name) {
@@ -5787,7 +5797,12 @@
       async login(rawName, password) {
         const key = this.cleanUsername(rawName);
         const user = this.data.users[key];
-        if (!user) return 'NO PILOT WITH THAT NAME — SIGN UP FIRST!';
+        if (user && user.cloud) return "THAT'S A CLOUD PILOT — USE THE CLOUD LOG IN BELOW!";
+        if (!user) {
+          const cloudTwin = this.data.users[`cloud:${key}`];
+          if (cloudTwin && cloudTwin.cloud) return "THAT'S A CLOUD PILOT — USE THE CLOUD LOG IN BELOW!";
+          return 'NO PILOT WITH THAT NAME — SIGN UP FIRST!';
+        }
         const passHash = await this.hashPassword(key, password || '');
         if (passHash !== user.passHash) return 'WRONG PASSWORD!';
         this.data.current = key;
@@ -5798,6 +5813,34 @@
       logout() {
         this.data.current = null;
         this.persist();
+      },
+
+      isCloudKey(key) {
+        const u = key ? this.data.users[key] : null;
+        return !!(u && u.cloud);
+      },
+
+      currentIsCloud() {
+        return this.isCloudKey(this.data.current);
+      },
+
+      // Make a cloud account the active identity. Cloud pilots live in
+      // their own keyspace ('cloud:<cleaned name>') with NO passHash, so
+      // they can never collide with an on-device pilot of the same name,
+      // and displayName() / save slots / callsign all flow from here.
+      activateCloudPilot(pilotName) {
+        const cleaned = this.cleanUsername(pilotName);
+        if (!cleaned) return null;
+        const key = `cloud:${cleaned}`;
+        const existing = this.data.users[key];
+        this.data.users[key] = {
+          name: String(pilotName || '').trim().slice(0, 14).toUpperCase() || cleaned.toUpperCase(),
+          cloud: true,
+          createdAt: existing && existing.createdAt ? existing.createdAt : Date.now()
+        };
+        this.data.current = key;
+        this.persist();
+        return key;
       }
     };
 
@@ -5815,6 +5858,13 @@
            fire-and-forget — failures are silent, the local copy is king
            until the next successful sign-in).
          • Signing out only stops syncing; local data is never deleted.
+         • The cloud account also carries a PILOT NAME (users/{uid}.pilotName).
+           On sign-in it becomes the active identity via a local
+           'cloud:<name>' Accounts entry (no password hash), so the menu
+           button, FLYING AS line, stats header and multiplayer callsign
+           all show the pilot — never a bare GUEST. Legacy docs without a
+           pilotName adopt the current local pilot name, or the pilot sets
+           one from the signed-in cloud panel.
     ========================================================================= */
     const firebaseConfig = {
       apiKey: "AIzaSyDANQbDtMf0vyPy8kbWu4VIiTilPfztUkk",
@@ -5830,6 +5880,9 @@
       db: null,
       user: null,
       available: false,
+      pilotName: null,       // display name carried by the cloud account (Firestore users/{uid}.pilotName)
+      _nameUid: null,        // uid the pilotName belongs to (guards mid-session account switches)
+      _pendingPilotName: null, // name typed on the sign-up form, consumed by _onAuth
       _pushTimer: null,
       _applyingCloud: false,
 
@@ -5890,10 +5943,45 @@
       async _onAuth(user) {
         this.user = user || null;
         try { if (typeof Game !== 'undefined' && Game.renderCloudPanel) Game.renderCloudPanel(); } catch (_) {}
-        if (!user) return;
+        if (!user) { this.pilotName = null; this._nameUid = null; return; }
+        // A different cloud account signing in mid-session must never
+        // inherit the previous account's pilot name.
+        if (this._nameUid && this._nameUid !== user.uid) this.pilotName = null;
         try {
           const snap = await this.db.collection('users').doc(user.uid).get();
           const data = snap && snap.exists ? snap.data() : null;
+
+          /* --- IDENTITY FIRST: resolve the pilot name and activate it
+             BEFORE any save moves, so a downloaded cloud save lands in
+             the pilot's own slot (Accounts.currentSaveKey follows the
+             new current) and first-login progress is re-slotted too. --- */
+          let adoptedName = false;
+          const docName = data && typeof data.pilotName === 'string' && data.pilotName ? data.pilotName : null;
+          if (docName) {
+            this.pilotName = docName;
+            this._nameUid = user.uid;
+          } else if (this._pendingPilotName) {
+            // Fresh sign-up: the name typed on the form becomes the pilot.
+            this.pilotName = this._pendingPilotName;
+            this._nameUid = user.uid;
+          } else if (!this.pilotName) {
+            // Legacy doc (account created before pilot names existed):
+            // adopt the on-device pilot name if one is flying right now.
+            const localName = Accounts.displayName();
+            if (localName !== 'GUEST' && !Accounts.currentIsCloud()) {
+              this.pilotName = localName;
+              this._nameUid = user.uid;
+              adoptedName = true;
+            }
+          }
+          this._pendingPilotName = null;
+          if (this.pilotName) {
+            Accounts.activateCloudPilot(this.pilotName);
+            // Land the in-memory save in the pilot's slot right away; the
+            // cloud save (if any) replaces it just below.
+            try { localStorage.setItem(Accounts.currentSaveKey(), JSON.stringify(Game.save)); } catch (_) {}
+          }
+
           if (data && data.save && typeof data.save === 'object') {
             // Cloud wins on sign-in: adopt the cloud save locally.
             this._applyingCloud = true;
@@ -5903,18 +5991,26 @@
             Game.updateTopHud();
             Game.updateZoneHud(0);
             Game.checkDailyBadge();
+            if (adoptedName) this.pushNow(); // persist the adopted name next to the save
             this.setMsg('☁️ CLOUD SAVE LOADED — WELCOME BACK!');
           } else if (this._hasProgress(Game.save)) {
             // First-login migration: no cloud save yet, local progress goes up.
             this.pushNow();
             this.setMsg('☁️ LOCAL SAVE SYNCED TO THE CLOUD!');
           } else {
+            if (adoptedName) this.pushNow(); // create the doc carrying the adopted name
             this.setMsg('☁️ SIGNED IN — SAVE WILL SYNC AS YOU PLAY!');
           }
         } catch (_) {
           this.setMsg('☁️ CLOUD SYNC PAUSED — PLAYING LOCALLY');
         }
-        try { if (typeof Game !== 'undefined' && Game.renderCloudPanel) Game.renderCloudPanel(); } catch (_) {}
+        try {
+          if (typeof Game !== 'undefined') {
+            if (Game.updateAccountBtn) Game.updateAccountBtn();
+            if (Game.renderAccountPanel) Game.renderAccountPanel();
+            else if (Game.renderCloudPanel) Game.renderCloudPanel();
+          }
+        } catch (_) {}
       },
 
       schedulePush() {
@@ -5929,6 +6025,7 @@
         try {
           const payload = {
             save: Game.save,
+            pilotName: this.pilotName || null,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           };
           // Fire-and-forget: the local save is already safe on this device.
@@ -5936,21 +6033,27 @@
         } catch (_) {}
       },
 
-      async signup(email, password) {
+      async signup(email, password, pilotName) {
         if (!this.available) return 'CLOUD IS UNAVAILABLE RIGHT NOW — PLAYING LOCALLY!';
         email = String(email || '').trim();
         if (!email || !email.includes('@')) return 'ENTER A VALID EMAIL ADDRESS!';
         if (!password || password.length < 6) return 'CLOUD PASSWORD NEEDS 6+ CHARACTERS!';
+        const cleaned = Accounts.cleanUsername(pilotName);
+        if (cleaned.length < 3) return 'PILOT NAME NEEDS 3+ LETTERS/NUMBERS!';
+        // _onAuth consumes this the moment the new account signs in.
+        this._pendingPilotName = String(pilotName || '').trim().slice(0, 14).toUpperCase() || cleaned.toUpperCase();
         try {
           await this.auth.createUserWithEmailAndPassword(email, password);
-          return null; // _onAuth handles the save load/migration
+          return null; // _onAuth handles identity + the save load/migration
         } catch (e) {
+          this._pendingPilotName = null;
           return this.friendlyError(e);
         }
       },
 
       async login(email, password) {
         if (!this.available) return 'CLOUD IS UNAVAILABLE RIGHT NOW — PLAYING LOCALLY!';
+        this._pendingPilotName = null; // a login never inherits a sign-up form name
         email = String(email || '').trim();
         if (!email || !email.includes('@')) return 'ENTER A VALID EMAIL ADDRESS!';
         if (!password) return 'ENTER YOUR CLOUD PASSWORD!';
@@ -5962,8 +6065,39 @@
         }
       },
 
+      // Set/change the pilot name on the signed-in cloud account: writes
+      // pilotName to Firestore, activates the identity locally right away
+      // and re-slots the live save (a rename moves the local save slot to
+      // the new key and drops the old cloud entry — the save is kept).
+      async setPilotName(rawName) {
+        if (!this.available || !this.user) return 'SIGN IN TO THE CLOUD FIRST!';
+        const cleaned = Accounts.cleanUsername(rawName);
+        if (cleaned.length < 3) return 'PILOT NAME NEEDS 3+ LETTERS/NUMBERS!';
+        const display = String(rawName || '').trim().slice(0, 14).toUpperCase() || cleaned.toUpperCase();
+        const newKey = `cloud:${cleaned}`;
+        const oldKey = Accounts.currentIsCloud() ? Accounts.currentKey() : null;
+        if (oldKey && oldKey !== newKey) {
+          try {
+            const raw = localStorage.getItem(Accounts.saveKeyFor(oldKey));
+            if (raw) localStorage.setItem(Accounts.saveKeyFor(newKey), raw);
+          } catch (_) {}
+          delete Accounts.data.users[oldKey];
+        }
+        this.pilotName = display;
+        this._nameUid = this.user.uid;
+        Accounts.activateCloudPilot(display);
+        // The in-memory save is the live one — land it in the pilot's slot
+        // so nothing stays stranded under the guest/old slot.
+        try { localStorage.setItem(Accounts.currentSaveKey(), JSON.stringify(Game.save)); } catch (_) {}
+        this.pushNow(); // writes save + pilotName to the cloud doc
+        return null;
+      },
+
       async logout() {
         if (this._pushTimer) { clearTimeout(this._pushTimer); this._pushTimer = null; }
+        this.pilotName = null;
+        this._nameUid = null;
+        this._pendingPilotName = null;
         if (!this.available || !this.auth) { this.user = null; return; }
         try { await this.auth.signOut(); } catch (_) {}
         this.user = null;
@@ -9071,7 +9205,8 @@
         status.textContent = loggedIn
           ? `FLYING AS: ${Accounts.displayName()}`
           : 'FLYING AS: GUEST (NO ACCOUNT)';
-        document.getElementById('acctLogoutBtn').style.display = loggedIn ? 'inline-flex' : 'none';
+        // Cloud pilots log out via the cloud box below, not this button.
+        document.getElementById('acctLogoutBtn').style.display = loggedIn && !Accounts.currentIsCloud() ? 'inline-flex' : 'none';
 
         const list = Accounts.userList();
         const box = document.getElementById('accountListBox');
@@ -9147,7 +9282,22 @@
         unavail.style.display = avail ? 'none' : 'block';
         signedOut.style.display = user ? 'none' : 'flex';
         signedIn.style.display = user ? 'block' : 'none';
-        if (user) signedIn.textContent = `☁️ SIGNED IN AS: ${user.email}`;
+        if (user) {
+          signedIn.textContent = CloudSync.pilotName
+            ? `☁️ SIGNED IN AS: ${user.email} — PILOT: ${CloudSync.pilotName}`
+            : `☁️ SIGNED IN AS: ${user.email}`;
+        }
+        const nameBox = document.getElementById('cloudNameBox');
+        if (nameBox) {
+          nameBox.style.display = user ? 'flex' : 'none';
+          if (user) {
+            const nameInput = document.getElementById('cloudNameInput');
+            if (nameInput && document.activeElement !== nameInput) {
+              nameInput.value = CloudSync.pilotName || '';
+              nameInput.placeholder = CloudSync.pilotName ? 'PILOT NAME' : 'SET YOUR PILOT NAME!';
+            }
+          }
+        }
         const loginBtn = document.getElementById('cloudLoginBtn');
         const signupBtn = document.getElementById('cloudSignupBtn');
         const logoutBtn = document.getElementById('cloudLogoutBtn');
@@ -9159,8 +9309,15 @@
       async doCloudSignup() {
         const email = document.getElementById('cloudEmailInput').value;
         const pass = document.getElementById('cloudPasswordInput').value;
+        const pilot = document.getElementById('cloudPilotNameInput').value;
+        if (Accounts.cleanUsername(pilot).length < 3) {
+          SoundFX.playInvalidBuzz();
+          CloudSync.setMsg('PILOT NAME NEEDS 3+ LETTERS/NUMBERS!');
+          this.showToast('PILOT NAME NEEDS 3+ LETTERS/NUMBERS!');
+          return;
+        }
         CloudSync.setMsg('☁️ CONTACTING THE CLOUD...');
-        const err = await CloudSync.signup(email, pass);
+        const err = await CloudSync.signup(email, pass, pilot);
         if (err) {
           SoundFX.playInvalidBuzz();
           CloudSync.setMsg(err);
@@ -9169,6 +9326,7 @@
           return;
         }
         document.getElementById('cloudPasswordInput').value = '';
+        document.getElementById('cloudPilotNameInput').value = '';
         this.renderCloudPanel();
         SoundFX.playCoinWinner();
         this.showToast('☁️ CLOUD ACCOUNT CREATED — YOU ARE SYNCED!');
@@ -9192,11 +9350,44 @@
         this.showToast('☁️ SIGNED IN — CLOUD SAVE LOADED!');
       },
 
+      async doCloudSetName() {
+        const name = document.getElementById('cloudNameInput').value;
+        CloudSync.setMsg('☁️ SAVING PILOT NAME...');
+        const err = await CloudSync.setPilotName(name);
+        if (err) {
+          SoundFX.playInvalidBuzz();
+          CloudSync.setMsg(err);
+          this.showToast(err);
+          return;
+        }
+        this.updateTopHud();
+        this.updateAccountBtn();
+        this.renderAccountPanel();
+        CloudSync.setMsg(`☁️ PILOT NAME SET — FLYING AS ${Accounts.displayName()}!`);
+        SoundFX.playCoinWinner();
+        this.showToast(`🪪 FLYING AS ${Accounts.displayName()}!`);
+      },
+
       async doCloudLogout() {
+        // If the pilot identity IS the cloud account, cloud sign-out also
+        // returns the game to guest. A separate local pilot the user had
+        // switched to mid-session is left exactly as they chose it.
+        const wasCloudPilot = Accounts.currentIsCloud();
+        if (wasCloudPilot) this.persistSave(); // land the pilot's progress in their slot first
         await CloudSync.logout();
         CloudSync.setMsg('');
-        this.renderCloudPanel();
-        this.showToast('☁️ SIGNED OUT — PLAYING LOCALLY');
+        if (wasCloudPilot) {
+          Accounts.logout();
+          this.loadSave();
+          this.updateTopHud();
+          this.updateZoneHud(0);
+          this.checkDailyBadge();
+          this.updateAccountBtn();
+          this.showToast('☁️ SIGNED OUT — FLYING AS GUEST');
+        } else {
+          this.showToast('☁️ SIGNED OUT — PLAYING LOCALLY');
+        }
+        this.renderAccountPanel();
       },
 
       /* --- STATS SCREEN --- */
