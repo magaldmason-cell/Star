@@ -974,7 +974,7 @@
         <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
           <button class="pixel-btn pixel-btn-cyan" onclick="Game.shareResult()">📋 SHARE GRID</button>
           <button id="playAgainBtn" class="pixel-btn pixel-btn-gold" onclick="Game.replayCurrentMode()">🔄 PLAY AGAIN</button>
-          <button class="pixel-btn" onclick="Game.returnToMenu()">🏠 MAIN MENU</button>
+          <button class="pixel-btn" onclick="Game.abortToMenu()">🏠 MAIN MENU</button>
         </div>
       </section>
 
@@ -3195,7 +3195,12 @@
                          traffic first raises an "unstable" warning, and
                          only a full minute of silence is treated as the
                          rival having left (their BYE usually says so
-                         sooner — see _onRivalGone). */
+                         sooner — see _onRivalGone).
+         rematch:        PLAY AGAIN on an online results screen sends
+                         a REMATCH_OFFER instead of dropping the party:
+                         the connection stays up, and the host deals a
+                         fresh match of the same type (_lastGameType)
+                         the moment both sides have offered. */
       _sendQueue: [],
       _joinPhase: 'idle',
       _joinCode: '',
@@ -3214,6 +3219,10 @@
       _hostSid: '',
       _guestGid: '',
       _brokerGen: 0,
+      _rematchMine: false,
+      _rematchRival: false,
+      _lastGameType: '',
+      _partyGone: false,
 
       // Public MQTT brokers (secure websockets). The primary is tried
       // first; if it errors or closes before the first connect lands,
@@ -3769,6 +3778,8 @@
             .map(id => CATEGORIES.find(c => c.id === id))
             .filter(Boolean);
           if (promptObjs.length) {
+            this._lastGameType = 'duel';
+            this._resetRematch();
             this.resetMatchStats();
             Game.launchOnlineMatch(promptObjs);
           }
@@ -3777,9 +3788,24 @@
             .map(id => CATEGORIES.find(c => c.id === id))
             .filter(Boolean);
           if (promptObjs.length && data.gameType) {
+            this._lastGameType = data.gameType;
+            this._resetRematch();
             this.resetMatchStats();
             Game.launchRace(data.gameType, promptObjs, { windowSec: data.windowSec || 20 });
           }
+        } else if (data.type === 'REMATCH_OFFER') {
+          // The rival tapped PLAY AGAIN on their results screen.
+          // Record the offer — one that arrives while I'm still
+          // playing is simply held, it must never interrupt a running
+          // match — refresh the results-screen button if I'm looking
+          // at it, and let the host check whether both sides are in.
+          const firstOffer = !this._rematchRival;
+          this._rematchRival = true;
+          this._refreshRematchUi();
+          if (firstOffer && Game.mode === 'online' && Game.state === 'summary') {
+            Game.showToast('RIVAL WANTS A REMATCH!');
+          }
+          this._maybeLaunchRematch();
         } else if (data.type === 'RACE_PROGRESS') {
           Game.onRaceProgress(data);
         } else if (data.type === 'RACE_FINISH') {
@@ -3808,6 +3834,17 @@
         this._channelOpen = false;
         this._stopHeartbeat();
 
+        // A rematch lives and dies with the party: clear any pending
+        // offers now, whichever branch below decides what the
+        // departure means for the match itself, and put the PLAY
+        // AGAIN button back to its plain label (the summary handling
+        // below re-marks it if the player is staring at a dead
+        // party's results with an offer still on the table).
+        const rematchWasPending = this._rematchMine || this._rematchRival;
+        this._rematchMine = false;
+        this._rematchRival = false;
+        this._refreshRematchUi();
+
         if (Game.race && Game.race.active) {
           Game.onRaceRivalDisconnect();
           return;
@@ -3827,6 +3864,15 @@
         // lobby leave, not a result change.)
         const lobbyEl = document.getElementById('onlineLobbyModal');
         const inLobby = lobbyEl && lobbyEl.style.display === 'flex';
+        const onSummary = !inLobby && Game.mode === 'online' && Game.state === 'summary';
+        if (onSummary && rematchWasPending) {
+          // The party died with a rematch on the table: the button
+          // must say so (its tap now falls back to the lobby — see
+          // requestRematch) instead of promising a rematch that can
+          // never launch.
+          this._partyGone = true;
+          this._refreshRematchUi();
+        }
         if (!inLobby && Game.mode === 'online' && Game.state === 'summary' && !this.rivalFinished) {
           // I finished, the rival hadn't: their leaving settles it.
           this.rivalForfeit = true;
@@ -3838,6 +3884,7 @@
         if (!inLobby && Game.mode === 'online' && Game.state === 'summary') {
           // The match was already decided — a rival leaving the
           // results screen must not flip it into a "forfeit win".
+          if (rematchWasPending) Game.showToast('RIVAL LEFT THE PARTY');
           return;
         }
         // In the lobby: the other side left before launch. Say so and
@@ -3864,10 +3911,20 @@
 
       hostLaunchMatch() {
         if (!this.isHost || !this.connected) return;
-        this.resetMatchStats();
+        this._launchAsHost(this.lobbyGameType);
+      },
 
-        if (this.lobbyGameType === 'moonrace' || this.lobbyGameType === 'lastship' || this.lobbyGameType === 'meteor') {
-          const type = this.lobbyGameType;
+      // Deal a fresh match of an explicit type and launch it locally,
+      // exactly as a lobby launch does. The lobby button passes the
+      // lobby's chosen type; a rematch passes the type of the match
+      // that just ended, so the party replays what it was playing.
+      _launchAsHost(type) {
+        if (!this.isHost || !this.connected) return;
+        this.resetMatchStats();
+        this._resetRematch();
+        this._lastGameType = type;
+
+        if (type === 'moonrace' || type === 'lastship' || type === 'meteor') {
           const count = type === 'moonrace' ? 30 : type === 'lastship' ? 15 : 12;
           const prompts = Game.pickPromptsEndless(count, Game.selectedSector);
           const windowSec = type === 'moonrace' ? 20 : 25;
@@ -3887,6 +3944,64 @@
           promptIds: prompts.map(p => p.id)
         });
         Game.launchOnlineMatch(prompts);
+      },
+
+      // --- Rematch handshake ----------------------------------------
+      // PLAY AGAIN on an online results screen is an OFFER, not a
+      // local restart: the party (broker client, room, heartbeat)
+      // never closes, and the host deals a fresh match of the same
+      // type the moment both sides have offered. Either side can
+      // still walk away at any time — leaving sends the usual BYE,
+      // which clears the offers on the other side (see _onRivalGone).
+      _resetRematch() {
+        this._rematchMine = false;
+        this._rematchRival = false;
+        this._partyGone = false;
+        this._refreshRematchUi();
+      },
+
+      // The PLAY AGAIN button narrates the handshake on the results
+      // screen. It is only ever relabelled from online state; solo
+      // modes never call this, so their button keeps its stock label.
+      _refreshRematchUi() {
+        const btn = document.getElementById('playAgainBtn');
+        if (!btn) return;
+        if (this._partyGone) {
+          btn.textContent = '🚪 RIVAL LEFT';
+        } else if (this._rematchMine && !this._rematchRival) {
+          btn.textContent = '⏳ REMATCH SENT — WAITING FOR RIVAL…';
+        } else if (this._rematchRival && !this._rematchMine) {
+          btn.textContent = '🔄 RIVAL WANTS A REMATCH — TAP TO ACCEPT!';
+        } else {
+          btn.textContent = '🔄 PLAY AGAIN';
+        }
+      },
+
+      // Called by Game.replayCurrentMode for online matches. Returns
+      // true when a live party took the tap (offer sent or already
+      // standing); false when there is no party to rematch with, so
+      // the caller falls back to reopening the lobby.
+      requestRematch() {
+        if (!this.connected || Game.mode !== 'online' || Game.state !== 'summary') return false;
+        if (!this._rematchMine) {
+          this._rematchMine = true;
+          this.send({ type: 'REMATCH_OFFER' });
+        }
+        this._refreshRematchUi();
+        this._maybeLaunchRematch();
+        return true;
+      },
+
+      // Host-authoritative launch: the host deals the rematch the
+      // moment both offers are in AND the host is itself on the
+      // results screen (a player can only offer from their own
+      // results screen, so both-in-summary is guaranteed). The guest
+      // never self-launches — it relaunches on START_* as always.
+      _maybeLaunchRematch() {
+        if (!this.isHost || !this.connected) return;
+        if (!this._rematchMine || !this._rematchRival) return;
+        if (Game.mode !== 'online' || Game.state !== 'summary') return;
+        this._launchAsHost(this._lastGameType || 'duel');
       },
 
       sendProgress(depth, round, log, finished, totalTime) {
@@ -3976,6 +4091,7 @@
         this._joinPhase = 'idle';
         this._busyRefused = false;
         this._roomOpen = false;
+        this._resetRematch();
         this._clearJoinTimeout();
         this._clearKnockTimer();
         this._clearDeadlineTimer();
@@ -6438,7 +6554,14 @@
 
       replayCurrentMode() {
         if (this.mode === 'online') {
-          this.openOnlineLobby(this.raceType || undefined);
+          // PLAY AGAIN in a party means REMATCH: the connection stays
+          // up and OnlineNet runs the two-sided offer handshake. It
+          // returns false only when the party is already gone (the
+          // rival left), and then the old behaviour — back to the
+          // lobby alone — takes over.
+          if (!OnlineNet.requestRematch()) {
+            this.openOnlineLobby(this.raceType || undefined);
+          }
         } else if (this.mode === 'daily') {
           this.startMode('unlimited');
         } else {
