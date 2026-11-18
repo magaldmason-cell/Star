@@ -13,6 +13,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
   <!-- MQTT.js for relayed cross-device online multiplayer (MQTT over WSS) -->
   <script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+  <!-- Firebase compat builds for OPTIONAL cloud accounts. If these fail to
+       load, the game runs fully on local accounts — cloud is never required. -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <style>
     :root {
       --bg-void: #050814;
@@ -1149,7 +1154,7 @@
         </div>
 
         <p style="font-size:18px; color:#94a3b8; text-align:center; line-height:1.3;">
-          Accounts live on <strong>this device only</strong> (no server). Each pilot gets their own tokens, cosmetics, streaks and stats. Passwords are stored hashed, never in plain text.
+          Pilot accounts live on <strong>this device</strong>. Each pilot gets their own tokens, cosmetics, streaks and stats. Passwords are stored hashed, never in plain text. Want the same save on every device? Add the optional <strong>cloud account</strong> below.
         </p>
 
         <div style="display:flex; flex-direction:column; gap:8px; max-width:320px; margin:0 auto; width:100%;">
@@ -1164,6 +1169,34 @@
         </div>
 
         <div id="accountListBox" style="display:flex; flex-direction:column; gap:6px;"></div>
+
+        <!-- CLOUD ACCOUNT (OPTIONAL — syncs this pilot's save to any device) -->
+        <div style="border-top:2px dashed #38bdf8; padding-top:12px; display:flex; flex-direction:column; gap:10px;">
+          <div class="font-pixel" style="font-size:11px; color:#38bdf8; text-align:center;">☁️ CLOUD ACCOUNT — PLAY ANYWHERE</div>
+
+          <p style="font-size:18px; color:#94a3b8; text-align:center; line-height:1.3;">
+            Totally optional! A cloud account syncs <strong>your save</strong> (tokens, cosmetics, stats) to every device you log in on. On sign-in the cloud save takes over; your local pilots keep working either way.
+          </p>
+
+          <div id="cloudUnavailable" style="display:none; font-size:18px; color:#f87171; text-align:center; line-height:1.3;">
+            ☁️ CLOUD UNAVAILABLE — PLAYING LOCALLY (saves stay on this device)
+          </div>
+
+          <div id="cloudSignedOut" style="display:flex; flex-direction:column; gap:8px; max-width:320px; margin:0 auto; width:100%;">
+            <input id="cloudEmailInput" class="p-name-input" type="email" maxlength="64" placeholder="EMAIL" autocomplete="email" />
+            <input id="cloudPasswordInput" class="p-name-input" type="password" maxlength="64" placeholder="CLOUD PASSWORD" autocomplete="current-password" />
+          </div>
+
+          <div id="cloudSignedIn" style="display:none; text-align:center; font-size:18px; color:#fde68a; line-height:1.4;"></div>
+
+          <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+            <button id="cloudLoginBtn" class="pixel-btn pixel-btn-emerald" style="font-size:10px;" onclick="Game.doCloudLogin()">☁️ LOG IN</button>
+            <button id="cloudSignupBtn" class="pixel-btn pixel-btn-cyan" style="font-size:10px;" onclick="Game.doCloudSignup()">☁️ SIGN UP</button>
+            <button id="cloudLogoutBtn" class="pixel-btn" style="font-size:10px; display:none;" onclick="Game.doCloudLogout()">☁️ LOG OUT</button>
+          </div>
+
+          <div id="cloudMsg" class="font-pixel" style="font-size:9px; color:#94a3b8; text-align:center; line-height:1.6; min-height:14px;"></div>
+        </div>
       </section>
 
       <!-- 8. PILOT STATS MODAL -->
@@ -5769,6 +5802,175 @@
     };
 
     /* =========================================================================
+       6C. CLOUD ACCOUNTS (FIREBASE — OPTIONAL SYNC LAYER ON TOP OF LOCAL)
+       A signed-in pilot's save (the same object kept under the localStorage
+       key star_krillion_save_v2::<pilot>) is mirrored to Firestore at
+       users/{uid}. Rules of the road:
+         • Cloud is NEVER required — if the Firebase CDN or network fails,
+           the game runs on local accounts exactly as before.
+         • On sign-in the cloud wins: an existing cloud save replaces the
+           local one. If the cloud has no save yet and the local pilot has
+           real progress, that progress is uploaded (first-login migration).
+         • Every local save while signed in is also pushed (debounced,
+           fire-and-forget — failures are silent, the local copy is king
+           until the next successful sign-in).
+         • Signing out only stops syncing; local data is never deleted.
+    ========================================================================= */
+    const firebaseConfig = {
+      apiKey: "AIzaSyDANQbDtMf0vyPy8kbWu4VIiTilPfztUkk",
+      authDomain: "star-krillion.firebaseapp.com",
+      projectId: "star-krillion",
+      storageBucket: "star-krillion.firebasestorage.app",
+      messagingSenderId: "684069916006",
+      appId: "1:684069916006:web:e73164379c5b002821cca7"
+    };
+
+    const CloudSync = {
+      auth: null,
+      db: null,
+      user: null,
+      available: false,
+      _pushTimer: null,
+      _applyingCloud: false,
+
+      init() {
+        try {
+          if (typeof firebase === 'undefined' || !firebase.initializeApp || !firebase.auth || !firebase.firestore) {
+            this.available = false;
+            return;
+          }
+          firebase.initializeApp(firebaseConfig);
+          this.auth = firebase.auth();
+          this.db = firebase.firestore();
+          this.available = true;
+          this.auth.onAuthStateChanged(u => { this._onAuth(u); });
+        } catch (_) {
+          this.available = false;
+          this.auth = null;
+          this.db = null;
+          this.user = null;
+        }
+      },
+
+      setMsg(text) {
+        try {
+          const el = document.getElementById('cloudMsg');
+          if (el) el.textContent = text || '';
+        } catch (_) {}
+      },
+
+      friendlyError(e) {
+        const code = e && e.code ? String(e.code) : '';
+        switch (code) {
+          case 'auth/email-already-in-use': return 'THAT EMAIL ALREADY HAS A CLOUD ACCOUNT — LOG IN INSTEAD!';
+          case 'auth/invalid-email': return 'THAT EMAIL DOES NOT LOOK RIGHT!';
+          case 'auth/weak-password': return 'PASSWORD TOO WEAK — USE 6+ CHARACTERS!';
+          case 'auth/missing-password': return 'ENTER YOUR CLOUD PASSWORD!';
+          case 'auth/user-not-found': return 'NO CLOUD ACCOUNT WITH THAT EMAIL — SIGN UP FIRST!';
+          case 'auth/wrong-password': return 'WRONG CLOUD PASSWORD!';
+          case 'auth/invalid-credential': return 'EMAIL OR PASSWORD NOT RECOGNIZED — TRY AGAIN!';
+          case 'auth/too-many-requests': return 'TOO MANY TRIES — TAKE A BREATHER AND TRY AGAIN SOON!';
+          case 'auth/network-request-failed': return 'NETWORK TROUBLE — CHECK YOUR CONNECTION AND TRY AGAIN!';
+          case 'auth/operation-not-allowed': return 'CLOUD LOGINS ARE TURNED OFF RIGHT NOW!';
+          default: return 'CLOUD HIT A SNAG — TRY AGAIN!';
+        }
+      },
+
+      _hasProgress(save) {
+        if (!save || typeof save !== 'object') return false;
+        const st = save.stats || {};
+        return save.tokens !== 250 || (save.streak || 0) > 0 ||
+          (st.totalGames || 0) > 0 || (st.totalPts || 0) > 0 || (st.totalLY || 0) > 0 ||
+          (save.unlockedSkins || []).length > 1 ||
+          (save.unlockedDrones || []).length > 1 ||
+          (save.unlockedEmotes || []).length > 1 ||
+          !!save.lastDailyDate;
+      },
+
+      async _onAuth(user) {
+        this.user = user || null;
+        try { if (typeof Game !== 'undefined' && Game.renderCloudPanel) Game.renderCloudPanel(); } catch (_) {}
+        if (!user) return;
+        try {
+          const snap = await this.db.collection('users').doc(user.uid).get();
+          const data = snap && snap.exists ? snap.data() : null;
+          if (data && data.save && typeof data.save === 'object') {
+            // Cloud wins on sign-in: adopt the cloud save locally.
+            this._applyingCloud = true;
+            Game.save = Game.mergeSave(data.save);
+            try { localStorage.setItem(Accounts.currentSaveKey(), JSON.stringify(Game.save)); } catch (_) {}
+            this._applyingCloud = false;
+            Game.updateTopHud();
+            Game.updateZoneHud(0);
+            Game.checkDailyBadge();
+            this.setMsg('☁️ CLOUD SAVE LOADED — WELCOME BACK!');
+          } else if (this._hasProgress(Game.save)) {
+            // First-login migration: no cloud save yet, local progress goes up.
+            this.pushNow();
+            this.setMsg('☁️ LOCAL SAVE SYNCED TO THE CLOUD!');
+          } else {
+            this.setMsg('☁️ SIGNED IN — SAVE WILL SYNC AS YOU PLAY!');
+          }
+        } catch (_) {
+          this.setMsg('☁️ CLOUD SYNC PAUSED — PLAYING LOCALLY');
+        }
+        try { if (typeof Game !== 'undefined' && Game.renderCloudPanel) Game.renderCloudPanel(); } catch (_) {}
+      },
+
+      schedulePush() {
+        if (!this.available || !this.user || this._applyingCloud) return;
+        if (this._pushTimer) clearTimeout(this._pushTimer);
+        this._pushTimer = setTimeout(() => { this.pushNow(); }, 1500);
+      },
+
+      pushNow() {
+        if (!this.available || !this.user || !this.db) return;
+        if (typeof Game === 'undefined' || !Game.save) return;
+        try {
+          const payload = {
+            save: Game.save,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          // Fire-and-forget: the local save is already safe on this device.
+          this.db.collection('users').doc(this.user.uid).set(payload).catch(() => {});
+        } catch (_) {}
+      },
+
+      async signup(email, password) {
+        if (!this.available) return 'CLOUD IS UNAVAILABLE RIGHT NOW — PLAYING LOCALLY!';
+        email = String(email || '').trim();
+        if (!email || !email.includes('@')) return 'ENTER A VALID EMAIL ADDRESS!';
+        if (!password || password.length < 6) return 'CLOUD PASSWORD NEEDS 6+ CHARACTERS!';
+        try {
+          await this.auth.createUserWithEmailAndPassword(email, password);
+          return null; // _onAuth handles the save load/migration
+        } catch (e) {
+          return this.friendlyError(e);
+        }
+      },
+
+      async login(email, password) {
+        if (!this.available) return 'CLOUD IS UNAVAILABLE RIGHT NOW — PLAYING LOCALLY!';
+        email = String(email || '').trim();
+        if (!email || !email.includes('@')) return 'ENTER A VALID EMAIL ADDRESS!';
+        if (!password) return 'ENTER YOUR CLOUD PASSWORD!';
+        try {
+          await this.auth.signInWithEmailAndPassword(email, password);
+          return null; // _onAuth handles the save load/migration
+        } catch (e) {
+          return this.friendlyError(e);
+        }
+      },
+
+      async logout() {
+        if (this._pushTimer) { clearTimeout(this._pushTimer); this._pushTimer = null; }
+        if (!this.available || !this.auth) { this.user = null; return; }
+        try { await this.auth.signOut(); } catch (_) {}
+        this.user = null;
+      }
+    };
+
+    /* =========================================================================
        7. MAIN GAME STATE CONTROLLER
     ========================================================================= */
     const Game = {
@@ -5937,6 +6139,7 @@
 
       init() {
         Accounts.init();
+        CloudSync.init();
         this.loadSave();
         PixelCanvas.init();
         this.updateTopHud();
@@ -6014,6 +6217,8 @@
         try {
           localStorage.setItem(Accounts.currentSaveKey(), JSON.stringify(this.save));
         } catch (_) {}
+        // Mirror to the cloud when signed in (debounced, silent on failure).
+        if (typeof CloudSync !== 'undefined') CloudSync.schedulePush();
       },
 
       /* --- STATS PLUMBING (per account, stored inside the save) --- */
@@ -8876,6 +9081,7 @@
         } else {
           box.innerHTML = `<div style="font-size:17px; color:#94a3b8; text-align:center;">No accounts yet — sign up to claim your own save slot!</div>`;
         }
+        this.renderCloudPanel();
       },
 
       fillAccountName(name) {
@@ -8928,6 +9134,69 @@
         this.renderAccountPanel();
         SoundFX.playCoinWinner();
         this.showToast(msg);
+      },
+
+      /* --- CLOUD ACCOUNT UI (Firebase — optional sync) --- */
+      renderCloudPanel() {
+        const signedOut = document.getElementById('cloudSignedOut');
+        const signedIn = document.getElementById('cloudSignedIn');
+        const unavail = document.getElementById('cloudUnavailable');
+        if (!signedOut || !signedIn || !unavail) return;
+        const avail = typeof CloudSync !== 'undefined' && CloudSync.available;
+        const user = avail ? CloudSync.user : null;
+        unavail.style.display = avail ? 'none' : 'block';
+        signedOut.style.display = user ? 'none' : 'flex';
+        signedIn.style.display = user ? 'block' : 'none';
+        if (user) signedIn.textContent = `☁️ SIGNED IN AS: ${user.email}`;
+        const loginBtn = document.getElementById('cloudLoginBtn');
+        const signupBtn = document.getElementById('cloudSignupBtn');
+        const logoutBtn = document.getElementById('cloudLogoutBtn');
+        if (loginBtn) loginBtn.style.display = user ? 'none' : 'inline-flex';
+        if (signupBtn) signupBtn.style.display = user ? 'none' : 'inline-flex';
+        if (logoutBtn) logoutBtn.style.display = user ? 'inline-flex' : 'none';
+      },
+
+      async doCloudSignup() {
+        const email = document.getElementById('cloudEmailInput').value;
+        const pass = document.getElementById('cloudPasswordInput').value;
+        CloudSync.setMsg('☁️ CONTACTING THE CLOUD...');
+        const err = await CloudSync.signup(email, pass);
+        if (err) {
+          SoundFX.playInvalidBuzz();
+          CloudSync.setMsg(err);
+          this.showToast(err);
+          this.renderCloudPanel();
+          return;
+        }
+        document.getElementById('cloudPasswordInput').value = '';
+        this.renderCloudPanel();
+        SoundFX.playCoinWinner();
+        this.showToast('☁️ CLOUD ACCOUNT CREATED — YOU ARE SYNCED!');
+      },
+
+      async doCloudLogin() {
+        const email = document.getElementById('cloudEmailInput').value;
+        const pass = document.getElementById('cloudPasswordInput').value;
+        CloudSync.setMsg('☁️ CONTACTING THE CLOUD...');
+        const err = await CloudSync.login(email, pass);
+        if (err) {
+          SoundFX.playInvalidBuzz();
+          CloudSync.setMsg(err);
+          this.showToast(err);
+          this.renderCloudPanel();
+          return;
+        }
+        document.getElementById('cloudPasswordInput').value = '';
+        this.renderCloudPanel();
+        SoundFX.playCoinWinner();
+        this.showToast('☁️ SIGNED IN — CLOUD SAVE LOADED!');
+      },
+
+      async doCloudLogout() {
+        await CloudSync.logout();
+        CloudSync.setMsg('');
+        this.renderCloudPanel();
+        this.showToast('☁️ SIGNED OUT — PLAYING LOCALLY');
       },
 
       /* --- STATS SCREEN --- */
