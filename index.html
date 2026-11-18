@@ -7165,6 +7165,10 @@
       user: null,
       anonUser: null,        // silent anonymous sign-in (guest presence only — never a cloud account)
       _anonKickTried: false,
+      _anonPromise: null,    // the in-flight anonymous sign-in op, if any (login/signup await its settle)
+      _anonKickTimer: null,  // delayed-kick timer (the kick never fires synchronously on a null event)
+      _authOpInFlight: false, // a password sign-in/sign-up SDK call is executing right now
+      _authSeq: null,        // promise chain serializing _onAuth invocations (they must never interleave)
       available: false,
       pilotName: null,       // display name carried by the cloud account (Firestore users/{uid}.pilotName)
       _nameUid: null,        // uid the pilotName belongs to (guards mid-session account switches)
@@ -7182,7 +7186,7 @@
           this.auth = firebase.auth();
           this.db = firebase.firestore();
           this.available = true;
-          this.auth.onAuthStateChanged(u => { this._onAuth(u); });
+          this.auth.onAuthStateChanged(u => { this._queueAuth(u); });
         } catch (_) {
           this.available = false;
           this.auth = null;
@@ -7235,13 +7239,67 @@
       // Purely additive: if the provider is disabled in the console
       // (or the network is down) this fails quietly and guests just
       // don't appear on the owner's board — the pre-guest behavior.
+      //
+      // RACE DISCIPLINE (the fresh-login defect): a late-completing
+      // signInAnonymously() REPLACES a password user as Firebase's
+      // currentUser, and the interleaved _onAuth then aborts the
+      // identity path — so the anonymous op must NEVER overlap a real
+      // sign-in. Three guards enforce that:
+      //  1. The kick is DELAYED (~2.5s after a null auth event) and
+      //     re-checks at fire time: no kick while a password op is in
+      //     flight, while a real user is present, or while any auth
+      //     user (real or anonymous) already exists.
+      //  2. login()/signup() await _settleAnon() before their SDK
+      //     call, so a password op never starts while an anonymous
+      //     op is still in flight.
+      //  3. _onAuth invocations are serialized (_queueAuth) and the
+      //     account path re-verifies currency after every await, so
+      //     a superseded invocation bails instead of half-applying.
+      _scheduleAnonKick() {
+        if (!this.available || !this.auth) return;
+        if (this._anonKickTimer) return;
+        this._anonKickTimer = setTimeout(() => {
+          this._anonKickTimer = null;
+          this._kickAnonymous();
+        }, 2500);
+      },
+
       _kickAnonymous() {
         if (!this.available || !this.auth || this._anonKickTried) return;
+        if (this._authOpInFlight || this.user) return;
+        try {
+          const cu = this.auth.currentUser;
+          if (cu) return; // any live session (real or anonymous) — never stomp it
+        } catch (_) {}
         this._anonKickTried = true;
         try {
           const p = this.auth.signInAnonymously();
+          this._anonPromise = p;
           if (p && p.catch) p.catch(() => {});
+          if (p && p.then) p.then(() => { if (this._anonPromise === p) this._anonPromise = null; },
+                                  () => { if (this._anonPromise === p) this._anonPromise = null; });
         } catch (_) {}
+      },
+
+      // Resolves once no anonymous sign-in op is in flight (or after
+      // a bounded wait, so a hung op can never wedge a real login).
+      async _settleAnon() {
+        const p = this._anonPromise;
+        if (!p) return;
+        let timer = null;
+        const timeout = new Promise(r => { timer = setTimeout(r, 10000); });
+        try { await Promise.race([p.then(() => {}, () => {}), timeout]); }
+        catch (_) {}
+        if (timer) clearTimeout(timer);
+      },
+
+      // _onAuth is async and the auth listener can fire while a
+      // previous invocation is still awaiting Firestore — unserialized,
+      // the invocations interleave and stomp each other's state.
+      // Chain them: each event is processed in arrival order.
+      _queueAuth(user) {
+        const run = () => this._onAuth(user);
+        this._authSeq = (this._authSeq || Promise.resolve()).then(run, run);
       },
 
       async _onAuth(user) {
@@ -7250,13 +7308,16 @@
         // the save sync, the account panel, or the friends system.
         if (user && user.isAnonymous) {
           this.anonUser = user;
-          this.user = null;
+          // A straggler anonymous event must never stomp a live (or
+          // in-flight) real sign-in: clear the account slot only when
+          // nothing real is happening.
+          if (!this.user && !this._authOpInFlight) this.user = null;
           if (typeof Presence !== 'undefined') Presence.refresh();
           return;
         }
         if (user) { this.anonUser = null; this._anonKickTried = false; }
         this.user = user || null;
-        if (!user) this._kickAnonymous();
+        if (!user) this._scheduleAnonKick();
         try { if (typeof Game !== 'undefined' && Game.renderCloudPanel) Game.renderCloudPanel(); } catch (_) {}
         if (!user) {
           this.pilotName = null;
@@ -7271,6 +7332,12 @@
         try {
           const snap = await this.db.collection('users').doc(user.uid).get();
           const data = snap && snap.exists ? snap.data() : null;
+          // Currency: if the auth session moved on while the doc was
+          // loading (sign-out, account switch, a straggler event), this
+          // invocation is stale — bail; the queued event for the live
+          // session is the one that applies state.
+          const cuNow = this.auth.currentUser;
+          if (!cuNow || cuNow.uid !== user.uid || cuNow.isAnonymous) return;
           if (typeof Social !== 'undefined') {
             Social._setFriends(data && Array.isArray(data.friends) ? data.friends : []);
           }
@@ -7312,6 +7379,11 @@
               nameTaken = true;
             }
           }
+          // Currency, once more, before identity/save state moves:
+          // the claim above awaited the network, and a superseded
+          // invocation must not activate an identity or adopt a save.
+          const cuLate = this.auth.currentUser;
+          if (!cuLate || cuLate.uid !== user.uid || cuLate.isAnonymous) return;
           if (this.pilotName) {
             Accounts.activateCloudPilot(this.pilotName);
             // Land the in-memory save in the pilot's slot right away; the
@@ -7368,9 +7440,13 @@
         try {
           const payload = {
             save: Game.save,
-            pilotName: this.pilotName || null,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           };
+          // Only a RESOLVED name may be written. A session whose
+          // identity has not resolved yet (mid-race, mid-load) must
+          // never push a null pilotName over the name already stored
+          // on the account — with merge:true that null would erase it.
+          if (this.pilotName) payload.pilotName = this.pilotName;
           // Carry the friends list on every push, so the users doc has
           // the field from the very first sync instead of only after
           // the first friendship change. Read live from Social at push
@@ -7396,12 +7472,20 @@
         if (cleaned.length < 3) return 'PILOT NAME NEEDS 3+ LETTERS/NUMBERS!';
         // _onAuth consumes this the moment the new account signs in.
         this._pendingPilotName = String(pilotName || '').trim().slice(0, 14).toUpperCase() || cleaned.toUpperCase();
+        this._authOpInFlight = true;
         try {
+          // Never overlap the anonymous op: let it settle first, so
+          // its completion can never land after this sign-up and
+          // replace the brand-new account as currentUser.
+          await this._settleAnon();
           await this.auth.createUserWithEmailAndPassword(email, password);
           return null; // _onAuth handles identity + the save load/migration
         } catch (e) {
           this._pendingPilotName = null;
+          this._scheduleAnonKick(); // still a guest — guest presence still applies
           return this.friendlyError(e);
+        } finally {
+          this._authOpInFlight = false;
         }
       },
 
@@ -7411,11 +7495,19 @@
         email = String(email || '').trim();
         if (!email || !email.includes('@')) return 'ENTER A VALID EMAIL ADDRESS!';
         if (!password) return 'ENTER YOUR CLOUD PASSWORD!';
+        this._authOpInFlight = true;
         try {
+          // Never overlap the anonymous op: let it settle first, so
+          // its completion can never land after this sign-in and
+          // stomp the account session (the fresh-login defect).
+          await this._settleAnon();
           await this.auth.signInWithEmailAndPassword(email, password);
           return null; // _onAuth handles the save load/migration
         } catch (e) {
+          this._scheduleAnonKick(); // still a guest — guest presence still applies
           return this.friendlyError(e);
+        } finally {
+          this._authOpInFlight = false;
         }
       },
 
