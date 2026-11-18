@@ -276,6 +276,20 @@
       background: linear-gradient(180deg, rgba(6, 52, 42, 0.92) 0%, rgba(15, 23, 42, 0.95) 100%);
     }
 
+    .mode-group-heading {
+      grid-column: 1 / -1;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 12px;
+      letter-spacing: 1px;
+      margin-top: 10px;
+      padding-bottom: 4px;
+      border-bottom: 2px dashed #334155;
+    }
+
+    .mode-group-heading:first-child {
+      margin-top: 0;
+    }
+
     .mode-title {
       font-family: 'Press Start 2P', monospace;
       font-size: 11px;
@@ -656,8 +670,10 @@
           <button class="sector-chip" data-sector="Pop Culture & Games" onclick="Game.selectSector('Pop Culture & Games')">🕹️ POP CULTURE</button>
         </div>
 
-        <!-- 7-Mode Grid -->
+        <!-- Mode Grid — grouped: Single Player / 2 Player / Party 2+ -->
         <div class="mode-grid">
+          <div class="mode-group-heading" style="color:#fbbf24;">🛸 SINGLE PLAYER</div>
+
           <!-- 1. Daily Launch -->
           <div class="mode-card featured-gold" onclick="Game.startMode('daily')">
             <div class="mode-title">
@@ -713,29 +729,7 @@
             </div>
           </div>
 
-          <!-- 6. Local Pass & Play (2P) -->
-          <div class="mode-card featured-2p" onclick="Game.startMode('passplay')">
-            <div class="mode-title">
-              <span>🎮 LOCAL PASS & PLAY (2P)</span>
-              <span style="color:#38bdf8; font-size:9px;">🪙 COIN FLIP</span>
-            </div>
-            <div class="mode-desc">
-              Same device! Flip a cosmic coin to see who goes first—Pilot #2 <span style="color:#fbbf24;">cannot repeat</span> Pilot #1's answers.
-            </div>
-          </div>
-
-          <!-- 7. Real Online Multiplayer (P2P Room Code) -->
-          <div class="mode-card featured-online" onclick="Game.openOnlineLobby()">
-            <div class="mode-title">
-              <span>🌐 ONLINE MULTIPLAYER (LIVE 1V1 ROOMS)</span>
-              <span style="color:#34d399; font-size:9px;">📡 CROSS-DEVICE P2P</span>
-            </div>
-            <div class="mode-desc">
-              Play live against a friend on another phone or computer! Create a 6-digit <strong>Room Code</strong>, race through the exact same 7 prompts simultaneously, and watch your rival's Space-Krill descend live!
-            </div>
-          </div>
-
-          <!-- 8. Lightspeed Blitz -->
+          <!-- 6. Lightspeed Blitz -->
           <div class="mode-card" onclick="Game.startMode('lightspeed')">
             <div class="mode-title">
               <span>⚡ LIGHTSPEED</span>
@@ -746,7 +740,7 @@
             </div>
           </div>
 
-          <!-- 9. Chain Reaction -->
+          <!-- 7. Chain Reaction -->
           <div class="mode-card" onclick="Game.startMode('chain')">
             <div class="mode-title">
               <span>🔗 CHAIN REACTION</span>
@@ -757,7 +751,42 @@
             </div>
           </div>
 
-          <!-- 10. Moon Race (Online) -->
+          <!-- 8. One Life (Solo) -->
+          <div class="mode-card" onclick="Game.startMode('onelife')">
+            <div class="mode-title">
+              <span>☠️ ONE LIFE</span>
+              <span style="color:#f87171; font-size:9px;">SOLO • SUDDEN DEATH</span>
+            </div>
+            <div class="mode-desc">
+              Endless prompts, zero mercy: ONE judged miss or ONE timeout ends the run instantly. How deep can you dive on a single life?
+            </div>
+          </div>
+
+          <div class="mode-group-heading" style="color:#38bdf8;">⚔️ 2 PLAYER</div>
+
+          <!-- 9. Local Pass & Play (2P) -->
+          <div class="mode-card featured-2p" onclick="Game.startMode('passplay')">
+            <div class="mode-title">
+              <span>🎮 LOCAL PASS & PLAY (2P)</span>
+              <span style="color:#38bdf8; font-size:9px;">🪙 COIN FLIP</span>
+            </div>
+            <div class="mode-desc">
+              Same device! Flip a cosmic coin to see who goes first—Pilot #2 <span style="color:#fbbf24;">cannot repeat</span> Pilot #1's answers.
+            </div>
+          </div>
+
+          <!-- 10. Real Online Multiplayer (P2P Room Code) -->
+          <div class="mode-card featured-online" onclick="Game.openOnlineLobby()">
+            <div class="mode-title">
+              <span>🌐 ONLINE MULTIPLAYER (LIVE 1V1 ROOMS)</span>
+              <span style="color:#34d399; font-size:9px;">📡 CROSS-DEVICE P2P</span>
+            </div>
+            <div class="mode-desc">
+              Play live against a friend on another phone or computer! Create a 6-digit <strong>Room Code</strong>, race through the exact same 7 prompts simultaneously, and watch your rival's Space-Krill descend live!
+            </div>
+          </div>
+
+          <!-- 11. Moon Race (Online) -->
           <div class="mode-card" onclick="Game.openOnlineLobby('moonrace')">
             <div class="mode-title">
               <span>🌕 MOON RACE</span>
@@ -768,7 +797,7 @@
             </div>
           </div>
 
-          <!-- 11. Last Ship Standing (Online) -->
+          <!-- 12. Last Ship Standing (Online) -->
           <div class="mode-card" onclick="Game.openOnlineLobby('lastship')">
             <div class="mode-title">
               <span>💀 LAST SHIP STANDING</span>
@@ -779,7 +808,7 @@
             </div>
           </div>
 
-          <!-- 12. Meteor Storm (Online) -->
+          <!-- 13. Meteor Storm (Online) -->
           <div class="mode-card featured-online" onclick="Game.openOnlineLobby('meteor')">
             <div class="mode-title">
               <span>☄️ METEOR STORM</span>
@@ -790,7 +819,9 @@
             </div>
           </div>
 
-          <!-- 13. Star Party (Online, unlimited players) -->
+          <div class="mode-group-heading" style="color:#c084fc;">🎉 PARTY 2+</div>
+
+          <!-- 14. Star Party (Online, unlimited players) -->
           <div class="mode-card featured-online" onclick="Game.openPartyLobby('party')">
             <div class="mode-title">
               <span>🎉 STAR PARTY</span>
@@ -801,7 +832,7 @@
             </div>
           </div>
 
-          <!-- 14. Knockout (Online party) -->
+          <!-- 15. Knockout (Online party) -->
           <div class="mode-card" onclick="Game.openPartyLobby('knockout')">
             <div class="mode-title">
               <span>💀 KNOCKOUT</span>
@@ -812,7 +843,7 @@
             </div>
           </div>
 
-          <!-- 15. Team Clash (Online party) -->
+          <!-- 16. Team Clash (Online party) -->
           <div class="mode-card" onclick="Game.openPartyLobby('teams')">
             <div class="mode-title">
               <span>👥 TEAM CLASH</span>
@@ -820,17 +851,6 @@
             </div>
             <div class="mode-desc">
               Split into 🔴 CRIMSON and 🔵 AZURE crews and pool your LY over 10 rounds. The highest crew total wins — carry your team or sink it!
-            </div>
-          </div>
-
-          <!-- 16. One Life (Solo) -->
-          <div class="mode-card" onclick="Game.startMode('onelife')">
-            <div class="mode-title">
-              <span>☠️ ONE LIFE</span>
-              <span style="color:#f87171; font-size:9px;">SOLO • SUDDEN DEATH</span>
-            </div>
-            <div class="mode-desc">
-              Endless prompts, zero mercy: ONE judged miss or ONE timeout ends the run instantly. How deep can you dive on a single life?
             </div>
           </div>
 
@@ -1169,7 +1189,7 @@
           <p>• <strong style="color:#38bdf8;">REVERSE POPULARITY:</strong> Don't type the obvious answer! Obscure, valid answers sink your Space-Krill <strong>10× deeper</strong> in Light-Years (LY).</p>
           <p>• <strong style="color:#fbbf24;">ONE ACCEPTED SHOT:</strong> Wrong guesses shake the box so you can keep trying—but your <strong>first valid answer immediately locks in</strong>!</p>
           <p>• <strong style="color:#34d399;">ONLINE MULTIPLAYER:</strong> Create a 6-digit Room Code in <strong>ONLINE MULTIPLAYER</strong> and send it to a friend on any device to race live! Easier: tap <strong>🔗 COPY INVITE LINK</strong> — your friend just opens the link and drops straight into your room, no code typing.</p>
-          <p>• <strong style="color:#facc15;">⚡ LIGHTSPEED:</strong> 60 seconds of thinking time, prompts back to back. Consecutive accepted answers build your combo multiplier (up to ×5) — a rejection or timeout resets it!</p>
+          <p>• <strong style="color:#facc15;">⚡ LIGHTSPEED:</strong> One 60-second clock that NEVER stops — not even while answers are being judged — and no per-question limit: a prompt stays up until you answer it or the 60 seconds run out. Consecutive accepted answers build your combo multiplier (up to ×5) — a rejection resets it!</p>
           <p>• <strong style="color:#fb923c;">🔗 CHAIN REACTION:</strong> One category forever: each new answer must start with the <strong>last letter</strong> of your previous answer. Failed attempts and timeouts cost lives — you have 3.</p>
           <p>• <strong style="color:#c084fc;">💀 LAST SHIP STANDING:</strong> Online elimination — same prompt both ships; the MOST COMMON answer each round is eliminated (ties: the slower ship is out).</p>
           <p>• <strong style="color:#f87171;">☄️ METEOR STORM:</strong> Online survival — the per-prompt clock shrinks every round and you get ONE shot per round. A miss or timeout costs 1 of 3 hull points.</p>
@@ -9234,8 +9254,12 @@
           this.beginRun();
         } else if (mode === 'lightspeed') {
           this.prompts = this.pickPromptsEndless(150, this.selectedSector);
-          this.clockDuration = 10;
-          this.blitz = { timeLeft: 60, score: 0, combo: 0, bestCombo: 0, answered: 0 };
+          // Lightspeed has NO per-question clock: the 60s blitz session
+          // clock (updateBlitzClock) is the only clock in this mode.
+          // clockDuration is set to the session length just so generic
+          // HUD/bookkeeping reads never see a per-question value.
+          this.clockDuration = 60;
+          this.blitz = { timeLeft: 60, score: 0, combo: 0, bestCombo: 0, answered: 0, _tickSec: 60 };
           this.beginRun();
         } else if (mode === 'onelife') {
           this.prompts = this.pickPromptsEndless(150, this.selectedSector);
@@ -9470,6 +9494,10 @@
         inputEl.disabled = false;
         document.getElementById('submitAnswerBtn').disabled = false;
         document.getElementById('passBtn').disabled = false;
+        if (this.mode === 'lightspeed') {
+          // Lightspeed has no PASS — see passPrompt().
+          document.getElementById('passBtn').disabled = true;
+        }
         document.getElementById('tierRevealBox').style.display = 'none';
         document.getElementById('nextPromptBtn').style.display = '';
 
@@ -9500,6 +9528,48 @@
       blitzMult() {
         if (!this.blitz) return 1;
         return Math.min(5, 1 + Math.floor(this.blitz.combo / 3));
+      },
+
+      // Lightspeed's ONLY clock: the 60-second session budget. It burns
+      // in real time — while thinking, while the Web AI Judge is
+      // validating (NO validation pause in this mode), and while the
+      // post-answer breakdown is on screen. A prompt stays up until it
+      // is answered or this clock hits zero; hitting zero ends the run
+      // on the spot, wherever the player is (an answer still being
+      // judged at that moment simply never banks — handleSubmit sees
+      // state !== 'playing' when its verdict lands and discards it).
+      updateBlitzClock(dt) {
+        if (!this.blitz) return;
+        this.blitz.timeLeft -= dt;
+        if (this.blitz.timeLeft <= 0) {
+          this.blitz.timeLeft = 0;
+          this.refreshBlitzBar();
+          this.finishRun();
+          return;
+        }
+        this.refreshBlitzBar();
+
+        // The main clock bar mirrors the session clock — there is no
+        // per-question clock to show in this mode.
+        const pct = Math.max(0, (this.blitz.timeLeft / 60) * 100);
+        const fill = document.getElementById('clockFill');
+        fill.style.width = `${pct}%`;
+        if (this.blitz.timeLeft <= 5) {
+          fill.style.background = '#f87171';
+        } else if (this.blitz.timeLeft <= 10) {
+          fill.style.background = '#fbbf24';
+        } else {
+          fill.style.background = 'linear-gradient(90deg, #34d399, #38bdf8)';
+        }
+        const clockText = document.getElementById('clockText');
+        clockText.textContent = `${Math.max(0, this.blitz.timeLeft).toFixed(1)}s`;
+        clockText.style.color = this.blitz.timeLeft <= 5 ? '#f87171' : '#34d399';
+
+        const secCeil = Math.ceil(this.blitz.timeLeft);
+        if (secCeil < this.blitz._tickSec && secCeil > 0 && secCeil <= 5) {
+          SoundFX.playCountdownTick(secCeil <= 3);
+        }
+        this.blitz._tickSec = secCeil;
       },
 
       refreshChainBar() {
@@ -9554,6 +9624,9 @@
       // Tiebreak "elapsed" time is the exact same thinking time, so
       // validation can neither freeze the game forever nor punish a
       // player for a slow connection.
+      // EXCEPTION — LIGHTSPEED: the blitz ignores the thinking-time rule
+      // entirely. Its 60-second session clock burns in real time (see
+      // updateBlitzClock) and there is no per-question clock at all.
       update(dt) {
         if (this.state !== 'playing') return;
 
@@ -9572,6 +9645,16 @@
           return;
         }
 
+        // Lightspeed runs on its session clock alone. It ticks BEFORE
+        // the roundLocked early-return so the 60 seconds keep burning
+        // during the post-answer breakdown too, and it returns before
+        // the per-question thinking clock below — which Lightspeed
+        // does not have.
+        if (this.mode === 'lightspeed' && this.blitz) {
+          this.updateBlitzClock(dt);
+          return;
+        }
+
         if (this.roundLocked) return;
 
         const prevThink = this.thinkElapsed;
@@ -9585,17 +9668,6 @@
         }
         const thinkDelta = this.thinkElapsed - prevThink;
         this.clockRemaining = Math.max(0, this.clockDuration - this.thinkElapsed);
-
-        // Lightspeed: the 60s blitz budget burns down with thinking time
-        if (this.mode === 'lightspeed' && this.blitz) {
-          this.blitz.timeLeft -= thinkDelta;
-          this.refreshBlitzBar();
-          if (this.blitz.timeLeft <= 0) {
-            this.roundLocked = true;
-            this.finishRun();
-            return;
-          }
-        }
 
         const pct = Math.max(0, (this.clockRemaining / this.clockDuration) * 100);
         const fill = document.getElementById('clockFill');
@@ -9746,6 +9818,9 @@
       passPrompt() {
         if (this.party && this.party.active) return;
         if (this.chainDuel && this.chainDuel.active) return;
+        // No skipping in Lightspeed: a prompt stays until it is
+        // answered or the 60-second session clock runs out.
+        if (this.mode === 'lightspeed') return;
         if (this.state !== 'playing' || this.roundLocked || this.isValidating) return;
         this.handleTimeoutOrPass(true);
       },
