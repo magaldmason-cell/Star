@@ -744,6 +744,51 @@
               The clock shrinks every round and one shot is all you get—wrong answers cost hull (3 hits and you're space dust). Outlast your rival!
             </div>
           </div>
+
+          <!-- 13. Star Party (Online, unlimited players) -->
+          <div class="mode-card featured-online" onclick="Game.openPartyLobby('party')">
+            <div class="mode-title">
+              <span>🎉 STAR PARTY</span>
+              <span style="color:#c084fc; font-size:9px;">🌐 ONLINE • NO PLAYER LIMIT</span>
+            </div>
+            <div class="mode-desc">
+              The whole crew in one room! 2 to unlimited pilots, 10 rounds, everyone answers the same prompt at the same time — the rarest answer banks the most LY.
+            </div>
+          </div>
+
+          <!-- 14. Knockout (Online party) -->
+          <div class="mode-card" onclick="Game.openPartyLobby('knockout')">
+            <div class="mode-title">
+              <span>💀 KNOCKOUT</span>
+              <span style="color:#c084fc; font-size:9px;">🌐 PARTY ELIMINATION</span>
+            </div>
+            <div class="mode-desc">
+              Party elimination with 3 hulls each: the most common answer every round — and every blank — costs a hull. Last ship flying wins!
+            </div>
+          </div>
+
+          <!-- 15. Team Clash (Online party) -->
+          <div class="mode-card" onclick="Game.openPartyLobby('teams')">
+            <div class="mode-title">
+              <span>👥 TEAM CLASH</span>
+              <span style="color:#c084fc; font-size:9px;">🌐 CREW VS CREW (4+)</span>
+            </div>
+            <div class="mode-desc">
+              Split into 🔴 CRIMSON and 🔵 AZURE crews and pool your LY over 10 rounds. The highest crew total wins — carry your team or sink it!
+            </div>
+          </div>
+
+          <!-- 16. One Life (Solo) -->
+          <div class="mode-card" onclick="Game.startMode('onelife')">
+            <div class="mode-title">
+              <span>☠️ ONE LIFE</span>
+              <span style="color:#f87171; font-size:9px;">SOLO • SUDDEN DEATH</span>
+            </div>
+            <div class="mode-desc">
+              Endless prompts, zero mercy: ONE judged miss or ONE timeout ends the run instantly. How deep can you dive on a single life?
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -751,7 +796,7 @@
       <section id="onlineLobbyModal" class="modal-panel pixel-box pixel-box-emerald interactive" style="max-width:580px; text-align:center;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h2 class="font-pixel" style="font-size:13px; color:#34d399;">🌐 ONLINE MULTIPLAYER</h2>
-          <button class="pixel-btn" style="padding:6px 10px; font-size:10px;" onclick="OnlineNet.disconnect(); Game.returnToMenu()">✕ CLOSE</button>
+          <button class="pixel-btn" style="padding:6px 10px; font-size:10px;" onclick="OnlineNet.disconnect(); PartyNet.disconnect(); Game.returnToMenu()">✕ CLOSE</button>
         </div>
 
         <div style="max-width:300px; margin:0 auto; width:100%;">
@@ -767,6 +812,7 @@
             <button class="sector-chip" data-gametype="moonrace" onclick="OnlineNet.setLobbyGameType('moonrace')">🌕 MOON RACE</button>
             <button class="sector-chip" data-gametype="lastship" onclick="OnlineNet.setLobbyGameType('lastship')">💀 LAST SHIP</button>
             <button class="sector-chip" data-gametype="meteor" onclick="OnlineNet.setLobbyGameType('meteor')">☄️ METEOR STORM</button>
+            <button class="sector-chip" data-gametype="chain" onclick="OnlineNet.setLobbyGameType('chain')">🔗 CHAIN REACTION</button>
           </div>
           <div id="lobbyGameTypeDesc" style="font-size:17px; color:#94a3b8; text-align:center; margin-top:6px; line-height:1.3;">
             Classic 7-prompt duel — deepest dive wins, speed breaks ties.
@@ -811,6 +857,64 @@
           <button id="onlineStartMatchBtn" class="pixel-btn pixel-btn-emerald" style="display:none;" onclick="OnlineNet.hostLaunchMatch()">
             🚀 LAUNCH ONLINE MATCH!
           </button>
+        </div>
+
+        <!-- PARTY ROOMS (N PLAYERS — NO CAP) -->
+        <div style="border-top:2px dashed #7c3aed; padding-top:12px; display:flex; flex-direction:column; gap:8px;">
+          <div class="font-pixel" style="font-size:11px; color:#c084fc; text-align:center;">🎉 PARTY ROOMS — 2+ PLAYERS, NO LIMIT!</div>
+
+          <div>
+            <div class="font-pixel" style="font-size:9px; color:#94a3b8; margin-bottom:6px; text-align:center;">🎯 PARTY GAME (HOST CHOOSES)</div>
+            <div class="sector-bar" id="partyGameTypeBar">
+              <button class="sector-chip active" data-pgametype="party" onclick="PartyNet.setPartyGameType('party')">⭐ STAR PARTY</button>
+              <button class="sector-chip" data-pgametype="knockout" onclick="PartyNet.setPartyGameType('knockout')">💀 KNOCKOUT</button>
+              <button class="sector-chip" data-pgametype="teams" onclick="PartyNet.setPartyGameType('teams')">👥 TEAM CLASH</button>
+            </div>
+            <div id="partyGameTypeDesc" style="font-size:17px; color:#94a3b8; text-align:center; margin-top:6px; line-height:1.3;">
+              ⭐ Star Party — 2 to UNLIMITED pilots, 10 rounds, everyone answers the same prompt at once. Rarest answers bank the most LY!
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div style="background:rgba(15,23,42,0.9); border:2px solid #c084fc; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px; justify-content:space-between;">
+              <div class="font-pixel" style="font-size:10px; color:#c084fc;">HOST A PARTY</div>
+              <p style="font-size:17px; color:#cbd5e1;">Open a room for the whole crew — there is no player limit!</p>
+              <button id="hostPartyBtn" class="pixel-btn pixel-btn-gold" style="font-size:10px;" onclick="PartyNet.hostParty()">
+                🎉 CREATE PARTY CODE
+              </button>
+            </div>
+            <div style="background:rgba(15,23,42,0.9); border:2px solid #38bdf8; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px; justify-content:space-between;">
+              <div class="font-pixel" style="font-size:10px; color:#38bdf8;">JOIN A PARTY</div>
+              <p style="font-size:17px; color:#cbd5e1;">Type the party code in the JOIN A ROOM box above, then tap:</p>
+              <button id="joinPartyBtn" class="pixel-btn pixel-btn-cyan" style="font-size:10px;" onclick="PartyNet.joinParty()">
+                🔗 JOIN PARTY
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Party Room Panel -->
+          <div id="partyRoomBox" style="display:none; background:rgba(4,8,20,0.92); border:2px solid #c084fc; border-radius:6px; padding:12px; flex-direction:column; gap:8px; align-items:center;">
+            <div id="partyCodeWrapper" style="display:none; flex-direction:column; align-items:center; gap:6px;">
+              <div class="font-pixel" style="font-size:9px; color:#e9d5ff;">SHARE THIS PARTY CODE WITH THE CREW:</div>
+              <div id="partyRoomCodeText" class="room-code-display">------</div>
+              <button class="pixel-btn pixel-btn-gold" style="padding:6px 12px; font-size:9px;" onclick="PartyNet.copyRoomCode()">
+                📋 COPY PARTY CODE
+              </button>
+              <button class="pixel-btn pixel-btn-cyan" style="padding:6px 12px; font-size:9px;" onclick="PartyNet.copyPartyInviteLink()">
+                🔗 COPY PARTY INVITE LINK
+              </button>
+            </div>
+            <div id="partyStatusMsg" class="font-pixel" style="font-size:10px; color:#38bdf8; line-height:1.5;">
+              PARTY RELAY STANDING BY…
+            </div>
+            <div id="partyRosterList" style="display:flex; flex-direction:column; gap:3px; align-items:center;"></div>
+            <button id="partyShuffleBtn" class="pixel-btn pixel-btn-cyan" style="display:none; padding:6px 12px; font-size:9px;" onclick="PartyNet.shuffleTeams()">
+              🔀 SHUFFLE TEAMS
+            </button>
+            <button id="partyLaunchBtn" class="pixel-btn pixel-btn-emerald" style="display:none;" onclick="PartyNet.hostLaunchParty()">
+              ⭐ LAUNCH STAR PARTY!
+            </button>
+          </div>
         </div>
       </section>
 
@@ -1008,6 +1112,9 @@
           <p>• <strong style="color:#fb923c;">🔗 CHAIN REACTION:</strong> One category forever: each new answer must start with the <strong>last letter</strong> of your previous answer. Failed attempts and timeouts cost lives — you have 3.</p>
           <p>• <strong style="color:#c084fc;">💀 LAST SHIP STANDING:</strong> Online elimination — same prompt both ships; the MOST COMMON answer each round is eliminated (ties: the slower ship is out).</p>
           <p>• <strong style="color:#f87171;">☄️ METEOR STORM:</strong> Online survival — the per-prompt clock shrinks every round and you get ONE shot per round. A miss or timeout costs 1 of 3 hull points.</p>
+          <p>• <strong style="color:#c084fc;">🎉 STAR PARTY / 💀 KNOCKOUT / 👥 TEAM CLASH:</strong> Party Rooms (inside ONLINE MULTIPLAYER) take 2 to unlimited pilots! Star Party: 10 rounds, everyone answers at once. Knockout: the most common answer and blanks cost hull — last ship wins. Team Clash: 4+ pilots split into CRIMSON and AZURE crews and pool their LY.</p>
+          <p>• <strong style="color:#fb923c;">🔗 CHAIN REACTION (ONLINE):</strong> Turn-based 1v1 chain — a fresh prompt every turn, and your answer must start with the last letter of the previous answer. A miss or timeout is a strike; 3 strikes and you lose!</p>
+          <p>• <strong style="color:#f87171;">☠️ ONE LIFE:</strong> Solo sudden death — endless prompts, but a single judged miss or a single timeout ends the run. Chase your personal best!</p>
           <div style="background:rgba(4,8,20,0.85); border:2px solid #334155; border-radius:6px; padding:10px; font-size:18px;">
             <div class="font-pixel" style="font-size:10px; color:#38bdf8; margin-bottom:6px;">🌕 MOON RACE — DISTANCE PER ANSWER (GOAL: 384,400 KM)</div>
             <div>⬜ <strong>Stardust (10 pts):</strong> 2,400 km</div>
@@ -3244,7 +3351,8 @@
         duel: 'Classic 7-prompt duel — deepest dive wins, speed breaks ties.',
         moonrace: '🌕 Race to the Moon (384,400 km)! Unlimited answers per prompt — Stardust 2,400 km • Too Clever 3,800 • Orbit 9,500 • Rare 24,000 • Deep Space 48,000 • 💎 96,000 km.',
         lastship: '💀 Elimination! Same prompt both ships — the MOST COMMON answer each round is eliminated (ties: slower ship is out).',
-        meteor: '☄️ Survival! One shot per round, the clock shrinks every round, a miss costs 1 of 3 hull points. Last ship flying wins.'
+        meteor: '☄️ Survival! One shot per round, the clock shrinks every round, a miss costs 1 of 3 hull points. Last ship flying wins.',
+        chain: '🔗 Turn-based letter chain! Take turns on fresh prompts — each answer must start with the LAST LETTER of the previous one. A miss or a timeout is a strike: 3 strikes and you lose!'
       },
 
       setLobbyGameType(type) {
@@ -3444,6 +3552,7 @@
 
       hostRoom() {
         this.disconnect();
+        PartyNet.disconnect();
         if (typeof mqtt === 'undefined') {
           this.setStatus('⚠️ MULTIPLAYER LIBRARY FAILED TO LOAD — CHECK YOUR CONNECTION AND RELOAD THE PAGE.', '#f87171');
           return;
@@ -3556,7 +3665,9 @@
             ? '💀 LAUNCH LAST SHIP STANDING!'
             : this.lobbyGameType === 'meteor'
               ? '☄️ LAUNCH METEOR STORM!'
-              : '🚀 LAUNCH ONLINE MATCH!';
+              : this.lobbyGameType === 'chain'
+                ? '🔗 LAUNCH CHAIN REACTION!'
+                : '🚀 LAUNCH ONLINE MATCH!';
         startBtn.style.display = 'inline-flex';
         this._rawSend({ type: 'HELLO', name: this.myName });
         this._flushQueue();
@@ -3574,6 +3685,7 @@
         // no second broker client.
         if (this._joinPhase === 'joining' || this.connected) return;
         this.disconnect();
+        PartyNet.disconnect();
         if (typeof mqtt === 'undefined') {
           this.setStatus('⚠️ MULTIPLAYER LIBRARY FAILED TO LOAD — CHECK YOUR CONNECTION AND RELOAD THE PAGE.', '#f87171');
           return;
@@ -3806,6 +3918,20 @@
             Game.showToast('RIVAL WANTS A REMATCH!');
           }
           this._maybeLaunchRematch();
+        } else if (data.type === 'START_CHAIN') {
+          const cat = CATEGORIES.find(c => c.id === data.promptId);
+          if (cat) {
+            this._lastGameType = 'chain';
+            this._resetRematch();
+            this.resetMatchStats();
+            Game.launchChainOnline(cat);
+          }
+        } else if (data.type === 'CHAIN_SUBMIT') {
+          if (this.isHost) Game.chainHostOnSubmit(data);
+        } else if (data.type === 'CHAIN_TIMEOUT') {
+          if (this.isHost) Game.chainHostOnTimeout(data);
+        } else if (data.type === 'CHAIN_STATE') {
+          if (!this.isHost) Game.chainApplyState(data);
         } else if (data.type === 'RACE_PROGRESS') {
           Game.onRaceProgress(data);
         } else if (data.type === 'RACE_FINISH') {
@@ -3845,6 +3971,10 @@
         this._rematchRival = false;
         this._refreshRematchUi();
 
+        if (Game.chainDuel && Game.chainDuel.active) {
+          Game.finishChainOnline(this.isHost ? 'host' : 'guest', 'forfeit');
+          return;
+        }
         if (Game.race && Game.race.active) {
           Game.onRaceRivalDisconnect();
           return;
@@ -3935,6 +4065,13 @@
             windowSec
           });
           Game.launchRace(type, prompts, { windowSec });
+          return;
+        }
+
+        if (type === 'chain') {
+          const opening = Game.pickPrompts(1, Game.selectedSector)[0];
+          this.send({ type: 'START_CHAIN', promptId: opening.id });
+          Game.launchChainOnline(opening);
           return;
         }
 
@@ -4098,6 +4235,931 @@
         this._stopHeartbeat();
         this._sendQueue.length = 0;
         this._killWarm();
+        this._brokerGen++;
+        const client = this.client;
+        this.client = null;
+        if (client) {
+          try { client.end(true); } catch (_) {}
+        }
+      }
+    };
+
+
+
+
+    /* =========================================================================
+       5B. PARTY RULES — pure standings/hull/team math. The host runs this
+       over the round's RESULT entries and broadcasts the outcome; every
+       client re-runs the same helpers over the broadcast totals to render
+       identical leaderboards.
+    ========================================================================= */
+    const PartyRules = {
+      // Crews split alternating by join order: 1st CRIMSON, 2nd AZURE, ...
+      assignTeams(players) {
+        return players.map((p, i) => ({ ...p, team: i % 2 === 0 ? 'CRIMSON' : 'AZURE' }));
+      },
+
+      teamTotals(players) {
+        const t = {
+          CRIMSON: { ly: 0, pts: 0, time: 0 },
+          AZURE: { ly: 0, pts: 0, time: 0 }
+        };
+        for (const p of players) {
+          if (!p.team || !t[p.team]) continue;
+          t[p.team].ly += p.ly || 0;
+          t[p.team].pts += p.pts || 0;
+          t[p.team].time += p.time || 0;
+        }
+        return t;
+      },
+
+      // Winning crew: higher team LY, then higher team pts, then the
+      // faster total thinking time. null = dead heat.
+      teamWinner(players) {
+        const t = this.teamTotals(players);
+        if (t.CRIMSON.ly !== t.AZURE.ly) return t.CRIMSON.ly > t.AZURE.ly ? 'CRIMSON' : 'AZURE';
+        if (t.CRIMSON.pts !== t.AZURE.pts) return t.CRIMSON.pts > t.AZURE.pts ? 'CRIMSON' : 'AZURE';
+        if (Math.abs(t.CRIMSON.time - t.AZURE.time) > 0.001) {
+          return t.CRIMSON.time < t.AZURE.time ? 'CRIMSON' : 'AZURE';
+        }
+        return null;
+      },
+
+      // Most LY wins; ties break on total pts, then fastest total time.
+      standings(players) {
+        return [...players].sort((a, b) =>
+          (b.ly - a.ly) || (b.pts - a.pts) || (a.time - b.time));
+      },
+
+      // Match winner: the leader among the living; if a round wiped out
+      // the whole room at once, the overall leader takes it.
+      winner(players) {
+        const alive = players.filter(p => !p.eliminated);
+        const pool = alive.length ? alive : players;
+        return this.standings(pool)[0] || null;
+      },
+
+      // Knockout hull math for one round. entries: [{pid, answer, pts}]
+      // — pts<=0 or a blank marker is a blank. Holders of the MOST COMMON
+      // accepted answer (a normalized answer shared by 2+ players; ties
+      // for most-common all count) lose 1 hull, and blanks lose 1 hull.
+      // A round where every accepted answer is unique costs no hulls.
+      knockoutRound(entries) {
+        const hullLoss = {};
+        const isBlank = (e) => !e || e.pts <= 0 || !e.answer ||
+          e.answer === '(TIME EXPIRED)' || e.answer === '(PASSED)' ||
+          e.answer === '(NO ANSWER)' || e.answer === '(ELIMINATED)';
+        const freq = {};
+        for (const e of entries) {
+          if (isBlank(e)) {
+            if (e && e.pid) hullLoss[e.pid] = 'blank';
+            continue;
+          }
+          const norm = normalizeText(e.answer);
+          if (norm) freq[norm] = (freq[norm] || 0) + 1;
+        }
+        let maxFreq = 0;
+        for (const k of Object.keys(freq)) maxFreq = Math.max(maxFreq, freq[k]);
+        const commonAnswers = maxFreq >= 2
+          ? Object.keys(freq).filter(k => freq[k] === maxFreq)
+          : [];
+        if (commonAnswers.length) {
+          for (const e of entries) {
+            if (isBlank(e)) continue;
+            if (commonAnswers.includes(normalizeText(e.answer))) {
+              hullLoss[e.pid] = 'common';
+            }
+          }
+        }
+        return { hullLoss, commonAnswers };
+      }
+    };
+
+
+    /* =========================================================================
+       5C. PARTY TRANSPORT — N-player rooms on the same MQTT relay.
+       Topics: starkrill/v1/<code>/party-host (players -> host) and
+       starkrill/v1/<code>/party-all (host -> everyone). There is NO cap
+       on the roster: the room accepts joins until the host launches, and
+       the host is the single authority for rosters, prompts, round
+       collection, hull math and rematches — the same host-authoritative
+       shape as the 1v1 relay, widened to a room.
+       Presence: the host broadcasts a PING every 5s; players answer with
+       PONGs. A player silent for a full minute mid-match is marked
+       inactive (skipped in round collection, greyed on the board); the
+       host going silent for a minute ends the match for everyone.
+    ========================================================================= */
+    const PartyNet = {
+      client: null,
+      isHost: false,
+      roomCode: '',
+      myPid: '',
+      myName: 'STAR-KRILL',
+      connected: false,
+      inMatch: false,
+      lobbyGameType: 'party',
+      roster: [],
+      _sessionId: '',
+      _hostSid: '',
+      _brokerGen: 0,
+      _channelOpen: false,
+      _roomOpen: false,
+      _joinPhase: 'idle',
+      _knockTimer: null,
+      _deadlineTimer: null,
+      _joinTimer: null,
+      _lastJoinError: '',
+      _hbTimer: null,
+      _lastRxAt: 0,
+      _lastRxByPid: {},
+      _hostState: null,
+      _rematchMine: false,
+      _rematchOffers: {},
+      _partyGone: false,
+      _lastPartyType: '',
+      ROUND_WINDOW_SEC: 25,
+      ROUND_GRACE_MS: 15000,
+      BROKERS: OnlineNet.BROKERS,
+
+      PARTY_DESCS: {
+        party: '⭐ Star Party — 2 to UNLIMITED pilots, 10 rounds, everyone answers the same prompt at once. Rarest answers bank the most LY!',
+        knockout: '💀 Knockout — 3 hulls each. The MOST COMMON answer each round (and blanks) costs a hull. Last ship flying wins!',
+        teams: '👥 Team Clash — 4+ pilots split into 🔴 CRIMSON and 🔵 AZURE crews. 10 rounds; the crew with the most total LY wins!'
+      },
+
+      _newPid() {
+        return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
+      },
+
+      _topicToHost() { return `starkrill/v1/${this.roomCode}/party-host`; },
+      _topicToAll() { return `starkrill/v1/${this.roomCode}/party-all`; },
+      _myTopic() { return this.isHost ? this._topicToHost() : this._topicToAll(); },
+      _peerTopic() { return this.isHost ? this._topicToAll() : this._topicToHost(); },
+
+      setStatus(msg, color = '#38bdf8') {
+        const el = document.getElementById('partyStatusMsg');
+        if (el) {
+          el.textContent = msg;
+          el.style.color = color;
+        }
+      },
+
+      setPartyGameType(type) {
+        this.lobbyGameType = type;
+        document.querySelectorAll('#partyGameTypeBar .sector-chip').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.pgametype === type);
+        });
+        const desc = document.getElementById('partyGameTypeDesc');
+        if (desc) desc.textContent = this.PARTY_DESCS[type] || '';
+        const shuffleBtn = document.getElementById('partyShuffleBtn');
+        if (shuffleBtn) {
+          shuffleBtn.style.display = this.isHost && this._roomOpen && type === 'teams' ? 'inline-flex' : 'none';
+        }
+        if (this.isHost && this._roomOpen && !this.inMatch) {
+          this._applyTeamsIfNeeded();
+          this._broadcastRoster();
+          this._renderRoster();
+        }
+        SoundFX.playTone(520, 0.06, 'square', 0.04);
+      },
+
+      getPartyInviteLink() {
+        const base = location.href.split('?')[0].split('#')[0];
+        return `${base}?join=${this.roomCode}&party=1`;
+      },
+
+      copyRoomCode() {
+        if (!this.roomCode) return;
+        Game.copyTextToClipboard(this.roomCode, `PARTY CODE "${this.roomCode}" COPIED!`);
+      },
+
+      copyPartyInviteLink() {
+        if (!this.roomCode) return;
+        Game.copyTextToClipboard(this.getPartyInviteLink(), 'PARTY INVITE LINK COPIED! SEND IT TO THE CREW!');
+      },
+
+      // Broker plumbing is the 1v1 system's, re-pointed at this object
+      // (it only touches client/_brokerGen/BROKERS + the hooks).
+      _connectBroker(hooks) {
+        OnlineNet._connectBroker.call(this, hooks);
+      },
+
+      _subscribeMine(client, done) {
+        try {
+          client.subscribe(this._myTopic(), { qos: 0 }, (err) => { if (done) done(!err); });
+        } catch (_) {
+          if (done) done(false);
+        }
+      },
+
+      _envelope(payload) {
+        const msg = { ...payload };
+        if (this.isHost) msg._sid = this._sessionId;
+        else {
+          msg._pid = this.myPid;
+          if (this._hostSid) msg._sid = this._hostSid;
+        }
+        return msg;
+      },
+
+      _publishNow(payload) {
+        if (!this.client || !this.client.connected) return false;
+        try {
+          this.client.publish(this._peerTopic(), JSON.stringify(this._envelope(payload)), { qos: 0 });
+          return true;
+        } catch (_) {
+          return false;
+        }
+      },
+
+      _broadcast(payload) {
+        if (!this.isHost) return false;
+        return this._publishNow(payload);
+      },
+
+      _sendToHost(payload) {
+        if (this.isHost) return false;
+        return this._publishNow(payload);
+      },
+
+      /* ---------------- HOST: open a party room ---------------- */
+      hostParty() {
+        this.disconnect();
+        OnlineNet.disconnect();
+        if (typeof mqtt === 'undefined') {
+          this.setStatus('⚠️ MULTIPLAYER LIBRARY FAILED TO LOAD — CHECK YOUR CONNECTION AND RELOAD THE PAGE.', '#f87171');
+          return;
+        }
+        const rawName = (document.getElementById('onlineCallsignInput').value || '').trim().toUpperCase();
+        this.myName = rawName || 'HOST-KRILL';
+        this.isHost = true;
+        this.myPid = this._newPid();
+        this.roomCode = OnlineNet.generateCode();
+        this._sessionId = Math.random().toString(36).slice(2, 12);
+        this._hostSid = '';
+        this.roster = [{ pid: this.myPid, name: this.myName }];
+        this._lastRxByPid = { [this.myPid]: Date.now() };
+        this._applyTeamsIfNeeded();
+
+        const box = document.getElementById('partyRoomBox');
+        box.style.display = 'flex';
+        document.getElementById('partyCodeWrapper').style.display = 'flex';
+        document.getElementById('partyRoomCodeText').textContent = this.roomCode;
+        document.getElementById('partyLaunchBtn').style.display = 'none';
+        this.setStatus('OPENING PARTY BEACON...', '#38bdf8');
+        this._renderRoster();
+
+        this._joinTimer = setTimeout(() => {
+          if (!this._roomOpen) {
+            this.setStatus('⚠️ RELAY TOOK TOO LONG TO OPEN YOUR PARTY — TAP "CREATE PARTY CODE" TO RETRY.', '#f87171');
+          }
+        }, 9000);
+
+        this._connectBroker({
+          onReady: (client) => {
+            this._subscribeMine(client, (ok) => {
+              if (this.client !== client || !ok) return;
+              if (!this._roomOpen) {
+                if (this._joinTimer) clearTimeout(this._joinTimer);
+                this._roomOpen = true;
+                this._channelOpen = true;
+                this.connected = true;
+                this.setStatus('🎉 PARTY OPEN — SHARE THE CODE! THE ROOM TAKES EVERYONE UNTIL YOU LAUNCH.', '#34d399');
+                this._renderRoster();
+                this._startHostPresence();
+              }
+            });
+          },
+          onFallback: () => {},
+          onFatal: () => {
+            if (!this._roomOpen) {
+              this.setStatus('⚠️ RELAY ERROR (BROKER-UNREACHABLE) — TAP "CREATE PARTY CODE" TO RETRY.', '#f87171');
+            }
+          },
+          onDown: () => {},
+          onMessage: (topic, payload) => this._onBrokerMessage(topic, payload)
+        });
+      },
+
+      /* ---------------- GUEST: join a party room ---------------- */
+      joinParty() {
+        if (this._joinPhase === 'joining' || this.connected) return;
+        this.disconnect();
+        OnlineNet.disconnect();
+        if (typeof mqtt === 'undefined') {
+          this.setStatus('⚠️ MULTIPLAYER LIBRARY FAILED TO LOAD — CHECK YOUR CONNECTION AND RELOAD THE PAGE.', '#f87171');
+          return;
+        }
+        const code = (document.getElementById('joinCodeInput').value || '').replace(/\D/g, '');
+        if (code.length !== 6) {
+          Game.showToast('ENTER THE 6-DIGIT PARTY CODE FIRST!');
+          return;
+        }
+        const rawName = (document.getElementById('onlineCallsignInput').value || '').trim().toUpperCase();
+        this.myName = rawName || 'GUEST-KRILL';
+        this.isHost = false;
+        this.myPid = this._newPid();
+        this.roomCode = code;
+        this._hostSid = '';
+
+        const box = document.getElementById('partyRoomBox');
+        box.style.display = 'flex';
+        document.getElementById('partyCodeWrapper').style.display = 'none';
+        document.getElementById('partyLaunchBtn').style.display = 'none';
+
+        this._joinPhase = 'joining';
+        this._lastJoinError = '';
+        this._deadlineTimer = setTimeout(() => this._failJoin(), 60500);
+        this.setStatus(`LOOKING FOR PARTY "${code}"...`, '#38bdf8');
+        this._renderRoster();
+
+        this._connectBroker({
+          onReady: (client) => {
+            this._subscribeMine(client, (ok) => {
+              if (this.client !== client || !ok) return;
+              if (this._joinPhase === 'joining') {
+                this._knock();
+                if (!this._knockTimer) {
+                  this._knockTimer = setInterval(() => {
+                    if (this._joinPhase === 'joining') this._knock();
+                  }, 4000);
+                }
+              }
+            });
+          },
+          onFallback: () => {},
+          onFatal: () => { this._lastJoinError = 'BROKER-UNREACHABLE'; },
+          onDown: () => {},
+          onMessage: (topic, payload) => this._onBrokerMessage(topic, payload)
+        });
+      },
+
+      _knock() {
+        if (this._joinPhase !== 'joining' || this.connected) return;
+        this._publishNow({ type: 'HELLO', pid: this.myPid, name: this.myName });
+      },
+
+      _failJoin() {
+        if (this._joinPhase !== 'joining') return;
+        this._joinPhase = 'idle';
+        this._clearKnockTimer();
+        this._clearDeadlineTimer();
+        const lastErr = this._lastJoinError || 'NONE — NO ANSWER FROM HOST';
+        this.setStatus(`⚠️ PARTY "${this.roomCode}" DIDN'T ANSWER AFTER 60 SECONDS OF KNOCKING — THE HOST MAY HAVE CLOSED IT, OR THE CODE IS WRONG. (LAST ERROR: ${lastErr})`, '#f87171');
+      },
+
+      _clearKnockTimer() {
+        if (this._knockTimer) {
+          clearInterval(this._knockTimer);
+          this._knockTimer = null;
+        }
+      },
+
+      _clearDeadlineTimer() {
+        if (this._deadlineTimer) {
+          clearTimeout(this._deadlineTimer);
+          this._deadlineTimer = null;
+        }
+      },
+
+      _onBrokerMessage(topic, payload) {
+        let msg = null;
+        try { msg = JSON.parse(payload.toString()); } catch (_) { return; }
+        if (!msg || typeof msg !== 'object' || !msg.type) return;
+        if (this.isHost) this._onHostMessage(msg);
+        else this._onGuestMessage(msg);
+      },
+
+      /* ---------------- HOST: incoming ---------------- */
+      _onHostMessage(msg) {
+        if (msg._sid && msg._sid !== this._sessionId) return;
+        const pid = msg.pid || msg._pid || '';
+        if (pid) this._lastRxByPid[pid] = Date.now();
+
+        if (msg.type === 'HELLO') {
+          if (this.inMatch) {
+            // The match has launched: late joins are refused politely,
+            // addressed to the knocking player only.
+            if (pid && !this.roster.some(p => p.pid === pid)) {
+              this._broadcast({ type: 'PARTY_FULL', _to: pid });
+            }
+            return;
+          }
+          if (pid && !this.roster.some(p => p.pid === pid)) {
+            this.roster.push({ pid, name: String(msg.name || 'GUEST-KRILL').slice(0, 14) });
+            this._applyTeamsIfNeeded();
+            SoundFX.playCoinWinner();
+          }
+          this._broadcastRoster();
+          this._renderRoster();
+          return;
+        }
+        if (msg.type === 'BYE') {
+          if (this.inMatch && this._hostState) {
+            const p = this._hostState.playersState.find(x => x.pid === pid);
+            if (p) p.inactive = true;
+          } else {
+            const before = this.roster.length;
+            this.roster = this.roster.filter(p => p.pid !== pid);
+            if (this.roster.length !== before) {
+              this._applyTeamsIfNeeded();
+              this._broadcastRoster();
+              this._renderRoster();
+            }
+          }
+          return;
+        }
+        if (msg.type === 'RESULT') {
+          this._collectResult(msg);
+          return;
+        }
+        if (msg.type === 'REMATCH_OFFER') {
+          if (!this.inMatch && Game.mode === 'party' && Game.state === 'summary') {
+            const first = !this._rematchOffers[pid];
+            this._rematchOffers[pid] = true;
+            const p = this.roster.find(r => r.pid === pid);
+            if (first) Game.showToast(`${p ? p.name : 'A PILOT'} WANTS A REMATCH!`);
+            this._broadcast({ type: 'REMATCH_OFFER', pid });
+          }
+          return;
+        }
+        // PONG and anything else: presence was already noted above.
+      },
+
+      _broadcastRoster() {
+        this._broadcast({ type: 'ROSTER', players: this.roster });
+      },
+
+      _applyTeamsIfNeeded() {
+        if (this.lobbyGameType === 'teams') {
+          this.roster = PartyRules.assignTeams(this.roster);
+        }
+      },
+
+      shuffleTeams() {
+        if (!this.isHost || this.lobbyGameType !== 'teams' || this.inMatch) return;
+        const arr = [...this.roster];
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        this.roster = PartyRules.assignTeams(arr);
+        this._broadcastRoster();
+        this._renderRoster();
+        Game.showToast('🔀 CREWS SHUFFLED!');
+        SoundFX.playTone(660, 0.07, 'square', 0.05);
+      },
+
+      /* ---------------- GUEST: incoming ---------------- */
+      _onGuestMessage(msg) {
+        if (this._hostSid && msg._sid && msg._sid !== this._hostSid) return;
+        if (msg._to && msg._to !== this.myPid) return;
+        this._lastRxAt = Date.now();
+        if (msg._sid && !this._hostSid) this._hostSid = msg._sid;
+
+        if (msg.type === 'ROSTER') {
+          this.roster = Array.isArray(msg.players) ? msg.players : this.roster;
+          if (this._joinPhase === 'joining' && this.roster.some(p => p.pid === this.myPid)) {
+            this._joinPhase = 'joined';
+            this.connected = true;
+            this._channelOpen = true;
+            this._clearKnockTimer();
+            this._clearDeadlineTimer();
+            SoundFX.playCoinWinner();
+            this.setStatus('🎉 YOU ARE IN THE PARTY — WAITING FOR THE HOST TO LAUNCH…', '#34d399');
+            this._startGuestPresence();
+          }
+          if (!this.inMatch) this._renderRoster();
+          return;
+        }
+        if (msg.type === 'PARTY_FULL') {
+          if (this._joinPhase === 'joining') {
+            this._joinPhase = 'idle';
+            this._clearKnockTimer();
+            this._clearDeadlineTimer();
+            this.setStatus('⛔ THAT PARTY\'S MATCH ALREADY STARTED — ASK THE HOST FOR A FRESH CODE ONCE IT ENDS.', '#f87171');
+          }
+          return;
+        }
+        if (msg.type === 'BYE') {
+          this._onHostGone();
+          return;
+        }
+        if (msg.type === 'PING') return; // presence already noted
+        if (!this.connected && msg.type !== 'PARTY_START') return;
+
+        if (msg.type === 'PARTY_START') {
+          if (this._joinPhase === 'joining') {
+            this._joinPhase = 'joined';
+            this.connected = true;
+            this._channelOpen = true;
+            this._clearKnockTimer();
+            this._clearDeadlineTimer();
+            this._startGuestPresence();
+          }
+          this.inMatch = true;
+          this._lastPartyType = msg.gameType;
+          this._resetPartyRematch();
+          const promptObjs = (msg.promptIds || [])
+            .map(id => CATEGORIES.find(c => c.id === id))
+            .filter(Boolean);
+          if (promptObjs.length) {
+            Game.launchPartyMatch(msg.gameType, promptObjs, msg.players || []);
+          }
+          return;
+        }
+        if (msg.type === 'PROMPT') {
+          Game.onPartyPrompt(msg);
+          return;
+        }
+        if (msg.type === 'ROUND_RESULTS') {
+          Game.onPartyRoundResults(msg);
+          if (msg.final) this.inMatch = false;
+          return;
+        }
+        if (msg.type === 'REMATCH_OFFER') {
+          if (msg.pid && msg.pid !== this.myPid) {
+            const p = this.roster.find(r => r.pid === msg.pid);
+            if (Game.mode === 'party' && Game.state === 'summary') {
+              Game.showToast(`${p ? p.name : 'A PILOT'} WANTS A REMATCH!`);
+            }
+          }
+          return;
+        }
+      },
+
+      /* ---------------- Presence ---------------- */
+      _startHostPresence() {
+        this._stopPresence();
+        this._hbTimer = setInterval(() => {
+          if (!this.isHost || !this._roomOpen) return;
+          this._broadcast({ type: 'PING' });
+          const now = Date.now();
+          if (this.inMatch && this._hostState) {
+            for (const p of this._hostState.playersState) {
+              if (p.pid === this.myPid) continue;
+              const last = this._lastRxByPid[p.pid] || 0;
+              if (last && now - last > 60000) p.inactive = true;
+            }
+          } else {
+            let changed = false;
+            this.roster = this.roster.filter(p => {
+              if (p.pid === this.myPid) return true;
+              const last = this._lastRxByPid[p.pid] || now;
+              if (now - last > 60000) {
+                changed = true;
+                return false;
+              }
+              return true;
+            });
+            if (changed) {
+              this._applyTeamsIfNeeded();
+              this._broadcastRoster();
+              this._renderRoster();
+            }
+          }
+        }, 5000);
+      },
+
+      _startGuestPresence() {
+        this._stopPresence();
+        this._lastRxAt = Date.now();
+        this._hbTimer = setInterval(() => {
+          if (!this.connected) return;
+          this._sendToHost({ type: 'PONG', pid: this.myPid });
+          if (Date.now() - this._lastRxAt > 60000) {
+            this._onHostGone();
+          }
+        }, 5000);
+      },
+
+      _stopPresence() {
+        if (this._hbTimer) {
+          clearInterval(this._hbTimer);
+          this._hbTimer = null;
+        }
+      },
+
+      _onHostGone() {
+        if (!this.connected && this._joinPhase !== 'joined') return;
+        this.connected = false;
+        this.inMatch = false;
+        this._channelOpen = false;
+        this._stopPresence();
+        this._partyGone = true;
+        this.setStatus('⚠️ THE HOST LEFT — THIS PARTY IS OVER. OPEN A FRESH ROOM TO PLAY AGAIN!', '#f87171');
+        if (Game.mode === 'party') Game.onPartyHostGone();
+        this._refreshPartyRematchUi();
+      },
+
+      /* ---------------- Lobby rendering ---------------- */
+      _renderRoster() {
+        const list = document.getElementById('partyRosterList');
+        if (!list) return;
+        const teamsMode = this.lobbyGameType === 'teams';
+        const hostPid = this.roster.length ? this.roster[0].pid : '';
+        list.innerHTML = this.roster.map(p => {
+          const tags = [];
+          if (p.pid === hostPid) tags.push('👑 HOST');
+          if (p.pid === this.myPid) tags.push('(YOU)');
+          if (teamsMode && p.team) tags.push(p.team === 'AZURE' ? '🔵 AZURE' : '🔴 CRIMSON');
+          return `<div style="font-size:18px; color:#e2e8f0;">🚀 ${p.name} <span style="color:#94a3b8; font-size:15px;">${tags.join(' ')}</span></div>`;
+        }).join('') || '<div style="font-size:17px; color:#94a3b8;">No pilots yet…</div>';
+
+        const launchBtn = document.getElementById('partyLaunchBtn');
+        if (launchBtn) {
+          if (this.isHost && this._roomOpen && !this.inMatch) {
+            const min = this.lobbyGameType === 'teams' ? 4 : 2;
+            launchBtn.style.display = 'inline-flex';
+            launchBtn.disabled = this.roster.length < min;
+            launchBtn.style.opacity = this.roster.length < min ? '0.55' : '1';
+            launchBtn.textContent = this.roster.length < min
+              ? `⏳ NEED ${min - this.roster.length} MORE PILOT${min - this.roster.length === 1 ? '' : 'S'} (${this.roster.length}/${min})`
+              : this.lobbyGameType === 'knockout'
+                ? `💀 LAUNCH KNOCKOUT (${this.roster.length} PILOTS)!`
+                : this.lobbyGameType === 'teams'
+                  ? `👥 LAUNCH TEAM CLASH (${this.roster.length} PILOTS)!`
+                  : `⭐ LAUNCH STAR PARTY (${this.roster.length} PILOTS)!`;
+            const shuffleBtn = document.getElementById('partyShuffleBtn');
+            if (shuffleBtn) {
+              shuffleBtn.style.display = this.lobbyGameType === 'teams' ? 'inline-flex' : 'none';
+            }
+          } else {
+            launchBtn.style.display = 'none';
+          }
+        }
+      },
+
+      /* ---------------- Match running (host authority) ---------------- */
+      hostLaunchParty() {
+        if (!this.isHost || !this._roomOpen || this.inMatch) return;
+        const type = this.lobbyGameType;
+        const min = type === 'teams' ? 4 : 2;
+        if (this.roster.length < min) {
+          this.setStatus(`⏳ ${type === 'teams' ? 'TEAM CLASH NEEDS AT LEAST 4 PILOTS (2V2)' : 'NEED AT LEAST 2 PILOTS TO LAUNCH'} — ${this.roster.length} IN THE ROOM.`, '#fbbf24');
+          return;
+        }
+        this._lastPartyType = type;
+        this._resetPartyRematch();
+        this._startMatchAsHost(type);
+      },
+
+      _startMatchAsHost(gameType) {
+        const players = this.roster.map(p => ({ pid: p.pid, name: p.name, team: p.team || null }));
+        const count = gameType === 'knockout' ? 12 : 10;
+        const prompts = Game.pickPromptsEndless(count, Game.selectedSector);
+        this.inMatch = true;
+        this._hostState = {
+          gameType,
+          prompts,
+          playersState: players.map(p => ({
+            ...p, ly: 0, pts: 0, time: 0, hull: 3, eliminated: false, inactive: false
+          })),
+          round: -1,
+          results: new Map(),
+          roundOpen: false,
+          closeTimer: null,
+          checkTimer: null,
+          over: false
+        };
+        this._broadcast({
+          type: 'PARTY_START', gameType,
+          promptIds: prompts.map(p => p.id),
+          players
+        });
+        Game.launchPartyMatch(gameType, prompts, players);
+        this._renderRoster();
+        this._hostNextPrompt();
+      },
+
+      _hostNextPrompt() {
+        const hs = this._hostState;
+        if (!hs || hs.over) return;
+        hs.round++;
+        hs.results = new Map();
+        hs.roundOpen = true;
+        const cat = hs.prompts[hs.round];
+        this._broadcast({ type: 'PROMPT', round: hs.round, promptId: cat.id });
+        // QoS-0 insurance: one repeat, harmless if the first landed
+        // (clients ignore a PROMPT for a round they already loaded).
+        const sentRound = hs.round;
+        setTimeout(() => {
+          if (this._hostState === hs && hs.roundOpen && hs.round === sentRound) {
+            this._broadcast({ type: 'PROMPT', round: sentRound, promptId: cat.id });
+          }
+        }, 700);
+        Game.onPartyPrompt({ round: hs.round, promptId: cat.id });
+        if (hs.closeTimer) clearTimeout(hs.closeTimer);
+        hs.closeTimer = setTimeout(() => this._hostCloseRound(), this.ROUND_WINDOW_SEC * 1000 + this.ROUND_GRACE_MS);
+        if (hs.checkTimer) clearInterval(hs.checkTimer);
+        hs.checkTimer = setInterval(() => this._hostCheckRound(), 1000);
+      },
+
+      sendMyResult(result) {
+        const party = Game.party;
+        if (!party) return;
+        if (this.isHost) {
+          this._collectResult({
+            pid: this.myPid, round: party.round,
+            answer: result.answer, pts: result.pts, ly: result.ly, elapsed: result.elapsed
+          });
+        } else {
+          this._sendToHost({
+            type: 'RESULT', pid: this.myPid, round: party.round,
+            answer: result.answer, pts: result.pts, ly: result.ly, elapsed: result.elapsed
+          });
+        }
+      },
+
+      _collectResult(data) {
+        const hs = this._hostState;
+        if (!this.isHost || !hs || hs.over || !hs.roundOpen) return;
+        if (data.round !== hs.round) return;
+        const p = hs.playersState.find(x => x.pid === data.pid);
+        if (!p || p.eliminated) return;
+        if (hs.results.has(data.pid)) return;
+        hs.results.set(data.pid, {
+          answer: String(data.answer || ''),
+          pts: data.pts || 0,
+          ly: data.ly || 0,
+          elapsed: data.elapsed || 0
+        });
+        this._hostCheckRound();
+      },
+
+      _hostCheckRound() {
+        const hs = this._hostState;
+        if (!hs || !hs.roundOpen || hs.over) return;
+        const expected = hs.playersState.filter(p => !p.eliminated && !p.inactive);
+        if (expected.length && expected.every(p => hs.results.has(p.pid))) {
+          this._hostCloseRound();
+        }
+      },
+
+      _hostCloseRound() {
+        const hs = this._hostState;
+        if (!hs || !hs.roundOpen) return;
+        hs.roundOpen = false;
+        if (hs.closeTimer) clearTimeout(hs.closeTimer);
+        if (hs.checkTimer) clearInterval(hs.checkTimer);
+        const round = hs.round;
+
+        const entries = hs.playersState.map(p => {
+          if (p.eliminated) {
+            return { pid: p.pid, answer: '(ELIMINATED)', pts: 0, ly: 0, elapsed: 0 };
+          }
+          const r = hs.results.get(p.pid);
+          if (r) return { pid: p.pid, answer: r.answer, pts: r.pts, ly: r.ly, elapsed: r.elapsed };
+          return { pid: p.pid, answer: '(NO ANSWER)', pts: 0, ly: 0, elapsed: this.ROUND_WINDOW_SEC };
+        });
+
+        for (const e of entries) {
+          const p = hs.playersState.find(x => x.pid === e.pid);
+          p.ly += e.ly;
+          p.pts += e.pts;
+          p.time += e.elapsed;
+        }
+
+        let hullNotes = null;
+        if (hs.gameType === 'knockout') {
+          const liveEntries = entries.filter(e => {
+            const p = hs.playersState.find(x => x.pid === e.pid);
+            return p && !p.eliminated;
+          });
+          hullNotes = PartyRules.knockoutRound(liveEntries);
+          for (const pid of Object.keys(hullNotes.hullLoss)) {
+            const p = hs.playersState.find(x => x.pid === pid);
+            if (p && !p.eliminated) {
+              p.hull = Math.max(0, p.hull - 1);
+              if (p.hull <= 0) p.eliminated = true;
+            }
+          }
+        }
+
+        const totals = hs.playersState.map(p => ({
+          pid: p.pid, name: p.name, team: p.team,
+          ly: p.ly, pts: p.pts, time: p.time,
+          hull: p.hull, eliminated: p.eliminated, inactive: p.inactive
+        }));
+
+        let final = false;
+        let endNote = '';
+        if (hs.gameType === 'knockout') {
+          const alive = hs.playersState.filter(p => !p.eliminated);
+          if (alive.length <= 1) {
+            final = true;
+            endNote = alive.length === 1 ? 'LAST SHIP FLYING!' : 'MUTUAL DESTRUCTION — SCORE DECIDES!';
+          } else if (round + 1 >= hs.prompts.length) {
+            final = true;
+            endNote = 'OUT OF ROUNDS — HIGHEST LY AMONG THE LIVING WINS!';
+          }
+        } else if (round + 1 >= hs.prompts.length) {
+          final = true;
+        }
+
+        const payload = {
+          type: 'ROUND_RESULTS', round, entries, totals, hullNotes, final, endNote
+        };
+        if (hs.gameType === 'teams') {
+          payload.teamTotals = PartyRules.teamTotals(hs.playersState);
+        }
+        this._broadcast(payload);
+        Game.onPartyRoundResults(payload);
+
+        if (final) {
+          hs.over = true;
+          this.inMatch = false;
+        } else {
+          setTimeout(() => {
+            if (this._hostState === hs && !hs.over) this._hostNextPrompt();
+          }, 3400);
+        }
+      },
+
+      /* ---------------- Party rematch ----------------
+         Same shape as the 1v1 handshake: PLAY AGAIN at the party
+         summary is an offer, never a local restart. A guest's tap
+         sends REMATCH_OFFER to the host; the host's own tap is the
+         accept — it relaunches a fresh match of the same type for
+         everyone still present. */
+      _resetPartyRematch() {
+        this._rematchMine = false;
+        this._rematchOffers = {};
+        this._partyGone = false;
+        this._refreshPartyRematchUi();
+      },
+
+      _refreshPartyRematchUi() {
+        if (Game.mode !== 'party') return;
+        const btn = document.getElementById('playAgainBtn');
+        if (!btn) return;
+        if (this._partyGone) {
+          btn.textContent = '🚪 HOST LEFT';
+        } else if (!this.isHost && this._rematchMine) {
+          btn.textContent = '⏳ REMATCH SENT — WAITING FOR HOST…';
+        } else if (this.isHost && Object.keys(this._rematchOffers).length) {
+          btn.textContent = '🔄 REMATCH WANTED — TAP TO RELAUNCH!';
+        } else {
+          btn.textContent = '🔄 PLAY AGAIN';
+        }
+      },
+
+      requestPartyRematch() {
+        if (!this.connected || Game.mode !== 'party' || Game.state !== 'summary') return false;
+        if (this._partyGone) return false;
+        if (this.isHost) {
+          this.hostRelaunchParty();
+          return true;
+        }
+        if (!this._rematchMine) {
+          this._rematchMine = true;
+          this._sendToHost({ type: 'REMATCH_OFFER', pid: this.myPid });
+        }
+        this._refreshPartyRematchUi();
+        return true;
+      },
+
+      hostRelaunchParty() {
+        if (!this.isHost || !this.connected) return;
+        const now = Date.now();
+        this.roster = this.roster.filter(p =>
+          p.pid === this.myPid || (now - (this._lastRxByPid[p.pid] || 0) < 65000));
+        if (this.roster.length < 2) {
+          Game.showToast('THE PARTY HAS LEFT — NO ONE TO REMATCH WITH!');
+          return;
+        }
+        this._applyTeamsIfNeeded();
+        this._resetPartyRematch();
+        this._startMatchAsHost(this._lastPartyType || 'party');
+      },
+
+      disconnect() {
+        if (this.client && this.client.connected && (this.connected || this._roomOpen || this._joinPhase === 'joining')) {
+          try {
+            if (this.isHost) {
+              this.client.publish(this._topicToAll(), JSON.stringify(this._envelope({ type: 'BYE', from: 'host' })), { qos: 0 });
+            } else if (this.myPid) {
+              this.client.publish(this._topicToHost(), JSON.stringify(this._envelope({ type: 'BYE', pid: this.myPid })), { qos: 0 });
+            }
+          } catch (_) {}
+        }
+        this.connected = false;
+        this.inMatch = false;
+        this._channelOpen = false;
+        this._roomOpen = false;
+        this._joinPhase = 'idle';
+        this._hostState = null;
+        this.roster = [];
+        this._rematchMine = false;
+        this._rematchOffers = {};
+        this._partyGone = false;
+        this._clearKnockTimer();
+        this._clearDeadlineTimer();
+        if (this._joinTimer) {
+          clearTimeout(this._joinTimer);
+          this._joinTimer = null;
+        }
+        this._stopPresence();
         this._brokerGen++;
         const client = this.client;
         this.client = null;
@@ -4618,6 +5680,16 @@
       race: null,
       raceType: null,
       _onlineRecorded: false,
+
+      // Party mode state (Star Party / Knockout / Team Clash)
+      party: null,
+      partyType: null,
+
+      // Online Chain Reaction duel state (1v1, host-refereed)
+      chainDuel: null,
+
+      // One Life solo state
+      onelife: null,
       MOON_TARGET_KM: 384400,
       MOON_KM: { 10: 2400, 15: 3800, 30: 9500, 60: 24000, 85: 48000, 100: 96000 },
 
@@ -4657,7 +5729,11 @@
             lightspeed: modeEntry(),
             chain: modeEntry(),
             lastship: modeEntry(),
-            meteor: modeEntry()
+            meteor: modeEntry(),
+            party: modeEntry(),
+            knockout: modeEntry(),
+            teams: modeEntry(),
+            onelife: modeEntry()
           }
         };
       },
@@ -4773,9 +5849,15 @@
             const clean = joinCode.replace(/\D/g, '');
             if (clean.length === 6) {
               setTimeout(() => {
-                this.openOnlineLobby(params.get('game') || undefined);
-                document.getElementById('joinCodeInput').value = clean;
-                OnlineNet.joinRoom();
+                if (params.get('party')) {
+                  this.openOnlineLobby();
+                  document.getElementById('joinCodeInput').value = clean;
+                  PartyNet.joinParty();
+                } else {
+                  this.openOnlineLobby(params.get('game') || undefined);
+                  document.getElementById('joinCodeInput').value = clean;
+                  OnlineNet.joinRoom();
+                }
               }, 400);
             }
           }
@@ -4889,7 +5971,16 @@
         if (this.race) this.race.active = false;
         this.race = null;
         this.raceType = null;
+        if (this.party) this.party.active = false;
+        this.party = null;
+        this.partyType = null;
+        if (this.chainDuel) {
+          if (this.chainDuel.hostTimer) clearTimeout(this.chainDuel.hostTimer);
+          this.chainDuel.active = false;
+        }
+        this.chainDuel = null;
         if (this.mode === 'online') OnlineNet.disconnect();
+        if (this.mode === 'party') PartyNet.disconnect();
         this.returnToMenu();
       },
 
@@ -5047,6 +6138,7 @@
         OnlineNet.warmUp();
         this.hideAllModals();
         document.getElementById('onlineRoomStatusBox').style.display = 'none';
+        document.getElementById('partyRoomBox').style.display = 'none';
         document.getElementById('onlineLobbyModal').style.display = 'flex';
         if (gameType && OnlineNet.GAME_TYPE_DESCS[gameType]) {
           OnlineNet.setLobbyGameType(gameType);
@@ -5058,10 +6150,18 @@
         }
       },
 
+      openPartyLobby(gameType) {
+        this.openOnlineLobby();
+        if (gameType) PartyNet.setPartyGameType(gameType);
+      },
+
       launchOnlineMatch(promptObjs) {
         this.mode = 'online';
         this.race = null;
         this.raceType = null;
+        this.chainDuel = null;
+        this.party = null;
+        this.partyType = null;
         this._onlineRecorded = false;
         this.prompts = promptObjs;
         this.clockDuration = 25;
@@ -5079,6 +6179,9 @@
       ===================================================================== */
       launchRace(type, promptObjs, opts = {}) {
         this.mode = 'online';
+        this.chainDuel = null;
+        this.party = null;
+        this.partyType = null;
         this.raceType = type;
         this._onlineRecorded = false;
         this.prompts = promptObjs;
@@ -5677,6 +6780,936 @@
         SoundFX.playTierChime(iWon ? 100 : 0);
       },
 
+
+      /* =====================================================================
+         PARTY ENGINE — STAR PARTY / KNOCKOUT / TEAM CLASH (N players)
+         Runs on PartyNet's room (party-host / party-all topics). Every
+         player judges their OWN answer locally with the normal judge and
+         reports a RESULT; the host collects the round, applies the
+         authoritative totals (and Knockout hull math), and broadcasts
+         ROUND_RESULTS — so every screen renders the same leaderboard.
+      ===================================================================== */
+      launchPartyMatch(gameType, promptObjs, players) {
+        this.mode = 'party';
+        this.partyType = gameType;
+        this.race = null;
+        this.raceType = null;
+        this.chainDuel = null;
+        this._onlineRecorded = false;
+        this.prompts = promptObjs;
+        this.clockDuration = 25;
+        this.state = 'playing';
+        this.roundLocked = false;
+        this.isValidating = false;
+        this.depthLY = 0;
+        this.totalElapsedSec = 0;
+        this.runLog = [];
+        PixelCanvas.targetDepth = 0;
+        this.party = {
+          active: true,
+          type: gameType,
+          round: -1,
+          roundsTotal: promptObjs.length,
+          players: players.map(p => ({
+            pid: p.pid, name: p.name, team: p.team || null,
+            ly: 0, pts: 0, time: 0, hull: 3, eliminated: false, inactive: false
+          })),
+          myPid: PartyNet.myPid,
+          myResult: null,
+          thinkElapsed: 0,
+          validationElapsed: 0,
+          roundHistory: [],
+          lastResultsRound: -1,
+          endNote: '',
+          over: false,
+          resolving: false
+        };
+        this.updateTopHud();
+        this.updateZoneHud(0);
+        this.hideAllModals();
+        document.getElementById('playScreen').style.display = 'flex';
+        document.getElementById('moonRaceTrack').style.display = 'none';
+        document.getElementById('roundCounterBadge').textContent =
+          gameType === 'knockout' ? '💀 KNOCKOUT' : gameType === 'teams' ? '👥 TEAM CLASH' : '🎉 STAR PARTY';
+        document.getElementById('promptSectorTag').textContent = 'PARTY ROOM';
+        document.getElementById('promptText').textContent = 'WAITING FOR THE FIRST PROMPT…';
+        const fb = document.getElementById('feedbackMsg');
+        fb.style.color = '#cbd5e1';
+        fb.textContent = `${players.length} pilots in the room — first prompt drops any second!`;
+        this.refreshPartyBar();
+        SoundFX.playCoinWinner();
+      },
+
+      partyPlayer(pid) {
+        return this.party ? this.party.players.find(p => p.pid === pid) : null;
+      },
+
+      onPartyPrompt(data) {
+        const party = this.party;
+        if (!party || !party.active || party.over) return;
+        if (data.round <= party.round) return; // duplicate / stale
+        const cat = CATEGORIES.find(c => c.id === data.promptId) || this.prompts[data.round];
+        if (!cat) return;
+        this.loadPartyPrompt(data.round, cat);
+      },
+
+      loadPartyPrompt(round, cat) {
+        const party = this.party;
+        if (!party) return;
+        party.round = round;
+        party.myResult = null;
+        party.thinkElapsed = 0;
+        party.validationElapsed = 0;
+        party.resolving = false;
+        this.promptIdx = round;
+        this.isValidating = false;
+        this.roundLocked = false;
+        this.clockDuration = 25;
+        this.clockRemaining = 25;
+        this.lastTickSecond = 25;
+
+        this.hideAllModals();
+        document.getElementById('playScreen').style.display = 'flex';
+        document.getElementById('moonRaceTrack').style.display = 'none';
+        document.getElementById('roundCounterBadge').textContent = party.type === 'knockout'
+          ? `💀 ROUND ${round + 1} / ${party.roundsTotal}`
+          : party.type === 'teams'
+            ? `👥 ROUND ${round + 1} / ${party.roundsTotal}`
+            : `🎉 ROUND ${round + 1} / ${party.roundsTotal}`;
+        document.getElementById('oxygenTanksBadge').style.display = 'none';
+        document.getElementById('promptSectorTag').textContent = `SECTOR: ${cat.sector.toUpperCase()}`;
+        document.getElementById('promptText').textContent = cat.prompt.toUpperCase();
+
+        const me = this.partyPlayer(party.myPid);
+        const spectating = party.type === 'knockout' && me && me.eliminated;
+        if (spectating) {
+          party.myResult = { answer: '(ELIMINATED)', pts: 0, ly: 0, elapsed: 0 };
+        }
+        const inputEl = document.getElementById('answerInput');
+        inputEl.value = '';
+        inputEl.disabled = !!spectating;
+        document.getElementById('submitAnswerBtn').disabled = !!spectating;
+        document.getElementById('passBtn').disabled = true;
+        document.getElementById('tierRevealBox').style.display = 'none';
+        document.getElementById('nextPromptBtn').style.display = 'none';
+
+        const fb = document.getElementById('feedbackMsg');
+        fb.style.color = '#cbd5e1';
+        if (spectating) {
+          fb.textContent = '💀 ELIMINATED — you are spectating now. Watch the survivors battle it out!';
+        } else if (party.type === 'knockout') {
+          fb.textContent = `💀 One answer locks in! The MOST COMMON answer and blanks lose a hull (yours: ${'❤️'.repeat(Math.max(0, me ? me.hull : 3))}).`;
+        } else if (party.type === 'teams') {
+          fb.textContent = `👥 Fly for the ${me && me.team === 'AZURE' ? '🔵 AZURE' : '🔴 CRIMSON'} crew — every LY you bank counts for your team!`;
+        } else {
+          fb.textContent = '🎉 Everyone answers at once — the rarest answer takes the round!';
+        }
+        this.refreshPartyBar();
+        if (!spectating) setTimeout(() => inputEl.focus(), 40);
+      },
+
+      refreshPartyBar() {
+        const party = this.party;
+        const mpBar = document.getElementById('multiplayerLiveBar');
+        if (!party || !mpBar) return;
+        mpBar.style.display = 'flex';
+        const me = this.partyPlayer(party.myPid);
+        if (party.type === 'teams') {
+          const tt = PartyRules.teamTotals(party.players);
+          mpBar.innerHTML = `<span style="color:#f87171;">🔴 CRIMSON <strong>${tt.CRIMSON.ly.toLocaleString()} LY</strong></span>` +
+            `<span style="color:#38bdf8;">YOU (${me && me.team === 'AZURE' ? '🔵 AZURE' : '🔴 CRIMSON'}): <strong>${me ? me.ly.toLocaleString() : 0} LY</strong></span>` +
+            `<span style="color:#60a5fa;">🔵 AZURE <strong>${tt.AZURE.ly.toLocaleString()} LY</strong></span>`;
+          return;
+        }
+        const sorted = PartyRules.standings(party.players);
+        const leader = sorted[0];
+        let html = `<span style="color:#38bdf8;">🚀 YOU: <strong>${me ? me.ly.toLocaleString() : 0} LY</strong>${party.type === 'knockout' && me ? ` • ${'❤️'.repeat(Math.max(0, me.hull))}${me.eliminated ? ' 💀 OUT' : ''}` : ''}</span>`;
+        html += `<span style="color:#fbbf24;">👑 ${leader && leader.pid !== party.myPid ? leader.name : 'YOU'}: <strong>${leader ? leader.ly.toLocaleString() : 0} LY</strong></span>`;
+        html += `<span style="color:#94a3b8;">👥 ${party.players.length} PILOTS</span>`;
+        mpBar.innerHTML = html;
+      },
+
+      updatePartyClock(dt) {
+        const party = this.party;
+        if (!party || !party.active || party.over) return;
+
+        if (!party.myResult && !party.resolving) {
+          if (this.isValidating) {
+            party.validationElapsed += dt;
+            if (party.validationElapsed > this.VALIDATION_GRACE_SEC) party.thinkElapsed += dt;
+          } else {
+            party.thinkElapsed += dt;
+          }
+        }
+        this.clockRemaining = Math.max(0, this.clockDuration - party.thinkElapsed);
+
+        const pct = Math.max(0, (this.clockRemaining / this.clockDuration) * 100);
+        const fill = document.getElementById('clockFill');
+        fill.style.width = `${pct}%`;
+        fill.style.background = this.clockRemaining <= 5
+          ? '#f87171'
+          : this.clockRemaining <= 10
+            ? '#fbbf24'
+            : 'linear-gradient(90deg, #34d399, #38bdf8)';
+        document.getElementById('clockText').textContent = `${Math.max(0, this.clockRemaining).toFixed(1)}s`;
+        document.getElementById('clockText').style.color = this.clockRemaining <= 5 ? '#f87171' : '#34d399';
+
+        const secCeil = Math.ceil(this.clockRemaining);
+        if (secCeil < this.lastTickSecond && secCeil > 0 && secCeil <= 5) {
+          SoundFX.playCountdownTick(secCeil <= 3);
+        }
+        this.lastTickSecond = secCeil;
+
+        if (this.clockRemaining <= 0 && !party.myResult) {
+          this.partyTimeout();
+        }
+      },
+
+      async partySubmit(raw) {
+        const party = this.party;
+        if (!party || !party.active || party.over || this.isValidating) return;
+        if (party.myResult) return; // already locked this round
+        const me = this.partyPlayer(party.myPid);
+        if (party.type === 'knockout' && me && me.eliminated) return;
+
+        this.noteSubmitted();
+        const inputEl = document.getElementById('answerInput');
+        const fb = document.getElementById('feedbackMsg');
+        const round = party.round;
+        this.isValidating = true;
+        fb.style.color = '#38bdf8';
+        fb.textContent = '📡 SCANNING GALACTIC ARCHIVES...';
+
+        const cat = this.prompts[round];
+        const match = await AnswerJudge.evaluate(cat, raw);
+        this.isValidating = false;
+
+        if (!this.party || this.party !== party || !party.active || party.over || party.round !== round || party.myResult) return;
+
+        if (!match) {
+          SoundFX.playInvalidBuzz();
+          fb.style.color = '#f87171';
+          fb.textContent = `"${raw.toUpperCase()}" UNRECOGNIZED — TRY AGAIN!`;
+          inputEl.classList.remove('shake');
+          void inputEl.offsetWidth;
+          inputEl.classList.add('shake');
+          inputEl.focus();
+          inputEl.select();
+          return;
+        }
+
+        const tier = TIERS[match.pts] || TIERS[0];
+        const elapsed = Math.min(this.clockDuration, party.thinkElapsed);
+        party.myResult = { answer: match.display, pts: match.pts, ly: tier.ly, elapsed };
+        this.noteAccepted(match.pts);
+        this.save.stats.totalLY += tier.ly;
+        this.depthLY += tier.ly;
+        this.totalElapsedSec += elapsed;
+        this.runLog.push({
+          prompt: cat.prompt, answer: match.display, rawInput: raw,
+          pts: match.pts, ly: tier.ly, emoji: tier.emoji, tierName: tier.name,
+          elapsed, viaWeb: Boolean(match.viaWeb)
+        });
+        SoundFX.playTierChime(match.pts);
+        if (match.pts >= 60) PixelCanvas.burstThruster(match.pts === 100 ? 36 : 20, tier.color);
+
+        fb.style.color = tier.color;
+        fb.textContent = `🔒 LOCKED IN: "${match.display.toUpperCase()}" (${tier.name}, +${tier.ly.toLocaleString()} LY) — waiting for the party…`;
+        inputEl.disabled = true;
+        document.getElementById('submitAnswerBtn').disabled = true;
+        PartyNet.sendMyResult(party.myResult);
+        this.refreshPartyBar();
+      },
+
+      partyTimeout() {
+        const party = this.party;
+        if (!party || !party.active || party.over || party.myResult) return;
+        const cat = this.prompts[party.round];
+        party.myResult = { answer: '(TIME EXPIRED)', pts: 0, ly: 0, elapsed: this.clockDuration };
+        this.runLog.push({
+          prompt: cat ? cat.prompt : '', answer: '(TIME EXPIRED)', rawInput: '',
+          pts: 0, ly: 0, emoji: '⬛', tierName: 'NO SIGNAL', elapsed: this.clockDuration, viaWeb: false
+        });
+        const fb = document.getElementById('feedbackMsg');
+        fb.style.color = '#f87171';
+        fb.textContent = party.type === 'knockout'
+          ? '⏰ TIME EXPIRED — BLANK! That costs 1 hull…'
+          : '⏰ TIME EXPIRED — BLANK ANSWER LOCKED!';
+        SoundFX.playInvalidBuzz();
+        document.getElementById('answerInput').disabled = true;
+        document.getElementById('submitAnswerBtn').disabled = true;
+        PartyNet.sendMyResult(party.myResult);
+      },
+
+      onPartyRoundResults(data) {
+        const party = this.party;
+        if (!party || !party.active || party.over) return;
+        if (data.round < party.round) return; // stale
+        if (party.lastResultsRound === data.round) return; // duplicate
+        party.lastResultsRound = data.round;
+        party.round = data.round; // forward-jump resync if a PROMPT was missed
+        party.resolving = true;
+        party.endNote = data.endNote || '';
+
+        for (const t of data.totals) {
+          const p = this.partyPlayer(t.pid);
+          if (p) {
+            p.ly = t.ly; p.pts = t.pts; p.time = t.time;
+            p.hull = t.hull; p.eliminated = t.eliminated; p.inactive = t.inactive;
+          }
+        }
+        const me = this.partyPlayer(party.myPid);
+        if (me) {
+          this.depthLY = me.ly;
+          this.totalElapsedSec = me.time;
+        }
+        this.updateTopHud();
+        this.updateZoneHud(this.depthLY);
+        party.roundHistory.push({
+          round: data.round,
+          prompt: (this.prompts[data.round] || {}).prompt || '',
+          entries: data.entries,
+          hullNotes: data.hullNotes || null
+        });
+        this.refreshPartyBar();
+        this.showPartyRoundResults(data);
+
+        if (data.final) {
+          party.over = true;
+          setTimeout(() => { if (this.party === party) this.finishPartyMatch(data); }, 3200);
+        }
+      },
+
+      showPartyRoundResults(data) {
+        const party = this.party;
+        if (!party) return;
+        const revealBox = document.getElementById('tierRevealBox');
+        revealBox.style.display = 'block';
+        revealBox.style.borderColor = '#c084fc';
+        document.getElementById('nextPromptBtn').style.display = 'none';
+
+        const totalsByPid = {};
+        for (const t of data.totals) totalsByPid[t.pid] = t;
+        const sortedEntries = [...data.entries].sort((a, b) => (b.ly - a.ly) || (a.elapsed - b.elapsed));
+
+        const titleEl = document.getElementById('revealTierTitle');
+        titleEl.style.color = '#c084fc';
+        if (party.type === 'teams' && data.teamTotals) {
+          titleEl.textContent = `👥 ROUND ${data.round + 1} — 🔴 ${data.teamTotals.CRIMSON.ly.toLocaleString()} LY vs 🔵 ${data.teamTotals.AZURE.ly.toLocaleString()} LY`;
+        } else {
+          titleEl.textContent = party.type === 'knockout'
+            ? `💀 ROUND ${data.round + 1} RESULTS`
+            : `🎉 ROUND ${data.round + 1} RESULTS`;
+        }
+
+        document.getElementById('revealAnswerDetail').innerHTML = sortedEntries.map(e => {
+          const p = this.partyPlayer(e.pid);
+          const t = totalsByPid[e.pid] || {};
+          const dead = t.eliminated ? ' 💀' : t.inactive ? ' 📴' : '';
+          const hull = party.type === 'knockout' ? ` ${'❤️'.repeat(Math.max(0, t.hull || 0))}` : '';
+          const teamTag = party.type === 'teams' && p ? (p.team === 'AZURE' ? ' 🔵' : ' 🔴') : '';
+          const tier = TIERS[e.pts] || TIERS[0];
+          return `${tier.emoji} <strong>${p ? p.name : '???'}${e.pid === party.myPid ? ' (YOU)' : ''}</strong>${teamTag}: ${String(e.answer).toUpperCase()} (+${e.ly} LY) — TOTAL ${t.ly != null ? t.ly.toLocaleString() : 0} LY${hull}${dead}`;
+        }).join('<br>');
+
+        const hintEl = document.getElementById('revealRarityHint');
+        if (party.type === 'knockout' && data.hullNotes) {
+          const losses = Object.keys(data.hullNotes.hullLoss || {});
+          if (losses.length) {
+            const names = losses.map(pid => {
+              const p = this.partyPlayer(pid);
+              const why = data.hullNotes.hullLoss[pid] === 'common' ? 'most common answer' : 'blank';
+              return `${p ? p.name : '???'} (${why})`;
+            });
+            hintEl.textContent = `💥 HULL LOST: ${names.join(' • ')}`;
+          } else {
+            hintEl.textContent = '🛡️ No hull lost this round — every answer was unique!';
+          }
+        } else if (party.type === 'teams') {
+          hintEl.textContent = 'Team totals are the headline — individual glory settles the MVP!';
+        } else {
+          const top = sortedEntries[0];
+          const p = top ? this.partyPlayer(top.pid) : null;
+          hintEl.textContent = top && top.ly > 0
+            ? `👑 Round winner: ${p ? p.name : '???'} with "${String(top.answer).toUpperCase()}" (+${top.ly} LY)`
+            : '💤 Nobody scored that round!';
+        }
+      },
+
+      finishPartyMatch(data) {
+        const party = this.party;
+        if (!party || this.state === 'summary') return;
+        party.active = false;
+        party.over = true;
+        this.state = 'summary';
+
+        const standings = PartyRules.standings(party.players);
+        const me = this.partyPlayer(party.myPid);
+        const myRank = me ? standings.findIndex(p => p.pid === party.myPid) + 1 : 0;
+        let iWon = false;
+        let isDraw = false;
+        let headline = '';
+        let winnerLine = '';
+
+        if (party.type === 'teams') {
+          const winTeam = PartyRules.teamWinner(party.players);
+          const tt = PartyRules.teamTotals(party.players);
+          isDraw = !winTeam;
+          iWon = !!winTeam && !!me && me.team === winTeam;
+          headline = isDraw
+            ? '👥 TEAM CLASH — DEAD HEAT!'
+            : winTeam === 'CRIMSON' ? '👥 TEAM CLASH — 🔴 CRIMSON WINS!' : '👥 TEAM CLASH — 🔵 AZURE WINS!';
+          const mvp = standings[0];
+          winnerLine = `🔴 CRIMSON ${tt.CRIMSON.ly.toLocaleString()} LY (${tt.CRIMSON.time.toFixed(1)}s) vs 🔵 AZURE ${tt.AZURE.ly.toLocaleString()} LY (${tt.AZURE.time.toFixed(1)}s)` +
+            (mvp ? `<br>⭐ MVP: ${mvp.name} — ${mvp.ly.toLocaleString()} LY` : '');
+        } else {
+          const winner = PartyRules.winner(party.players);
+          iWon = !!winner && winner.pid === party.myPid;
+          isDraw = !iWon && !!winner && !!me && winner.ly === me.ly && winner.pts === me.pts && Math.abs(winner.time - me.time) < 0.001;
+          headline = party.type === 'knockout'
+            ? (iWon ? '💀 KNOCKOUT — LAST SHIP FLYING: YOU!' : isDraw ? '💀 KNOCKOUT — DEAD HEAT!' : `💀 KNOCKOUT — ${winner ? winner.name : '???'} WINS!`)
+            : (iWon ? '🎉 STAR PARTY — YOU WIN!' : isDraw ? '🎉 STAR PARTY — DEAD HEAT!' : `🎉 STAR PARTY — ${winner ? winner.name : '???'} WINS!`);
+          winnerLine = winner ? `🏆 ${winner.name} takes it with ${winner.ly.toLocaleString()} LY!` : '';
+        }
+        if (data && data.earlyEnd === 'host-left') {
+          headline += ' (HOST LEFT — EARLY END)';
+        }
+
+        const earnedTokens = iWon ? 120 : isDraw ? 60 : 40;
+        this.save.tokens += earnedTokens;
+        if (!this._onlineRecorded) {
+          this._onlineRecorded = true;
+          this.recordModeStats(party.type, iWon ? 'win' : isDraw ? 'na' : 'loss', me ? me.ly : 0);
+        }
+        this.persistSave();
+        this.updateTopHud();
+
+        this.hideAllModals();
+        document.getElementById('summaryModal').style.display = 'flex';
+        document.getElementById('summaryHeadline').textContent = headline;
+        document.getElementById('summarySub').textContent = party.type === 'teams'
+          ? `You banked ${me ? me.ly.toLocaleString() : 0} LY for the ${me && me.team === 'AZURE' ? '🔵 AZURE' : '🔴 CRIMSON'} crew`
+          : `You finished #${myRank} of ${party.players.length} • ${me ? me.ly.toLocaleString() : 0} LY${party.endNote ? ` • ${party.endNote}` : ''}`;
+        document.getElementById('summaryEmojiGrid').textContent =
+          this.runLog.length ? this.runLog.map(r => r.emoji).join('') : '⬛';
+        document.getElementById('summaryTokensEarned').textContent = earnedTokens;
+
+        const mpBox = document.getElementById('summaryMultiplayerBox');
+        mpBox.style.display = 'block';
+        const board = standings.map((p, i) => {
+          const teamTag = party.type === 'teams' ? (p.team === 'AZURE' ? ' 🔵' : ' 🔴') : '';
+          const dead = p.eliminated ? ' 💀 OUT' : p.inactive ? ' 📴' : '';
+          const hull = party.type === 'knockout' ? ` • ${'❤️'.repeat(Math.max(0, p.hull))}` : '';
+          return `<div style="font-size:18px; color:${p.pid === party.myPid ? '#38bdf8' : '#cbd5e1'};">${i + 1}. ${p.name}${p.pid === party.myPid ? ' (YOU)' : ''}${teamTag} — <strong>${p.ly.toLocaleString()} LY</strong> (${p.pts} pts, ${p.time.toFixed(1)}s)${hull}${dead}</div>`;
+        }).join('');
+        mpBox.innerHTML = `<div class="font-pixel" style="font-size:12px; color:${iWon ? '#34d399' : isDraw ? '#fbbf24' : '#f87171'};">${iWon ? '🏆 VICTORY!' : isDraw ? '🤝 DRAW!' : 'FINAL STANDINGS'}</div>
+          <div style="font-size:19px; color:#fde68a; margin-top:4px;">${winnerLine}</div>
+          <div style="margin-top:6px; display:flex; flex-direction:column; gap:2px;">${board}</div>`;
+
+        const breakdown = document.getElementById('summaryBreakdown');
+        breakdown.innerHTML = party.roundHistory.map(r => {
+          const rows = [...r.entries].sort((a, b) => b.ly - a.ly).map(e => {
+            const p = this.partyPlayer(e.pid);
+            const tier = TIERS[e.pts] || TIERS[0];
+            return `<div style="display:flex; justify-content:space-between; font-size:17px;">
+              <span style="color:${e.pid === party.myPid ? '#38bdf8' : '#cbd5e1'};">${tier.emoji} ${p ? p.name : '???'}: <strong>${String(e.answer).toUpperCase()}</strong></span>
+              <span style="color:#fbbf24;">+${e.ly} LY</span>
+            </div>`;
+          }).join('');
+          return `<div class="breakdown-row" style="flex-direction:column; align-items:stretch; gap:4px;">
+            <div style="font-size:16px; color:#94a3b8;">ROUND ${r.round + 1}. ${r.prompt}</div>
+            ${rows}
+          </div>`;
+        }).join('');
+
+        PartyNet._refreshPartyRematchUi();
+        SoundFX.playTierChime(iWon ? 100 : 0);
+      },
+
+      onPartyHostGone() {
+        const party = this.party;
+        if (party && party.active && !party.over) {
+          this.showToast('🚪 HOST LEFT — MATCH ENDED EARLY');
+          this.finishPartyMatch({ final: true, earlyEnd: 'host-left' });
+          return;
+        }
+        if (this.state === 'summary' && this.mode === 'party') {
+          this.showToast('🚪 HOST LEFT THE PARTY');
+          PartyNet._refreshPartyRematchUi();
+        }
+      },
+
+      /* =====================================================================
+         ONLINE CHAIN REACTION — 2-player turn-based letter chain on the
+         1v1 relay. The HOST is the referee: it picks every turn's fresh
+         category, re-judges every submission itself (so only the current
+         player's answer can count, judged by the host's own judge), and
+         broadcasts the full chain state after every turn (CHAIN_STATE).
+         A miss, a wrong letter, a repeat, or a timeout is a strike;
+         3 strikes loses the match.
+      ===================================================================== */
+      launchChainOnline(openingCat) {
+        this.mode = 'online';
+        this.race = null;
+        this.raceType = null;
+        this.party = null;
+        this.partyType = null;
+        this._onlineRecorded = false;
+        this.state = 'playing';
+        this.roundLocked = false;
+        this.isValidating = false;
+        this.depthLY = 0;
+        this.totalElapsedSec = 0;
+        this.runLog = [];
+        PixelCanvas.targetDepth = 0;
+        this.clockDuration = 10;
+        this.chainDuel = {
+          active: true,
+          over: false,
+          turn: 'host',
+          turnNo: 0,
+          cat: openingCat,
+          letter: null,
+          chainLog: [],
+          used: new Set(),
+          hostStrikes: 0,
+          guestStrikes: 0,
+          thinkElapsed: 0,
+          validationElapsed: 0,
+          locked: false,
+          countedTurns: new Set(),
+          hostTimer: null,
+          lastEventText: '',
+          lastEventColor: ''
+        };
+        this.updateTopHud();
+        this.updateZoneHud(0);
+        if (OnlineNet.isHost) {
+          this.chainBroadcastState();
+          this.chainHostBeginTurn();
+        } else {
+          this.chainRender();
+        }
+        SoundFX.playCoinWinner();
+      },
+
+      chainBroadcastState(extra) {
+        const cd = this.chainDuel;
+        if (!cd) return;
+        OnlineNet.send({
+          type: 'CHAIN_STATE',
+          turnNo: cd.turnNo,
+          turn: cd.turn,
+          catId: cd.cat.id,
+          letter: cd.letter,
+          chainLog: cd.chainLog,
+          hostStrikes: cd.hostStrikes,
+          guestStrikes: cd.guestStrikes,
+          lastEventText: cd.lastEventText,
+          lastEventColor: cd.lastEventColor,
+          ...(extra || {})
+        });
+      },
+
+      chainHostBeginTurn() {
+        const cd = this.chainDuel;
+        if (!cd || !cd.active || cd.over) return;
+        cd.thinkElapsed = 0;
+        cd.validationElapsed = 0;
+        cd.locked = false;
+        this.isValidating = false;
+        if (cd.hostTimer) clearTimeout(cd.hostTimer);
+        const turnNo = cd.turnNo;
+        // Referee backstop: a silent current player (either side) is
+        // timed out by the host so a dead phone can never stall the chain.
+        cd.hostTimer = setTimeout(() => {
+          if (this.chainDuel === cd && cd.active && !cd.over && cd.turnNo === turnNo && !cd.locked) {
+            this.chainHostResolveTimeout();
+          }
+        }, 18000);
+        this.chainRender();
+      },
+
+      chainRender() {
+        const cd = this.chainDuel;
+        if (!cd) return;
+        const myRole = OnlineNet.isHost ? 'host' : 'guest';
+        const myTurn = cd.turn === myRole && !cd.over;
+        this.hideAllModals();
+        document.getElementById('playScreen').style.display = 'flex';
+        document.getElementById('moonRaceTrack').style.display = 'none';
+        document.getElementById('roundCounterBadge').textContent =
+          `🔗 LINK ${cd.chainLog.length + 1} • ${myTurn ? '⭐ YOUR TURN' : "RIVAL'S TURN"}`;
+        document.getElementById('oxygenTanksBadge').style.display = 'none';
+        document.getElementById('promptSectorTag').textContent = `SECTOR: ${cd.cat.sector.toUpperCase()}`;
+        document.getElementById('promptText').textContent = cd.cat.prompt.toUpperCase();
+
+        const mpBar = document.getElementById('multiplayerLiveBar');
+        mpBar.style.display = 'flex';
+        const tail = cd.chainLog.slice(-4).map(e => String(e.answer).toUpperCase()).join(' → ') || '— NO LINKS YET —';
+        const myStrikes = OnlineNet.isHost ? cd.hostStrikes : cd.guestStrikes;
+        const rivalStrikes = OnlineNet.isHost ? cd.guestStrikes : cd.hostStrikes;
+        mpBar.innerHTML = `<span style="color:#fb923c;">🔗 ${tail}</span><span style="color:#f87171;">❌ YOU ${myStrikes}/3 • RIVAL ${rivalStrikes}/3</span>`;
+
+        const inputEl = document.getElementById('answerInput');
+        inputEl.value = '';
+        inputEl.disabled = !myTurn;
+        document.getElementById('submitAnswerBtn').disabled = !myTurn;
+        document.getElementById('passBtn').disabled = true;
+        document.getElementById('tierRevealBox').style.display = 'none';
+
+        const fb = document.getElementById('feedbackMsg');
+        if (cd.lastEventText) {
+          fb.style.color = cd.lastEventColor || '#cbd5e1';
+          fb.textContent = cd.lastEventText;
+        } else {
+          fb.style.color = '#cbd5e1';
+          fb.textContent = myTurn
+            ? (cd.letter ? `🔗 Your answer must start with "${cd.letter.toUpperCase()}"!` : '🔗 Open the chain — any valid answer!')
+            : `⏳ ${OnlineNet.rivalName} is thinking…`;
+        }
+        if (myTurn) setTimeout(() => inputEl.focus(), 40);
+      },
+
+      chainSyncStats() {
+        const cd = this.chainDuel;
+        if (!cd) return;
+        const myRole = OnlineNet.isHost ? 'host' : 'guest';
+        cd.chainLog.forEach((e, i) => {
+          if (e.by === myRole && e.pts > 0 && !cd.countedTurns.has(i)) {
+            cd.countedTurns.add(i);
+            this.noteAccepted(e.pts);
+            this.save.stats.totalLY += e.ly;
+            this.depthLY += e.ly;
+          }
+        });
+        this.updateTopHud();
+        this.updateZoneHud(this.depthLY);
+      },
+
+      chainApplyState(data) {
+        const cd = this.chainDuel;
+        if (!cd || cd.over) return;
+        if (data.turnNo < cd.turnNo) return; // stale
+        const newTurn = data.turnNo !== cd.turnNo;
+        cd.turn = data.turn;
+        cd.turnNo = data.turnNo;
+        const cat = CATEGORIES.find(c => c.id === data.catId);
+        if (cat) cd.cat = cat;
+        cd.letter = data.letter;
+        cd.chainLog = Array.isArray(data.chainLog) ? data.chainLog : [];
+        cd.used = new Set(cd.chainLog.map(e => normalizeText(e.answer)));
+        cd.hostStrikes = data.hostStrikes || 0;
+        cd.guestStrikes = data.guestStrikes || 0;
+        cd.lastEventText = data.lastEventText || '';
+        cd.lastEventColor = data.lastEventColor || '';
+        if (newTurn) {
+          cd.thinkElapsed = 0;
+          cd.validationElapsed = 0;
+          cd.locked = false;
+          this.isValidating = false;
+        }
+        this.chainSyncStats();
+        if (data.over) {
+          this.finishChainOnline(data.winner, 'strikes');
+          return;
+        }
+        this.chainRender();
+      },
+
+      async chainDuelSubmit(raw) {
+        const cd = this.chainDuel;
+        if (!cd || !cd.active || cd.over || this.isValidating) return;
+        const myRole = OnlineNet.isHost ? 'host' : 'guest';
+        if (cd.turn !== myRole || cd.locked) return;
+
+        this.noteSubmitted();
+        const fb = document.getElementById('feedbackMsg');
+        this.isValidating = true;
+        fb.style.color = '#38bdf8';
+        fb.textContent = '📡 SCANNING GALACTIC ARCHIVES...';
+
+        if (OnlineNet.isHost) {
+          const match = await AnswerJudge.evaluate(cd.cat, raw);
+          this.isValidating = false;
+          if (this.chainDuel !== cd || !cd.active || cd.over) return;
+          cd.locked = true;
+          this.chainHostResolve(myRole, raw, match);
+        } else {
+          // Guest: the host re-judges authoritatively. My clock stays
+          // paused (isValidating) until the CHAIN_STATE verdict lands.
+          cd.locked = true;
+          OnlineNet.send({ type: 'CHAIN_SUBMIT', turnNo: cd.turnNo, raw });
+          const turnNo = cd.turnNo;
+          setTimeout(() => {
+            if (this.chainDuel === cd && cd.turnNo === turnNo) this.isValidating = false;
+          }, 12000);
+        }
+      },
+
+      chainLocalTimeout() {
+        const cd = this.chainDuel;
+        if (!cd || !cd.active || cd.over || cd.locked) return;
+        const myRole = OnlineNet.isHost ? 'host' : 'guest';
+        if (cd.turn !== myRole) return;
+        cd.locked = true;
+        if (OnlineNet.isHost) {
+          this.chainHostResolveTimeout();
+        } else {
+          OnlineNet.send({ type: 'CHAIN_TIMEOUT', turnNo: cd.turnNo });
+        }
+      },
+
+      updateChainClock(dt) {
+        const cd = this.chainDuel;
+        if (!cd || !cd.active || cd.over) return;
+        const myRole = OnlineNet.isHost ? 'host' : 'guest';
+        const fill = document.getElementById('clockFill');
+        const clockText = document.getElementById('clockText');
+
+        if (cd.turn !== myRole || cd.locked) {
+          this.clockRemaining = this.clockDuration;
+          fill.style.width = '100%';
+          fill.style.background = 'linear-gradient(90deg, #34d399, #38bdf8)';
+          clockText.textContent = `${this.clockDuration.toFixed(1)}s`;
+          clockText.style.color = '#34d399';
+          return;
+        }
+
+        if (this.isValidating) {
+          cd.validationElapsed += dt;
+          if (cd.validationElapsed > this.VALIDATION_GRACE_SEC) cd.thinkElapsed += dt;
+        } else {
+          cd.thinkElapsed += dt;
+        }
+        this.clockRemaining = Math.max(0, this.clockDuration - cd.thinkElapsed);
+
+        const pct = Math.max(0, (this.clockRemaining / this.clockDuration) * 100);
+        fill.style.width = `${pct}%`;
+        fill.style.background = this.clockRemaining <= 3
+          ? '#f87171'
+          : this.clockRemaining <= 5
+            ? '#fbbf24'
+            : 'linear-gradient(90deg, #34d399, #38bdf8)';
+        clockText.textContent = `${Math.max(0, this.clockRemaining).toFixed(1)}s`;
+        clockText.style.color = this.clockRemaining <= 3 ? '#f87171' : '#34d399';
+
+        const secCeil = Math.ceil(this.clockRemaining);
+        if (secCeil < this.lastTickSecond && secCeil > 0 && secCeil <= 3) {
+          SoundFX.playCountdownTick(secCeil <= 2);
+        }
+        this.lastTickSecond = secCeil;
+
+        if (this.clockRemaining <= 0) {
+          this.chainLocalTimeout();
+        }
+      },
+
+      // --- Host-side chain refereeing ---------------------------------
+      chainHostOnSubmit(data) {
+        const cd = this.chainDuel;
+        if (!cd || !cd.active || cd.over) return;
+        // Only the CURRENT player's submission counts — anything from
+        // the other side, or for an old turn, is ignored outright.
+        if (cd.turn !== 'guest' || data.turnNo !== cd.turnNo || cd.locked) return;
+        cd.locked = true;
+        if (cd.hostTimer) clearTimeout(cd.hostTimer);
+        this.chainHostJudgeAndResolve('guest', String(data.raw || ''));
+      },
+
+      chainHostOnTimeout(data) {
+        const cd = this.chainDuel;
+        if (!cd || !cd.active || cd.over) return;
+        if (cd.turn !== 'guest' || !data || data.turnNo !== cd.turnNo || cd.locked) return;
+        cd.locked = true;
+        if (cd.hostTimer) clearTimeout(cd.hostTimer);
+        this.chainHostApplyResult('guest', {
+          accepted: false, note: '⏰ TIME EXPIRED',
+          answer: '(TIME EXPIRED)', pts: 0, ly: 0
+        });
+      },
+
+      chainHostResolveTimeout() {
+        const cd = this.chainDuel;
+        if (!cd || !cd.active || cd.over || cd.locked) return;
+        cd.locked = true;
+        this.chainHostApplyResult(cd.turn, {
+          accepted: false, note: '⏰ TIME EXPIRED',
+          answer: '(TIME EXPIRED)', pts: 0, ly: 0
+        });
+      },
+
+      async chainHostJudgeAndResolve(role, raw) {
+        const cd = this.chainDuel;
+        if (!cd) return;
+        const match = await AnswerJudge.evaluate(cd.cat, raw);
+        if (this.chainDuel !== cd || !cd.active || cd.over) return;
+        this.chainHostResolve(role, raw, match);
+      },
+
+      chainHostResolve(role, raw, match) {
+        const cd = this.chainDuel;
+        if (!cd || cd.over) return;
+        if (!match) {
+          this.chainHostApplyResult(role, {
+            accepted: false, note: `"${String(raw).toUpperCase()}" UNRECOGNIZED`,
+            answer: `${String(raw).toUpperCase()} (MISS)`, pts: 0, ly: 0
+          });
+          return;
+        }
+        const dispNorm = normalizeText(match.display);
+        if (cd.letter && !dispNorm.startsWith(cd.letter)) {
+          this.chainHostApplyResult(role, {
+            accepted: false, note: `🔗 WRONG LETTER — NEEDED "${cd.letter.toUpperCase()}"`,
+            answer: match.display, pts: 0, ly: 0
+          });
+          return;
+        }
+        if (cd.used.has(dispNorm)) {
+          this.chainHostApplyResult(role, {
+            accepted: false, note: '🔗 ALREADY IN THE CHAIN',
+            answer: match.display, pts: 0, ly: 0
+          });
+          return;
+        }
+        const tier = TIERS[match.pts] || TIERS[0];
+        this.chainHostApplyResult(role, {
+          accepted: true, note: `🔗 "${match.display.toUpperCase()}" LINKED! (+${tier.ly.toLocaleString()} LY)`,
+          answer: match.display, pts: match.pts, ly: tier.ly
+        });
+      },
+
+      chainHostApplyResult(role, res) {
+        const cd = this.chainDuel;
+        if (!cd || cd.over) return;
+        if (cd.hostTimer) {
+          clearTimeout(cd.hostTimer);
+          cd.hostTimer = null;
+        }
+        const actorName = role === 'host' ? OnlineNet.myName : OnlineNet.rivalName;
+        if (res.accepted) {
+          cd.chainLog.push({ by: role, answer: res.answer, pts: res.pts, ly: res.ly, prompt: cd.cat.prompt });
+          cd.used.add(normalizeText(res.answer));
+          const letters = normalizeText(res.answer).replace(/[^a-z]/g, '');
+          cd.letter = letters ? letters[letters.length - 1] : null;
+          cd.lastEventText = `${actorName}: ${res.note}`;
+          cd.lastEventColor = '#4ade80';
+          SoundFX.playTierChime(res.pts);
+        } else {
+          if (role === 'host') cd.hostStrikes++;
+          else cd.guestStrikes++;
+          cd.lastEventText = `${actorName}: ${res.note} — STRIKE ${role === 'host' ? cd.hostStrikes : cd.guestStrikes}/3!`;
+          cd.lastEventColor = '#f87171';
+          SoundFX.playInvalidBuzz();
+        }
+
+        cd.turn = role === 'host' ? 'guest' : 'host';
+        cd.turnNo++;
+
+        const loser = cd.hostStrikes >= 3 ? 'host' : cd.guestStrikes >= 3 ? 'guest' : null;
+        if (loser) {
+          cd.over = true;
+          cd.active = false;
+          const winner = loser === 'host' ? 'guest' : 'host';
+          this.chainBroadcastState({ over: true, winner });
+          this.chainSyncStats();
+          this.finishChainOnline(winner, 'strikes');
+          return;
+        }
+
+        // Fresh random category for the next turn
+        cd.cat = Game.pickPrompts(1, Game.selectedSector)[0];
+        this.chainBroadcastState();
+        this.chainSyncStats();
+        this.chainHostBeginTurn();
+      },
+
+      finishChainOnline(winnerRole, reason) {
+        const cd = this.chainDuel;
+        if (!cd || this.state === 'summary') return;
+        cd.active = false;
+        cd.over = true;
+        if (cd.hostTimer) clearTimeout(cd.hostTimer);
+        this.state = 'summary';
+
+        const myRole = OnlineNet.isHost ? 'host' : 'guest';
+        const iWon = winnerRole === myRole;
+        const myLinks = cd.chainLog.filter(e => e.by === myRole);
+        const myLY = myLinks.reduce((s, e) => s + e.ly, 0);
+        const winnerName = winnerRole === 'host'
+          ? (OnlineNet.isHost ? OnlineNet.myName : OnlineNet.rivalName)
+          : (OnlineNet.isHost ? OnlineNet.rivalName : OnlineNet.myName);
+
+        const earnedTokens = iWon ? 120 : 40;
+        this.save.tokens += earnedTokens;
+        if (!this._onlineRecorded) {
+          this._onlineRecorded = true;
+          this.recordModeStats('chain', iWon ? 'win' : 'loss', myLinks.length);
+        }
+        this.persistSave();
+        this.updateTopHud();
+
+        this.hideAllModals();
+        document.getElementById('summaryModal').style.display = 'flex';
+        document.getElementById('summaryHeadline').textContent = iWon
+          ? '🔗 CHAIN REACTION — YOU WIN!'
+          : '🔗 CHAIN REACTION — RIVAL WINS!';
+        document.getElementById('summarySub').textContent = reason === 'forfeit'
+          ? 'Rival disconnected — win by forfeit!'
+          : `${winnerName} takes the chain! ${cd.chainLog.length} links forged • Your links banked ${myLY.toLocaleString()} LY`;
+        document.getElementById('summaryEmojiGrid').textContent =
+          cd.chainLog.length ? cd.chainLog.map(e => (TIERS[e.pts] || TIERS[0]).emoji).join('') : '⬛';
+        document.getElementById('summaryTokensEarned').textContent = earnedTokens;
+
+        const mpBox = document.getElementById('summaryMultiplayerBox');
+        mpBox.style.display = 'block';
+        mpBox.innerHTML = `<div class="font-pixel" style="font-size:12px; color:${iWon ? '#34d399' : '#f87171'};">${iWon ? '🏆 VICTORY!' : '💀 DEFEAT'}</div>
+          <div style="font-size:19px; color:#cbd5e1; margin-top:4px;">
+            Strikes — YOU ${OnlineNet.isHost ? cd.hostStrikes : cd.guestStrikes}/3 • ${OnlineNet.rivalName} ${OnlineNet.isHost ? cd.guestStrikes : cd.hostStrikes}/3
+          </div>`;
+
+        document.getElementById('summaryBreakdown').innerHTML = cd.chainLog.map((e, idx) => `
+          <div class="breakdown-row">
+            <div style="text-align:left;">
+              <div style="font-size:16px; color:#94a3b8;">${idx + 1}. ${e.prompt}</div>
+              <div style="color:#f8fafc;">${(TIERS[e.pts] || TIERS[0]).emoji} <strong>${String(e.answer).toUpperCase()}</strong> <span style="color:#94a3b8;">(${e.by === myRole ? 'YOU' : OnlineNet.rivalName})</span></div>
+            </div>
+            <div style="text-align:right; white-space:nowrap;">
+              <div style="color:#fbbf24; font-weight:bold;">+${e.ly} LY</div>
+              <div style="font-size:15px; color:#94a3b8;">${(TIERS[e.pts] || TIERS[0]).name}</div>
+            </div>
+          </div>
+        `).join('');
+        SoundFX.playTierChime(iWon ? 100 : 0);
+      },
+
+      /* =====================================================================
+         ONE LIFE (SOLO) — a single miss or timeout ends the run on the
+         spot. The run itself is the normal solo loop; death is handled by
+         onelifeDie, called from the miss branch of handleSubmit and from
+         handleTimeoutOrPass.
+      ===================================================================== */
+      onelifeDie(reason) {
+        if (this.state !== 'playing' || this.mode !== 'onelife') return;
+        const fb = document.getElementById('feedbackMsg');
+        fb.style.color = '#f87171';
+        fb.textContent = `💀 ONE LIFE — ${reason}! RUN OVER!`;
+        SoundFX.playInvalidBuzz();
+        const cat = this.prompts[this.promptIdx];
+        this.runLog.push({
+          prompt: cat ? cat.prompt : '', answer: '(RUN OVER)', rawInput: '',
+          pts: 0, ly: 0, emoji: '⬛', tierName: 'NO SIGNAL',
+          elapsed: this.clockDuration, viaWeb: false
+        });
+        this.roundLocked = true;
+        document.getElementById('answerInput').disabled = true;
+        document.getElementById('submitAnswerBtn').disabled = true;
+        document.getElementById('passBtn').disabled = true;
+        setTimeout(() => {
+          if (this.mode === 'onelife' && this.state === 'playing') this.finishRun();
+        }, 1100);
+      },
+
       startMode(mode) {
         SoundFX.init();
         this.mode = mode;
@@ -5706,6 +7739,13 @@
           this.prompts = this.pickPromptsEndless(150, this.selectedSector);
           this.clockDuration = 10;
           this.blitz = { timeLeft: 60, score: 0, combo: 0, bestCombo: 0, answered: 0 };
+          this.beginRun();
+        } else if (mode === 'onelife') {
+          this.prompts = this.pickPromptsEndless(150, this.selectedSector);
+          this.clockDuration = 25;
+          this.chain = null;
+          this.blitz = null;
+          this.onelife = { startedAt: Date.now() };
           this.beginRun();
         } else if (mode === 'chain') {
           const pool = this.selectedSector === 'All'
@@ -5883,6 +7923,8 @@
 
         if (this.mode === 'chain' && this.chain) {
           document.getElementById('roundCounterBadge').textContent = `🔗 CHAIN LINK ${this.chain.length + 1}`;
+        } else if (this.mode === 'onelife') {
+          document.getElementById('roundCounterBadge').textContent = `💀 PROMPT ${idx + 1} — ONE LIFE`;
         } else if (this.mode === 'lightspeed' && this.blitz) {
           document.getElementById('roundCounterBadge').textContent = `⚡ ANSWER ${this.blitz.answered + 1}`;
         } else {
@@ -5932,6 +7974,7 @@
         document.getElementById('submitAnswerBtn').disabled = false;
         document.getElementById('passBtn').disabled = false;
         document.getElementById('tierRevealBox').style.display = 'none';
+        document.getElementById('nextPromptBtn').style.display = '';
 
         const fb = document.getElementById('feedbackMsg');
         fb.style.color = '#cbd5e1';
@@ -6017,6 +8060,16 @@
       update(dt) {
         if (this.state !== 'playing') return;
 
+        if (this.party && this.party.active) {
+          this.updatePartyClock(dt);
+          return;
+        }
+
+        if (this.chainDuel && this.chainDuel.active) {
+          this.updateChainClock(dt);
+          return;
+        }
+
         if (this.race && this.race.active) {
           this.updateRaceClock(dt);
           return;
@@ -6081,6 +8134,18 @@
         const raw = inputEl.value.trim();
         if (!raw) return;
 
+        // Party modes run on their own submit path
+        if (this.party && this.party.active) {
+          this.partySubmit(raw);
+          return;
+        }
+
+        // Online Chain Reaction runs on its own submit path
+        if (this.chainDuel && this.chainDuel.active) {
+          this.chainDuelSubmit(raw);
+          return;
+        }
+
         // Online race modes run on their own submit path
         if (this.race && this.race.active) {
           this.raceSubmit(raw);
@@ -6101,6 +8166,10 @@
         if (this.roundLocked || this.state !== 'playing') return;
 
         if (!match) {
+          if (this.mode === 'onelife') {
+            this.onelifeDie(`"${raw.toUpperCase()}" UNRECOGNIZED`);
+            return;
+          }
           SoundFX.playInvalidBuzz();
           fb.style.color = '#f87171';
           fb.textContent = `"${raw.toUpperCase()}" UNRECOGNIZED — TRY AGAIN!`;
@@ -6176,11 +8245,17 @@
       },
 
       passPrompt() {
+        if (this.party && this.party.active) return;
+        if (this.chainDuel && this.chainDuel.active) return;
         if (this.state !== 'playing' || this.roundLocked || this.isValidating) return;
         this.handleTimeoutOrPass(true);
       },
 
       handleTimeoutOrPass(wasPassed) {
+        if (this.mode === 'onelife' && this.state === 'playing') {
+          this.onelifeDie(wasPassed ? 'PASSED — THAT COUNTS AS A MISS' : 'TIME EXPIRED');
+          return;
+        }
         if (this.mode === 'lightspeed' && this.blitz) {
           this.blitz.combo = 0;
           this.refreshBlitzBar();
@@ -6409,6 +8484,8 @@
           }
         } else if (this.mode === 'chain' && this.chain) {
           this.recordModeStats('chain', 'na', this.chain.length);
+        } else if (this.mode === 'onelife') {
+          this.recordModeStats('onelife', 'na', this.depthLY);
         } else if (['daily', 'unlimited', 'endless', 'passplay'].includes(this.mode)) {
           this.recordModeStats(this.mode, 'na');
         }
@@ -6531,6 +8608,14 @@
           mpBox.innerHTML = `<div class="font-pixel" style="font-size:12px; color:#fb923c;">🔗 CHAIN LENGTH: ${this.chain.length} LINKS</div>
             <div style="font-size:19px; color:#cbd5e1; margin-top:4px;">Category: ${this.chain.cat.prompt}</div>`;
           this.renderStandardBreakdown(breakdown);
+        } else if (this.mode === 'onelife') {
+          const survived = this.runLog.filter(r => r.pts > 0).length;
+          const best = ((this.save.stats.modes || {}).onelife || { best: 0 }).best || 0;
+          document.getElementById('summaryHeadline').textContent = '💀 ONE LIFE — RUN OVER!';
+          mpBox.style.display = 'block';
+          mpBox.innerHTML = `<div class="font-pixel" style="font-size:12px; color:#f87171;">💀 SURVIVED ${survived} PROMPT${survived === 1 ? '' : 'S'} • ${this.depthLY.toLocaleString()} LY</div>
+            <div style="font-size:19px; color:#cbd5e1; margin-top:4px;">Personal best: ${best.toLocaleString()} LY — one mistake is all it takes. Fly again?</div>`;
+          this.renderStandardBreakdown(breakdown);
         } else {
           mpBox.style.display = 'none';
           this.renderStandardBreakdown(breakdown);
@@ -6553,6 +8638,14 @@
       },
 
       replayCurrentMode() {
+        if (this.mode === 'party') {
+          // Party PLAY AGAIN runs the PartyNet offer handshake; it
+          // returns false only when the party is already gone.
+          if (!PartyNet.requestPartyRematch()) {
+            this.openOnlineLobby();
+          }
+          return;
+        }
         if (this.mode === 'online') {
           // PLAY AGAIN in a party means REMATCH: the connection stays
           // up and OnlineNet runs the two-sided offer handshake. It
@@ -6712,7 +8805,7 @@
           daily: '📅 Daily Launch', unlimited: '🌌 Unlimited Dive', endless: '🫧 Endless Oxygen',
           fleet: '🦐 40-Krill Fleet', duel: '⚔️ Ranked Duel (AI)', passplay: '🎮 Pass & Play',
           online: '🌐 Online Duel', moonrace: '🌕 Moon Race', lightspeed: '⚡ Lightspeed',
-          chain: '🔗 Chain Reaction', lastship: '💀 Last Ship Standing', meteor: '☄️ Meteor Storm'
+          chain: '🔗 Chain Reaction', lastship: '💀 Last Ship Standing', meteor: '☄️ Meteor Storm', party: '🎉 Star Party', knockout: '💀 Knockout', teams: '👥 Team Clash', onelife: '☠️ One Life'
         };
         const bestLabel = {
           moonrace: v => `${v.toLocaleString()} km`,
