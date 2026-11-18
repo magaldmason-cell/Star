@@ -620,6 +620,74 @@
       opacity: 1;
       pointer-events: auto;
     }
+
+    /* Admin prank effects (owner-sent, target-side). All overlays are
+       pointer-events:none except the fake-error dismiss button. */
+    @keyframes prankShakeAnim {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      10% { transform: translate(-9px, 4px) rotate(-0.7deg); }
+      20% { transform: translate(8px, -5px) rotate(0.7deg); }
+      30% { transform: translate(-7px, -4px) rotate(-0.5deg); }
+      40% { transform: translate(9px, 5px) rotate(0.6deg); }
+      50% { transform: translate(-8px, 2px) rotate(-0.7deg); }
+      60% { transform: translate(7px, -3px) rotate(0.5deg); }
+      70% { transform: translate(-6px, 5px) rotate(-0.4deg); }
+      80% { transform: translate(8px, -4px) rotate(0.6deg); }
+      90% { transform: translate(-5px, 3px) rotate(-0.3deg); }
+    }
+    #uiRoot.prank-shake { animation: prankShakeAnim 0.45s linear infinite; }
+    #uiRoot.prank-flip { transform: rotate(180deg); transition: transform 0.5s ease; }
+    #uiRoot { transition: transform 0.5s ease; }
+
+    #prankFxLayer {
+      position: fixed; inset: 0; overflow: hidden;
+      pointer-events: none; z-index: 130;
+    }
+    .prank-confetti-piece {
+      position: absolute; top: -16px; width: 9px; height: 14px;
+      opacity: 0.95; border-radius: 2px;
+      animation-name: prankConfettiFall; animation-timing-function: linear;
+      animation-fill-mode: forwards;
+    }
+    @keyframes prankConfettiFall {
+      to { transform: translateY(108vh) rotate(720deg); }
+    }
+
+    #prankBanner {
+      position: fixed; top: 118px; left: 50%;
+      transform: translateX(-50%) translateY(-18px);
+      background: #7f1d1d; border: 3px solid #f87171; color: #fecaca;
+      font-family: 'Press Start 2P', monospace; font-size: 13px;
+      padding: 14px 22px; border-radius: 6px; z-index: 131;
+      opacity: 0; pointer-events: none; transition: all 0.25s ease;
+      text-align: center; line-height: 1.7; max-width: 92vw;
+      box-shadow: 0 0 34px rgba(248, 113, 113, 0.55);
+    }
+    #prankBanner.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    #prankError {
+      position: fixed; top: 190px; left: 50%;
+      transform: translateX(-50%) scale(0.9);
+      background: #1e293b; border: 3px solid #fbbf24; color: #fde68a;
+      font-family: 'Press Start 2P', monospace; font-size: 10px;
+      padding: 16px 20px; border-radius: 6px; z-index: 132;
+      opacity: 0; pointer-events: none; transition: all 0.2s ease;
+      text-align: center; line-height: 1.8; max-width: 92vw; display: none;
+    }
+    #prankError.show { transform: translateX(-50%) scale(1); opacity: 1; display: block; }
+    #prankError button { pointer-events: auto; }
+
+    #prankBootOverlay {
+      position: fixed; inset: 0; background: rgba(2, 6, 23, 0.88);
+      z-index: 140; display: none; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    #prankBootOverlay.show { display: flex; }
+    #prankBootOverlay .boot-card {
+      font-family: 'Press Start 2P', monospace; font-size: 15px; color: #fca5a5;
+      text-align: center; line-height: 2; border: 3px solid #f87171;
+      background: #0f172a; padding: 26px 34px; border-radius: 8px; max-width: 92vw;
+    }
   </style>
 </head>
 <body>
@@ -637,6 +705,17 @@
       <button class="pixel-btn" style="padding:6px 10px; font-size:9px;" onclick="Game.dismissCurrentInvite()">✖</button>
     </span>
   </div>
+
+  <!-- Admin Prank FX (owner-sent pranks land here, any screen) -->
+  <div id="prankFxLayer"></div>
+  <div id="prankBanner">👀 MASON IS WATCHING</div>
+  <div id="prankError">
+    <div id="prankErrorText">⚠️ ERROR?!</div>
+    <div style="margin-top:10px;">
+      <button class="pixel-btn pixel-btn-gold" style="padding:6px 12px; font-size:9px;" onclick="AdminFX.dismissFakeError()">😅 OK OK</button>
+    </div>
+  </div>
+  <div id="prankBootOverlay"><div class="boot-card" id="prankBootText">🚪 KICKED BY MASON</div></div>
 
   <!-- UI Overlay -->
   <div id="uiRoot">
@@ -1332,6 +1411,7 @@
           <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
             <button class="pixel-btn pixel-btn-emerald" style="font-size:10px;" onclick="Game.openFriends()">👥 OPEN FRIENDS PANEL<span id="friendsBadge" style="display:none; color:#fde68a;"></span></button>
             <button id="whoOnlineBtn" class="pixel-btn pixel-btn-cyan" style="font-size:10px; display:none;" onclick="Game.openOnlinePilots()">🌐 WHO'S ONLINE</button>
+            <button id="adminBtn" class="pixel-btn pixel-btn-gold" style="font-size:10px; display:none;" onclick="Game.openAdmin()">🛠️ ADMIN</button>
           </div>
         </div>
       </section>
@@ -1375,7 +1455,80 @@
           <button class="pixel-btn" style="padding:6px 10px; font-size:10px;" onclick="Game.returnToMenu()">✕ CLOSE</button>
         </div>
         <div id="onlinePilotsListBox" style="display:flex; flex-direction:column; gap:6px;"></div>
+        <div id="boardPrankBox" style="display:none; flex-direction:column; gap:6px; border:2px dashed #f472b6; border-radius:6px; padding:8px;">
+          <div id="boardPrankTitle" class="font-pixel" style="font-size:9px; color:#f472b6; text-align:center;">🎭 PRANK:</div>
+          <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+            <button class="pixel-btn" style="padding:5px 9px; font-size:9px;" onclick="Game.doSendPrank('shake')">🫨 SHAKE</button>
+            <button class="pixel-btn" style="padding:5px 9px; font-size:9px;" onclick="Game.doSendPrank('flip')">🙃 FLIP</button>
+            <button class="pixel-btn" style="padding:5px 9px; font-size:9px;" onclick="Game.doSendPrank('fakeError')">⚠️ FAKE ERROR</button>
+            <button class="pixel-btn" style="padding:5px 9px; font-size:9px;" onclick="Game.doSendPrank('banner')">👀 BANNER</button>
+            <button class="pixel-btn" style="padding:5px 9px; font-size:9px;" onclick="Game.doSendPrank('confetti')">🎉 CONFETTI</button>
+            <button class="pixel-btn" style="padding:5px 9px; font-size:9px;" onclick="Game.doSendPrank('sillyHat')">🎩 SILLY HAT</button>
+            <button class="pixel-btn" style="padding:5px 9px; font-size:9px;" onclick="Game.doSendPrank('boot')">🚪 BOOT</button>
+          </div>
+        </div>
         <div id="onlinePilotsMsg" class="font-pixel" style="font-size:9px; color:#94a3b8; text-align:center; line-height:1.6; min-height:14px;"></div>
+      </section>
+
+      <!-- 7D. ADMIN MODAL (OWNER-ONLY — self cheats + token gifts.
+           Kick lives on the party roster; kick + pranks live on the
+           WHO'S ONLINE board. This panel never renders for anyone
+           but the game owner.) -->
+      <section id="adminModal" class="modal-panel pixel-box pixel-box-gold interactive" style="max-width:560px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 class="font-pixel" style="font-size:14px; color:#fbbf24;">🛠️ ADMIN</h2>
+          <button class="pixel-btn" style="padding:6px 10px; font-size:10px;" onclick="Game.returnToMenu()">✕ CLOSE</button>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div class="font-pixel" style="font-size:9px; color:#fbbf24; text-align:center;">⭐ SELF CHEATS</div>
+          <div id="adminBalanceLine" style="font-size:18px; color:#fde68a; text-align:center;">🪙 0 STAR TOKENS</div>
+          <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+            <button class="pixel-btn pixel-btn-gold" style="padding:6px 10px; font-size:9px;" onclick="Game.doAdminAddTokens(1000)">+1,000 🪙</button>
+            <button class="pixel-btn pixel-btn-gold" style="padding:6px 10px; font-size:9px;" onclick="Game.doAdminAddTokens(10000)">+10,000 🪙</button>
+          </div>
+          <div style="display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap;">
+            <input id="adminSetTokensInput" class="p-name-input" type="number" min="0" placeholder="SET TOKENS TO…" style="max-width:170px;" />
+            <button class="pixel-btn" style="padding:6px 10px; font-size:9px;" onclick="Game.doAdminSetTokens()">SET TOKENS</button>
+          </div>
+          <div style="display:flex; justify-content:center;">
+            <button class="pixel-btn pixel-btn-gold" style="padding:6px 12px; font-size:9px;" onclick="Game.doAdminUnlockAll()">🔓 UNLOCK ALL COSMETICS</button>
+          </div>
+          <div style="display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap;">
+            <span style="font-size:16px; color:#94a3b8;">🔥 STREAK</span>
+            <input id="adminStreakInput" class="p-name-input" type="number" min="0" placeholder="DAYS" style="max-width:90px;" />
+            <span style="font-size:16px; color:#94a3b8;">🚀 TOTAL LY</span>
+            <input id="adminLyInput" class="p-name-input" type="number" min="0" placeholder="LY" style="max-width:110px;" />
+            <button class="pixel-btn" style="padding:6px 10px; font-size:9px;" onclick="Game.doAdminApplyStats()">APPLY STATS</button>
+          </div>
+        </div>
+
+        <div style="border-top:2px dashed #fbbf24; padding-top:10px; display:flex; flex-direction:column; gap:8px;">
+          <div class="font-pixel" style="font-size:9px; color:#fbbf24; text-align:center;">🎁 GIFT TOKENS</div>
+          <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+            <select id="adminGiftFriendSelect" class="p-name-input" style="max-width:180px;"></select>
+            <input id="adminGiftNameInput" class="p-name-input" type="text" maxlength="14" placeholder="…OR PILOT NAME" autocomplete="off" style="max-width:160px;" />
+          </div>
+          <div style="display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap;">
+            <input id="adminGiftAmountInput" class="p-name-input" type="number" min="1" placeholder="AMOUNT" style="max-width:120px;" />
+            <button class="pixel-btn pixel-btn-emerald" style="padding:6px 12px; font-size:9px;" onclick="Game.doAdminSendGift()">🎁 SEND GIFT</button>
+          </div>
+          <div id="adminGiftHint" style="display:none; font-size:15px; color:#fbbf24; text-align:center;">☁️ gift backend pending — the cloud rules for gifts land soon; self cheats work now!</div>
+        </div>
+
+        <div style="border-top:2px dashed #fbbf24; padding-top:10px;">
+          <div style="font-size:16px; color:#94a3b8; text-align:center; line-height:1.5;">
+            🚪 <strong style="color:#f8fafc;">KICK</strong> lives on your party roster (host) and on every row of the 🌐 WHO'S ONLINE board.<br>
+            🎭 <strong style="color:#f8fafc;">PRANKS</strong> live on the board too — tap 🎭 on any pilot.
+          </div>
+          <div id="adminPrankHint" style="display:none; font-size:15px; color:#fbbf24; text-align:center; margin-top:6px;">☁️ prank backend pending — the cloud rules for pranks land soon!</div>
+        </div>
+
+        <div id="adminMsg" class="font-pixel" style="font-size:9px; color:#94a3b8; text-align:center; line-height:1.6; min-height:14px;"></div>
+
+        <div style="display:flex; justify-content:center;">
+          <button class="pixel-btn" style="font-size:10px;" onclick="Game.openAccount()">← BACK TO ACCOUNT</button>
+        </div>
       </section>
 
       <!-- 8. PILOT STATS MODAL -->
@@ -1642,12 +1795,28 @@
         };
       },
 
-      lookFromSave(save) {
+      // The look exactly as saved — no overrides. encode() uses this
+      // so a render-only prank never leaks into the published cos.
+      _lookRaw(save) {
         const s = save || {};
         return this.resolve({
           color: s.equippedColor, hat: s.equippedHat, suit: s.equippedSuit,
           pet: s.equippedPet, trail: s.equippedTrail
         });
+      },
+
+      lookFromSave(save) {
+        const look = this._lookRaw(save);
+        // PRANK (owner-sent): the silly-hat override is render-only —
+        // for 60s the pranked pilot's own character wears the party
+        // hat. The save itself is never touched.
+        try {
+          if (typeof Game !== 'undefined' && save && save === Game.save &&
+              typeof AdminFX !== 'undefined' && AdminFX.sillyHatActive()) {
+            return this.lookWith(look, 'hats', 'party');
+          }
+        } catch (_) {}
+        return look;
       },
 
       // Swap one slot of a resolved look (locker item previews).
@@ -1662,7 +1831,7 @@
       },
 
       encode(save) {
-        const l = this.lookFromSave(save);
+        const l = this._lookRaw(save);
         return [l.colorId, l.hatId, l.suitId, l.petId, l.trailId].join('.');
       },
 
@@ -5760,6 +5929,28 @@
         SoundFX.playTone(660, 0.07, 'square', 0.05);
       },
 
+      // ADMIN (owner-host only): boot one pilot from this room. The
+      // PARTY_KICK goes out addressed to the target alone; the
+      // roster removal mirrors how a BYE is handled (mid-match the
+      // seat just goes inactive in the host state).
+      kickPlayer(pid) {
+        if (!this.isHost || !pid || pid === this.myPid) return;
+        if (typeof Social === 'undefined' || !Social.isOwner || !Social.isOwner()) return;
+        const target = this.roster.find(p => p.pid === pid);
+        if (!target) return;
+        this._broadcast({ type: 'PARTY_KICK', _to: pid, targetPid: pid });
+        if (this.inMatch && this._hostState) {
+          const seat = this._hostState.playersState.find(x => x.pid === pid);
+          if (seat) seat.inactive = true;
+        }
+        this.roster = this.roster.filter(p => p.pid !== pid);
+        if (!this.inMatch) this._applyTeamsIfNeeded();
+        this._broadcastRoster();
+        this._renderRoster();
+        Game.showToast(`🚪 KICKED ${target.name}!`);
+        SoundFX.playInvalidBuzz();
+      },
+
       /* ---------------- GUEST: incoming ---------------- */
       _onGuestMessage(msg) {
         if (this._hostSid && msg._sid && msg._sid !== this._hostSid) return;
@@ -5795,6 +5986,16 @@
             this._clearDeadlineTimer();
             this.setStatus('⛔ THAT PARTY\'S MATCH ALREADY STARTED — ASK THE HOST FOR A FRESH CODE ONCE IT ENDS.', '#f87171');
           }
+          return;
+        }
+        if (msg.type === 'PARTY_KICK') {
+          // The (owner) host booted me: toast, then out through the
+          // graceful exit to the main menu. Messages addressed to
+          // another pid were already filtered above.
+          if (msg.targetPid && msg.targetPid !== this.myPid) return;
+          Game.showToast('🚪 KICKED BY THE HOST');
+          SoundFX.playInvalidBuzz();
+          Game.adminBootToMenu();
           return;
         }
         if (msg.type === 'BYE') {
@@ -5955,7 +6156,13 @@
           if (p.pid === hostPid) tags.push('👑 HOST');
           if (p.pid === this.myPid) tags.push('(YOU)');
           if (teamsMode && p.team) tags.push(p.team === 'AZURE' ? '🔵 AZURE' : '🔴 CRIMSON');
-          return `<div style="font-size:18px; color:#e2e8f0;">${AvatarKit.img(p.cos)} ${p.name} <span style="color:#94a3b8; font-size:15px;">${tags.join(' ')}</span></div>`;
+          // ADMIN: the owner, when hosting, gets a 🚪 on every other
+          // pilot's row. Nobody else ever renders it.
+          const kickBtn = (this.isHost && p.pid !== this.myPid &&
+            typeof Social !== 'undefined' && Social.isOwner && Social.isOwner())
+            ? ` <button class="pixel-btn" style="padding:3px 8px; font-size:9px;" onclick="PartyNet.kickPlayer('${p.pid}')">🚪 KICK</button>`
+            : '';
+          return `<div style="font-size:18px; color:#e2e8f0;">${AvatarKit.img(p.cos)} ${p.name} <span style="color:#94a3b8; font-size:15px;">${tags.join(' ')}</span>${kickBtn}</div>`;
         }).join('') || '<div style="font-size:17px; color:#94a3b8;">No pilots yet…</div>';
 
         const launchBtn = document.getElementById('partyLaunchBtn');
@@ -7365,6 +7572,7 @@
               adoptedName = true;
             }
           }
+          const freshSignup = !!this._pendingPilotName;
           this._pendingPilotName = null;
           // DIRECTORY CLAIM: the pilot name is only truly mine once the
           // public usernames/{name} entry points at my uid. A different
@@ -7407,7 +7615,10 @@
             this.pushNow();
             this.setMsg('☁️ LOCAL SAVE SYNCED TO THE CLOUD!');
           } else {
-            if (adoptedName) this.pushNow(); // create the doc carrying the adopted name
+            // RIDER: a fresh sign-up lands its users doc right away
+            // (save + pilotName) even if the pilot never plays a
+            // run, so the name still resolves on a future device.
+            if (adoptedName || (freshSignup && this.pilotName)) this.pushNow();
             this.setMsg('☁️ SIGNED IN — SAVE WILL SYNC AS YOU PLAY!');
           }
           if (typeof Social !== 'undefined') Social.attach(user.uid);
@@ -8278,6 +8489,7 @@
           if (typeof Game !== 'undefined') {
             if (Game.renderFriendsBadge) Game.renderFriendsBadge();
             if (Game.renderOnlineBtn) Game.renderOnlineBtn();
+            if (Game.renderAdminBtn) Game.renderAdminBtn();
             const fm = document.getElementById('friendsModal');
             if (fm && fm.style.display !== 'none' && Game.renderFriendsPanel) Game.renderFriendsPanel();
             const om = document.getElementById('onlinePilotsModal');
@@ -8373,6 +8585,329 @@
           if (uid) this._hbTimer = setInterval(() => this.publish(), 45000);
         }
         if (uid) this.publish();
+        // Admin prank/gift listeners re-aim at the same identity
+        // transitions (accounts receive both; guests receive pranks).
+        if (typeof AdminFX !== 'undefined') { try { AdminFX.sync(); } catch (_) {} }
+      }
+    };
+
+    /* =========================================================================
+       6F. ADMIN POWERS (OWNER-ONLY) + PRANKS & TOKEN GIFTS
+       The owner's toys, in two halves:
+         • SENDING (owner's client only — every send re-checks
+           Social.isOwner()): self cheats write straight into the
+           owner's own save (persistSave carries them to the cloud);
+           gifts and pranks are Firestore docs the TARGET's client
+           consumes:
+             - tokenGifts/{autoId} — {toUid, toName (cleaned),
+               amount, fromName, createdAt}. The recipient's client
+               credits the amount to its own save, toasts, deletes.
+             - pranks/{autoId} — {toUid, kind, fromName, createdAt}.
+               Kinds: shake, flip, fakeError, banner, confetti,
+               sillyHat, boot. The target fires a harmless, auto-
+               expiring visual effect (boot is the exception: it
+               exits the current room/run to the menu through the
+               game's own leave paths), then deletes the doc.
+         • RECEIVING (every client): the listeners re-aim on every
+           auth transition (hooked from Presence.refresh). Pranks
+           reach cloud accounts AND anonymous guests (addressed by
+           the uid on their presence doc); gifts reach accounts
+           only. Pranks older than ~2 minutes are swept silently.
+       The tokenGifts/pranks collections predate their Firestore
+       rules: every write/listen failure degrades silently, and the
+       admin panel flags "backend pending" once a send has failed.
+    ========================================================================= */
+    const AdminFX = {
+      giftsBackendOk: null,
+      pranksBackendOk: null,
+      _prankUnsub: null,
+      _prankUid: null,
+      _giftUnsub: null,
+      _giftUid: null,
+      _seenPranks: new Set(),
+      _seenGifts: new Set(),
+      sillyHatUntil: 0,
+      _fxTimers: [],
+
+      PRANK_KINDS: ['shake', 'flip', 'fakeError', 'banner', 'confetti', 'sillyHat', 'boot'],
+
+      get db() { return (typeof CloudSync !== 'undefined' && CloudSync.available) ? CloudSync.db : null; },
+
+      authUser() {
+        try { return (typeof CloudSync !== 'undefined' && CloudSync.auth) ? CloudSync.auth.currentUser : null; }
+        catch (_) { return null; }
+      },
+
+      isOwner() { return typeof Social !== 'undefined' && Social.isOwner(); },
+      myDisplayName() { return (typeof Social !== 'undefined' && Social.myName()) || 'MASON'; },
+
+      _tsMs(ts) {
+        if (!ts) return 0;
+        if (typeof ts.toMillis === 'function') { try { return ts.toMillis(); } catch (_) { return 0; } }
+        if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+        return 0;
+      },
+
+      /* ---------------- owner: self cheats ---------------- */
+      addTokens(n) {
+        if (!this.isOwner() || typeof Game === 'undefined' || !Game.save) return false;
+        const amt = Math.max(0, Math.floor(Number(n) || 0));
+        Game.save.tokens = Math.max(0, (Game.save.tokens | 0) + amt);
+        Game.persistSave();
+        Game.updateTopHud();
+        return true;
+      },
+
+      setTokens(n) {
+        if (!this.isOwner() || typeof Game === 'undefined' || !Game.save) return false;
+        Game.save.tokens = Math.max(0, Math.floor(Number(n) || 0));
+        Game.persistSave();
+        Game.updateTopHud();
+        return true;
+      },
+
+      // Grant every item in every COSMETICS catalog (the five avatar
+      // slots plus the legacy skins/drones/emotes), in the token-
+      // gate's own ownership model: ids in the save's unlocked lists.
+      // The equipped look is left exactly as it was.
+      unlockAll() {
+        if (!this.isOwner() || typeof Game === 'undefined' || !Game.save) return 0;
+        let granted = 0;
+        Object.keys(AVATAR_SLOTS).forEach(tab => {
+          const def = AVATAR_SLOTS[tab];
+          const owned = new Set(Array.isArray(Game.save[def.unlocked]) ? Game.save[def.unlocked] : []);
+          (COSMETICS[tab] || []).forEach(item => {
+            if (!owned.has(item.id)) { owned.add(item.id); granted++; }
+          });
+          Game.save[def.unlocked] = Array.from(owned);
+        });
+        Game.persistSave();
+        return granted;
+      },
+
+      applyStats(streak, ly) {
+        if (!this.isOwner() || typeof Game === 'undefined' || !Game.save) return false;
+        Game.save.streak = Math.max(0, Math.floor(Number(streak) || 0));
+        if (!Game.save.stats) Game.save.stats = Game.defaultStats();
+        Game.save.stats.totalLY = Math.max(0, Math.floor(Number(ly) || 0));
+        Game.persistSave();
+        Game.updateTopHud();
+        return true;
+      },
+
+      /* ---------------- owner: sending gifts + pranks ---------------- */
+      // Same directory lookup add-friend-by-name uses.
+      async lookupUidByName(rawName) {
+        const db = this.db;
+        if (!db) return { error: 'CLOUD UNAVAILABLE!' };
+        const cleaned = Accounts.cleanUsername(rawName);
+        if (cleaned.length < 3) return { error: 'PILOT NAME NEEDS 3+ LETTERS/NUMBERS!' };
+        try {
+          const snap = await db.collection('usernames').doc(cleaned).get();
+          if (!snap.exists) return { error: `NO PILOT FLYING UNDER "${cleaned.toUpperCase()}"!` };
+          const d = snap.data() || {};
+          if (!d.uid) return { error: 'THAT PILOT IS NOT REACHABLE — TRY AGAIN!' };
+          return { uid: d.uid, name: d.pilotName || cleaned.toUpperCase(), cleaned };
+        } catch (_) { return { error: 'CLOUD HIT A SNAG — TRY AGAIN!' }; }
+      },
+
+      async sendGift(rawName, amount) {
+        if (!this.isOwner()) return 'NOT YOUR PANEL, PILOT!';
+        const amt = Math.floor(Number(amount) || 0);
+        if (amt <= 0) return 'ENTER AN AMOUNT ABOVE ZERO!';
+        const found = await this.lookupUidByName(rawName);
+        if (found.error) return found.error;
+        const me = (typeof Social !== 'undefined') ? Social.me : null;
+        if (me && found.uid === me.uid) return "THAT'S YOU — USE THE TOKEN BUTTONS INSTEAD!";
+        try {
+          await this.db.collection('tokenGifts').add({
+            toUid: found.uid, toName: found.cleaned, amount: amt,
+            fromName: this.myDisplayName(),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          this.giftsBackendOk = true;
+          return null;
+        } catch (e) {
+          this.giftsBackendOk = false;
+          if (e && e.code === 'permission-denied') return '☁️ GIFT BACKEND PENDING — THE CLOUD RULES FOR GIFTS LAND SOON!';
+          return 'CLOUD HIT A SNAG — TRY AGAIN!';
+        }
+      },
+
+      async sendPrank(uid, kind) {
+        if (!this.isOwner()) return 'NOT YOUR PANEL, PILOT!';
+        if (!uid) return 'NO TARGET!';
+        if (!this.PRANK_KINDS.includes(kind)) return 'UNKNOWN PRANK!';
+        const me = (typeof Social !== 'undefined') ? Social.me : null;
+        if (me && uid === me.uid) return "CAN'T PRANK YOURSELF!";
+        try {
+          await this.db.collection('pranks').add({
+            toUid: uid, kind, fromName: this.myDisplayName(),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          this.pranksBackendOk = true;
+          return null;
+        } catch (e) {
+          this.pranksBackendOk = false;
+          if (e && e.code === 'permission-denied') return '☁️ PRANK BACKEND PENDING — THE CLOUD RULES FOR PRANKS LAND SOON!';
+          return 'CLOUD HIT A SNAG — TRY AGAIN!';
+        }
+      },
+
+      /* ---------------- target side: listeners ---------------- */
+      // Re-aimed on every auth transition (Presence.refresh hook).
+      sync() {
+        const user = this.authUser();
+        const uid = user ? user.uid : null;
+        const db = this.db;
+        if (uid !== this._prankUid) {
+          if (this._prankUnsub) { try { this._prankUnsub(); } catch (_) {} this._prankUnsub = null; }
+          this._prankUid = uid;
+          this._seenPranks = new Set();
+          if (uid && db) {
+            try {
+              this._prankUnsub = db.collection('pranks').where('toUid', '==', uid)
+                .onSnapshot(snap => this._onPrankSnap(snap), () => { this._prankUnsub = null; });
+            } catch (_) {}
+          }
+        }
+        const giftUid = (user && !user.isAnonymous) ? uid : null;
+        if (giftUid !== this._giftUid) {
+          if (this._giftUnsub) { try { this._giftUnsub(); } catch (_) {} this._giftUnsub = null; }
+          this._giftUid = giftUid;
+          this._seenGifts = new Set();
+          if (giftUid && db) {
+            try {
+              this._giftUnsub = db.collection('tokenGifts').where('toUid', '==', giftUid)
+                .onSnapshot(snap => this._onGiftSnap(snap), () => { this._giftUnsub = null; });
+            } catch (_) {}
+          }
+        }
+      },
+
+      _onPrankSnap(snap) {
+        snap.docChanges().forEach(ch => {
+          if (ch.type !== 'added') return;
+          const id = ch.doc.id;
+          if (this._seenPranks.has(id)) return;
+          this._seenPranks.add(id);
+          const d = ch.doc.data() || {};
+          // Sweep first so nothing can re-fire it later.
+          try { ch.doc.ref.delete().catch(() => {}); } catch (_) {}
+          // A prank that waited >2 min (target offline) is swept
+          // silently. A pending server timestamp reads as 0 — that
+          // means "just written", so it counts as fresh.
+          const ms = this._tsMs(d.createdAt);
+          if (ms && (Date.now() - ms) > 120000) return;
+          this.firePrank(d.kind, d.fromName || 'MASON');
+        });
+      },
+
+      _onGiftSnap(snap) {
+        snap.docChanges().forEach(ch => {
+          if (ch.type !== 'added') return;
+          const id = ch.doc.id;
+          if (this._seenGifts.has(id)) return;
+          this._seenGifts.add(id);
+          const d = ch.doc.data() || {};
+          try { ch.doc.ref.delete().catch(() => {}); } catch (_) {}
+          const amt = Math.max(0, Math.floor(Number(d.amount) || 0));
+          if (!amt || typeof Game === 'undefined' || !Game.save) return;
+          Game.save.tokens = Math.max(0, (Game.save.tokens | 0) + amt);
+          Game.persistSave();
+          Game.updateTopHud();
+          try { Game.showToast(`🎁 +${amt.toLocaleString()} TOKENS FROM ${String(d.fromName || 'MASON').toUpperCase()}!`); } catch (_) {}
+          try { SoundFX.playCoinWinner(); } catch (_) {}
+        });
+      },
+
+      /* ---------------- target side: effects ---------------- */
+      sillyHatActive() { return Date.now() < this.sillyHatUntil; },
+
+      _later(fn, ms) { const t = setTimeout(fn, ms); this._fxTimers.push(t); return t; },
+
+      firePrank(kind, fromName) {
+        const from = String(fromName || 'MASON').toUpperCase();
+        try {
+          if (kind === 'shake') {
+            const root = document.getElementById('uiRoot');
+            if (root) {
+              root.classList.add('prank-shake');
+              this._later(() => root.classList.remove('prank-shake'), 3000);
+            }
+            Game.showToast(`🫨 ${from} SHOOK YOUR SCREEN!`);
+            SoundFX.playInvalidBuzz();
+          } else if (kind === 'flip') {
+            const root = document.getElementById('uiRoot');
+            if (root) {
+              root.classList.add('prank-flip');
+              this._later(() => root.classList.remove('prank-flip'), 10000);
+            }
+            Game.showToast(`🙃 ${from} FLIPPED YOUR SCREEN!`);
+            SoundFX.playInvalidBuzz();
+          } else if (kind === 'fakeError') {
+            const el = document.getElementById('prankError');
+            const tx = document.getElementById('prankErrorText');
+            if (tx) tx.textContent = `⚠️ ${from} pressed the big red button…`;
+            if (el) {
+              el.classList.add('show');
+              this._later(() => el.classList.remove('show'), 15000);
+            }
+            SoundFX.playInvalidBuzz();
+          } else if (kind === 'banner') {
+            const el = document.getElementById('prankBanner');
+            if (el) {
+              el.textContent = `👀 ${from} IS WATCHING`;
+              el.classList.add('show');
+              this._later(() => el.classList.remove('show'), 6000);
+            }
+            SoundFX.playTone(220, 0.2, 'sawtooth', 0.05);
+          } else if (kind === 'confetti') {
+            this._confettiBurst();
+            Game.showToast(`🎉 ${from} SENT A CONFETTI BLAST!`);
+          } else if (kind === 'sillyHat') {
+            this.sillyHatUntil = Date.now() + 60000;
+            Game.showToast(`🎩 ${from} PUT A PARTY HAT ON YOU FOR 60s!`);
+            SoundFX.playCoinWinner();
+          } else if (kind === 'boot') {
+            this.bootToMenu(from);
+          }
+        } catch (_) {}
+      },
+
+      _confettiBurst() {
+        const layer = document.getElementById('prankFxLayer');
+        if (!layer) return;
+        const colors = ['#f87171', '#fbbf24', '#34d399', '#38bdf8', '#f472b6', '#a78bfa'];
+        for (let i = 0; i < 90; i++) {
+          const piece = document.createElement('div');
+          piece.className = 'prank-confetti-piece';
+          piece.style.left = (Math.random() * 100) + 'vw';
+          piece.style.background = colors[i % colors.length];
+          piece.style.animationDuration = (2.2 + Math.random() * 1.6) + 's';
+          piece.style.animationDelay = (Math.random() * 0.5) + 's';
+          layer.appendChild(piece);
+          this._later(() => { try { piece.remove(); } catch (_) {} }, 4600);
+        }
+        try { SoundFX.playCoinWinner(); } catch (_) {}
+        try { SoundFX.playTone(1318.5, 0.12, 'square', 0.06, 0.12); } catch (_) {}
+      },
+
+      dismissFakeError() {
+        const el = document.getElementById('prankError');
+        if (el) el.classList.remove('show');
+      },
+
+      // The one state-changing prank: a full-screen word, then out
+      // through the game's own leave/teardown paths to the menu.
+      bootToMenu(from) {
+        const el = document.getElementById('prankBootOverlay');
+        const tx = document.getElementById('prankBootText');
+        if (tx) tx.textContent = `🚪 KICKED BY ${from}`;
+        if (el) el.classList.add('show');
+        try { SoundFX.playInvalidBuzz(); } catch (_) {}
+        this._later(() => { if (el) el.classList.remove('show'); }, 2400);
+        this._later(() => { try { Game.adminBootToMenu(); } catch (_) {} }, 450);
       }
     };
 
@@ -8766,7 +9301,7 @@
           'menuScreen', 'onlineLobbyModal', 'lobbyModal',
           'passPlayModal', 'handoffModal', 'playScreen',
           'summaryModal', 'lockerModal', 'helpModal',
-          'accountModal', 'statsModal', 'friendsModal', 'onlinePilotsModal'
+          'accountModal', 'statsModal', 'friendsModal', 'onlinePilotsModal', 'adminModal'
         ];
         ids.forEach(id => {
           const el = document.getElementById(id);
@@ -11844,6 +12379,7 @@
         this.renderCloudPanel();
         this.renderFriendsBadge();
         this.renderOnlineBtn();
+        this.renderAdminBtn();
       },
 
       fillAccountName(name) {
@@ -12040,6 +12576,9 @@
         if (typeof Social === 'undefined' || !Social.isOwner()) return;
         this.hideAllModals();
         document.getElementById('onlinePilotsModal').style.display = 'flex';
+        const pb = document.getElementById('boardPrankBox');
+        if (pb) pb.style.display = 'none';
+        this._prankTargetUid = null;
         this.renderOnlinePilotsPanel();
       },
 
@@ -12060,16 +12599,23 @@
             let action;
             if (isMe) {
               action = `<span style="font-size:14px; color:#38bdf8;">YOU</span>`;
-            } else if (p.guest) {
-              // No stable identity to friend — the tag is the marker.
-              action = '';
-            } else if (Social.friends.some(f => f.uid === p.uid)) {
-              action = `<span style="font-size:14px; color:#34d399;">⭐ CREW</span>`;
-            } else if (Social.outgoing.some(r => r.toUid === p.uid)) {
-              action = `<span style="font-size:14px; color:#94a3b8;">⏳ SENT</span>`;
             } else {
-              const addName = p.cleaned || Accounts.cleanUsername(p.name);
-              action = `<button class="pixel-btn pixel-btn-emerald" style="padding:5px 9px; font-size:9px;" onclick="Game.doAddFromOnline('${addName}')">➕ ADD</button>`;
+              // The owner's toys ride every other row — accounts and
+              // guests alike (both are addressed by the uid on their
+              // presence doc): 🚪 boots them to the menu, 🎭 opens
+              // the prank picker.
+              const toys = `<button class="pixel-btn" style="padding:5px 9px; font-size:9px;" onclick="Game.doBoardKick('${p.uid}')">🚪</button><button class="pixel-btn" style="padding:5px 9px; font-size:9px;" onclick="Game.doBoardPrankPicker('${p.uid}')">🎭</button>`;
+              if (p.guest) {
+                // No stable identity to friend — the tag is the marker.
+                action = toys;
+              } else if (Social.friends.some(f => f.uid === p.uid)) {
+                action = `<span style="font-size:14px; color:#34d399;">⭐ CREW</span>` + toys;
+              } else if (Social.outgoing.some(r => r.toUid === p.uid)) {
+                action = `<span style="font-size:14px; color:#94a3b8;">⏳ SENT</span>` + toys;
+              } else {
+                const addName = p.cleaned || Accounts.cleanUsername(p.name);
+                action = `<button class="pixel-btn pixel-btn-emerald" style="padding:5px 9px; font-size:9px;" onclick="Game.doAddFromOnline('${addName}')">➕ ADD</button>` + toys;
+              }
             }
             return `<div class="breakdown-row">
               <span>${AvatarKit.img(p.cos)} 🟢 ${this.escHtml(p.name)} ${tag}</span>
@@ -12083,6 +12629,200 @@
       setOnlineMsg(text) {
         const el = document.getElementById('onlinePilotsMsg');
         if (el) el.textContent = text || '';
+      },
+
+      /* ---------------- ADMIN (OWNER-ONLY) ---------------- */
+      // The ADMIN button exists only for the game owner — for
+      // everyone else it is never shown at all (same gate as the
+      // WHO'S ONLINE board).
+      renderAdminBtn() {
+        const btn = document.getElementById('adminBtn');
+        if (!btn) return;
+        btn.style.display = (typeof Social !== 'undefined' && Social.isOwner()) ? 'inline-flex' : 'none';
+      },
+
+      openAdmin() {
+        if (typeof Social === 'undefined' || !Social.isOwner()) return;
+        this.hideAllModals();
+        document.getElementById('adminModal').style.display = 'flex';
+        this.renderAdminPanel();
+      },
+
+      renderAdminPanel() {
+        if (typeof Social === 'undefined' || !Social.isOwner()) return;
+        const bal = document.getElementById('adminBalanceLine');
+        if (bal) bal.textContent = `🪙 ${this.save.tokens.toLocaleString()} STAR TOKENS`;
+        const streak = document.getElementById('adminStreakInput');
+        if (streak && document.activeElement !== streak) streak.value = this.save.streak;
+        const ly = document.getElementById('adminLyInput');
+        if (ly && document.activeElement !== ly) ly.value = this.save.stats ? this.save.stats.totalLY : 0;
+        const sel = document.getElementById('adminGiftFriendSelect');
+        if (sel) {
+          const cur = sel.value;
+          sel.innerHTML = `<option value="">— PICK A FRIEND —</option>` +
+            Social.friends.map(f => `<option value="${this.escHtml(Accounts.cleanUsername(f.name))}">${this.escHtml(f.name)}</option>`).join('');
+          if (cur) sel.value = cur;
+        }
+        const gh = document.getElementById('adminGiftHint');
+        if (gh) gh.style.display = (typeof AdminFX !== 'undefined' && AdminFX.giftsBackendOk === false) ? 'block' : 'none';
+        const ph = document.getElementById('adminPrankHint');
+        if (ph) ph.style.display = (typeof AdminFX !== 'undefined' && AdminFX.pranksBackendOk === false) ? 'block' : 'none';
+      },
+
+      setAdminMsg(text) {
+        const el = document.getElementById('adminMsg');
+        if (el) el.textContent = text || '';
+      },
+
+      doAdminAddTokens(n) {
+        if (typeof AdminFX === 'undefined' || !AdminFX.addTokens(n)) return;
+        SoundFX.playCoinWinner();
+        this.showToast(`🛠️ +${Number(n).toLocaleString()} TOKENS!`);
+        this.setAdminMsg(`🪙 BALANCE: ${this.save.tokens.toLocaleString()} TOKENS`);
+        this.renderAdminPanel();
+      },
+
+      doAdminSetTokens() {
+        const input = document.getElementById('adminSetTokensInput');
+        const val = input ? parseInt(input.value, 10) : NaN;
+        if (!Number.isFinite(val) || val < 0) {
+          this.setAdminMsg('ENTER A TOKEN AMOUNT (0 OR MORE)!');
+          SoundFX.playInvalidBuzz();
+          return;
+        }
+        if (typeof AdminFX === 'undefined' || !AdminFX.setTokens(val)) return;
+        SoundFX.playCoinWinner();
+        this.showToast(`🛠️ TOKENS SET TO ${val.toLocaleString()}!`);
+        this.renderAdminPanel();
+      },
+
+      doAdminUnlockAll() {
+        if (typeof AdminFX === 'undefined') return;
+        const n = AdminFX.unlockAll();
+        SoundFX.playCoinWinner();
+        this.showToast(n > 0 ? `🔓 ${n} COSMETICS UNLOCKED — THE WHOLE LOCKER IS YOURS!` : '🔓 EVERYTHING IS ALREADY UNLOCKED!');
+        this.setAdminMsg(`🔓 LOCKER: ${n} NEW ITEMS GRANTED.`);
+        this.renderAdminPanel();
+      },
+
+      doAdminApplyStats() {
+        const sIn = document.getElementById('adminStreakInput');
+        const lIn = document.getElementById('adminLyInput');
+        const streak = sIn ? parseInt(sIn.value, 10) : NaN;
+        const ly = lIn ? parseInt(lIn.value, 10) : NaN;
+        if (!Number.isFinite(streak) || streak < 0 || !Number.isFinite(ly) || ly < 0) {
+          this.setAdminMsg('ENTER A STREAK AND A TOTAL LY (0 OR MORE)!');
+          SoundFX.playInvalidBuzz();
+          return;
+        }
+        if (typeof AdminFX === 'undefined' || !AdminFX.applyStats(streak, ly)) return;
+        SoundFX.playCoinWinner();
+        this.showToast('🛠️ STATS UPDATED!');
+        this.setAdminMsg(`🔥 STREAK ${streak}d • 🚀 ${ly.toLocaleString()} TOTAL LY`);
+        this.renderAdminPanel();
+      },
+
+      async doAdminSendGift() {
+        const sel = document.getElementById('adminGiftFriendSelect');
+        const nameIn = document.getElementById('adminGiftNameInput');
+        const amtIn = document.getElementById('adminGiftAmountInput');
+        const name = (nameIn && nameIn.value.trim()) || (sel ? sel.value : '');
+        const amt = amtIn ? parseInt(amtIn.value, 10) : NaN;
+        if (!name) {
+          this.setAdminMsg('PICK A FRIEND OR TYPE A PILOT NAME!');
+          SoundFX.playInvalidBuzz();
+          return;
+        }
+        if (!Number.isFinite(amt) || amt <= 0) {
+          this.setAdminMsg('ENTER AN AMOUNT ABOVE ZERO!');
+          SoundFX.playInvalidBuzz();
+          return;
+        }
+        this.setAdminMsg('🎁 SENDING…');
+        const err = await AdminFX.sendGift(name, amt);
+        if (err) {
+          SoundFX.playInvalidBuzz();
+          this.setAdminMsg(err);
+          this.showToast(err);
+          this.renderAdminPanel();
+          return;
+        }
+        SoundFX.playCoinWinner();
+        this.setAdminMsg(`🎁 SENT ${amt.toLocaleString()} TOKENS!`);
+        this.showToast('🎁 GIFT SENT!');
+        if (amtIn) amtIn.value = '';
+        this.renderAdminPanel();
+      },
+
+      // Board toys (owner-only): 🚪 boots the pilot (a 'boot'
+      // prank doc — works on accounts and guests alike); 🎭 opens
+      // the prank picker for that pilot.
+      async doBoardKick(uid) {
+        if (typeof AdminFX === 'undefined') return;
+        this.setOnlineMsg('🚪 BOOTING…');
+        const err = await AdminFX.sendPrank(uid, 'boot');
+        if (err) {
+          SoundFX.playInvalidBuzz();
+          this.setOnlineMsg(err);
+          this.showToast(err);
+          this.renderOnlinePilotsPanel();
+          return;
+        }
+        SoundFX.playInvalidBuzz();
+        this.setOnlineMsg('🚪 BOOT SENT!');
+        this.showToast('🚪 BOOT SENT!');
+        this.renderOnlinePilotsPanel();
+      },
+
+      doBoardPrankPicker(uid) {
+        if (typeof Social === 'undefined' || !Social.isOwner()) return;
+        const box = document.getElementById('boardPrankBox');
+        const title = document.getElementById('boardPrankTitle');
+        const p = Social.directory ? Social.directory[uid] : null;
+        this._prankTargetUid = uid;
+        if (title) title.textContent = `🎭 PRANK ${p ? p.name : 'PILOT'}:`;
+        if (box) box.style.display = 'flex';
+      },
+
+      async doSendPrank(kind) {
+        const uid = this._prankTargetUid;
+        if (!uid || typeof AdminFX === 'undefined') return;
+        this.setOnlineMsg('🎭 SENDING PRANK…');
+        const err = await AdminFX.sendPrank(uid, kind);
+        if (err) {
+          SoundFX.playInvalidBuzz();
+          this.setOnlineMsg(err);
+          this.showToast(err);
+          this.renderOnlinePilotsPanel();
+          return;
+        }
+        SoundFX.playCoinWinner();
+        this.setOnlineMsg('🎭 PRANK SENT!');
+        this.showToast('🎭 PRANK SENT!');
+        const box = document.getElementById('boardPrankBox');
+        if (box) box.style.display = 'none';
+        this.renderOnlinePilotsPanel();
+      },
+
+      // Prank/kick landing pad: tear down ANY live session (party
+      // room, duel, solo run) through the existing leave paths and
+      // land on the main menu. abortToMenu alone skips the network
+      // teardown when a room is still in its lobby phase, so the
+      // nets are disconnected explicitly first (idempotent).
+      adminBootToMenu() {
+        try {
+          if (typeof PartyNet !== 'undefined' &&
+              (PartyNet.connected || PartyNet._roomOpen || PartyNet.inMatch || PartyNet._joinPhase === 'joining')) {
+            PartyNet.disconnect();
+          }
+        } catch (_) {}
+        try {
+          if (typeof OnlineNet !== 'undefined' &&
+              (OnlineNet.connected || OnlineNet._roomOpen || OnlineNet._joinPhase === 'joining')) {
+            OnlineNet.disconnect();
+          }
+        } catch (_) {}
+        this.abortToMenu();
       },
 
       renderFriendsBadge() {
