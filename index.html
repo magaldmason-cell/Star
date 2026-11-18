@@ -524,6 +524,36 @@
       background: rgba(6, 78, 59, 0.35);
     }
 
+    .locker-item.locked {
+      border-style: dashed;
+    }
+
+    .locker-preview {
+      width: 120px;
+      height: 92px;
+      image-rendering: pixelated;
+    }
+
+    #lockerPreview {
+      width: 300px;
+      height: 190px;
+      max-width: 100%;
+      image-rendering: pixelated;
+      background: rgba(2, 6, 23, 0.65);
+      border: 2px solid #334155;
+      border-radius: 6px;
+    }
+
+    /* Mini character avatar used next to pilot names (rosters,
+       leaderboards, duel bars, friends list). The image itself is a
+       snapshot of the real in-game character render. */
+    .mini-avatar {
+      image-rendering: pixelated;
+      vertical-align: middle;
+      width: 34px;
+      height: 30px;
+    }
+
     /* Bottom Zone Telemetry Bar */
     #bottomHud {
       display: flex;
@@ -613,6 +643,10 @@
     <!-- TOP HUD -->
     <header id="topHud" class="interactive">
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <div class="hud-pill" style="padding:2px 8px 2px 4px;">
+          <img id="hudAvatar" class="mini-avatar" data-cos="" alt="Your krill" style="width:38px; height:34px;">
+          <span id="hudPilotText" style="color:#f8fafc; font-weight:bold;">GUEST</span>
+        </div>
         <div class="hud-pill">
           <span>🚀</span>
           <span id="hudDepthText" style="color:#38bdf8; font-weight:bold;">0 LY</span>
@@ -1166,13 +1200,21 @@
       <!-- 5. COSMETICS LOCKER MODAL -->
       <section id="lockerModal" class="modal-panel pixel-box pixel-box-cyan interactive">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h2 class="font-pixel" style="font-size:14px; color:#38bdf8;">🛸 KRILL COSMETICS LOCKER</h2>
+          <h2 class="font-pixel" style="font-size:14px; color:#38bdf8;">🎨 CUSTOMIZE YOUR KRILL</h2>
           <button class="pixel-btn" style="padding:6px 10px; font-size:10px;" onclick="Game.returnToMenu()">✕ CLOSE</button>
         </div>
 
+        <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+          <canvas id="lockerPreview" width="300" height="190"></canvas>
+          <div id="lockerPreviewInfo" style="font-size:17px; color:#cbd5e1; text-align:center;"></div>
+        </div>
+
         <div class="sector-bar">
-          <button class="sector-chip active" id="tabSkins" onclick="Game.switchLockerTab('skins')">🦐 KRILL SUITS</button>
-          <button class="sector-chip" id="tabDrones" onclick="Game.switchLockerTab('drones')">🛰️ DRONE BUDDIES</button>
+          <button class="sector-chip active" id="tabColors" onclick="Game.switchLockerTab('colors')">🎨 COLOR</button>
+          <button class="sector-chip" id="tabHats" onclick="Game.switchLockerTab('hats')">🎩 HAT</button>
+          <button class="sector-chip" id="tabSuits" onclick="Game.switchLockerTab('suits')">🧥 SKIN</button>
+          <button class="sector-chip" id="tabPets" onclick="Game.switchLockerTab('pets')">🐾 PET</button>
+          <button class="sector-chip" id="tabTrails" onclick="Game.switchLockerTab('trails')">🔥 TRAIL</button>
           <button class="sector-chip" id="tabEmotes" onclick="Game.switchLockerTab('emotes')">✨ EMOTES</button>
         </div>
 
@@ -1196,6 +1238,7 @@
           <p>• <strong style="color:#c084fc;">🎉 STAR PARTY / 💀 KNOCKOUT / 👥 TEAM CLASH:</strong> Party Rooms (inside ONLINE MULTIPLAYER) take 2 to unlimited pilots! Star Party: 10 rounds, everyone answers at once. Knockout: the most common answer and blanks cost hull — last ship wins. Team Clash: 4+ pilots split into CRIMSON and AZURE crews and pool their LY.</p>
           <p>• <strong style="color:#fb923c;">🔗 CHAIN REACTION (ONLINE):</strong> Turn-based 1v1 chain — a fresh prompt every turn, and your answer must start with the last letter of the previous answer. A miss or timeout is a strike; 3 strikes and you lose!</p>
           <p>• <strong style="color:#f87171;">☠️ ONE LIFE:</strong> Solo sudden death — endless prompts, but a single judged miss or a single timeout ends the run. Chase your personal best!</p>
+          <p>• <strong style="color:#38bdf8;">🎨 CUSTOMIZE YOUR KRILL:</strong> Open the <strong>LOCKER</strong> and dress your pilot: pick a COLOR, a HAT, a SKIN pattern, a PET that flies with you, and a TRAIL for your thruster. Colors are free, plenty of gear is free, and the rest costs Star Tokens you earn by flying. Your look shows everywhere — in game, in party lobbies and leaderboards, in duels, and next to your name on friends' screens!</p>
           <div style="background:rgba(4,8,20,0.85); border:2px solid #334155; border-radius:6px; padding:10px; font-size:18px;">
             <div class="font-pixel" style="font-size:10px; color:#38bdf8; margin-bottom:6px;">🌕 MOON RACE — DISTANCE PER ANSWER (GOAL: 384,400 KM)</div>
             <div>⬜ <strong>Stardust (10 pts):</strong> 2,400 km</div>
@@ -1458,7 +1501,160 @@
         { id: '💎', name: 'Deep Cut',        cost: 250 },
         { id: '👽', name: 'Star Signal',     cost: 400 },
         { id: '👑', name: 'Trench Royalty',  cost: 700 }
+      ],
+      /* ---- FULL CHARACTER CUSTOMIZATION (Among Us-style slots) ----
+         Five slots worn by the pilot's krill: COLOR (body paint),
+         HAT, SKIN (hull pattern / suit), PET (pixel companion) and
+         TRAIL (thruster style). The legacy skins/drones above remain
+         as the migration source: mergeSave maps them onto these
+         slots, so nothing a pilot already owns is ever lost. */
+      colors: [
+        { id: 'coral',  name: 'Classic Coral', cost: 0, body: '#fb7185', accent: '#fda4af', visor: '#38bdf8' },
+        { id: 'red',    name: 'Rocket Red',    cost: 0, body: '#ef4444', accent: '#fca5a5', visor: '#38bdf8' },
+        { id: 'blue',   name: 'Ion Blue',      cost: 0, body: '#3b82f6', accent: '#93c5fd', visor: '#38bdf8' },
+        { id: 'green',  name: 'Nebula Green',  cost: 0, body: '#22c55e', accent: '#86efac', visor: '#38bdf8' },
+        { id: 'pink',   name: 'Bubblegum Pink', cost: 0, body: '#f472b6', accent: '#fbcfe8', visor: '#38bdf8' },
+        { id: 'orange', name: 'Solar Orange',  cost: 0, body: '#fb923c', accent: '#fed7aa', visor: '#38bdf8' },
+        { id: 'yellow', name: 'Comet Yellow',  cost: 0, body: '#facc15', accent: '#fef08a', visor: '#38bdf8' },
+        { id: 'black',  name: 'Void Black',    cost: 0, body: '#475569', accent: '#94a3b8', visor: '#38bdf8' },
+        { id: 'white',  name: 'Lunar White',   cost: 0, body: '#f1f5f9', accent: '#cbd5e1', visor: '#38bdf8' },
+        { id: 'purple', name: 'Quasar Purple', cost: 0, body: '#a855f7', accent: '#d8b4fe', visor: '#38bdf8' },
+        { id: 'cyan',   name: 'Plasma Cyan',   cost: 0, body: '#22d3ee', accent: '#a5f3fc', visor: '#38bdf8' },
+        { id: 'lime',   name: 'Alien Lime',    cost: 0, body: '#84cc16', accent: '#bef264', visor: '#38bdf8' }
+      ],
+      hats: [
+        { id: 'none',    name: 'No Hat',        cost: 0 },
+        { id: 'party',   name: 'Party Hat',     cost: 0 },
+        { id: 'sprout',  name: 'Sprout Antenna', cost: 0 },
+        { id: 'captain', name: 'Captain Hat',   cost: 50 },
+        { id: 'cowboy',  name: 'Cowboy Hat',    cost: 100 },
+        { id: 'halo',    name: 'Halo',          cost: 150 },
+        { id: 'horns',   name: 'Demon Horns',   cost: 150 },
+        { id: 'crown',   name: 'Star Crown',    cost: 300 }
+      ],
+      suits: [
+        { id: 'plain',   name: 'Plain Hull',      cost: 0 },
+        { id: 'stripes', name: 'Racing Stripes',  cost: 0 },
+        { id: 'stars',   name: 'Starfield',       cost: 75 },
+        { id: 'camo',    name: 'Nebula Camo',     cost: 125 },
+        { id: 'astro',   name: 'Retro Astronaut', cost: 150 },
+        { id: 'cyber',   name: 'Cyber Circuit',   cost: 200, visor: '#f43f5e' },
+        { id: 'tux',     name: 'Tuxedo Suit',     cost: 250 },
+        { id: 'void',    name: 'Void Phantom',    cost: 250, visor: '#22d3ee' },
+        { id: 'gold',    name: 'Golden Leviathan', cost: 300, visor: '#ffffff' }
+      ],
+      pets: [
+        { id: 'none',      name: 'No Pet',      cost: 0 },
+        { id: 'babykrill', name: 'Baby Krill',  cost: 0 },
+        { id: 'star',      name: 'Star Buddy',  cost: 75 },
+        { id: 'ufo',       name: 'Pocket Saucer', cost: 150 },
+        { id: 'rocket',    name: 'Mini Rocket', cost: 200 },
+        { id: 'squid',     name: 'Holo-Squid',  cost: 250 }
+      ],
+      trails: [
+        { id: 'flame',   name: 'Classic Flame', cost: 0,   outer: '#f97316', inner: '#fef08a' },
+        { id: 'bubbles', name: 'Bubble Trail',  cost: 0,   outer: '#7dd3fc', inner: '#e0f2fe' },
+        { id: 'ice',     name: 'Ice Burn',      cost: 75,  outer: '#22d3ee', inner: '#f0fdff' },
+        { id: 'sparkle', name: 'Sparkle Dust',  cost: 125, outer: '#fbbf24', inner: '#fff7cc' },
+        { id: 'shadow',  name: 'Shadow Wake',   cost: 200, outer: '#7c3aed', inner: '#2e1065' },
+        { id: 'rainbow', name: 'Rainbow Burn',  cost: 300, outer: '#f472b6', inner: '#ffffff' }
       ]
+    };
+
+    /* Slot bookkeeping shared by the locker, the save merge and the
+       network code. `tab` names match the COSMETICS keys; legacy tabs
+       (skins/drones) stay mapped so old saves keep merging cleanly. */
+    const AVATAR_SLOTS = {
+      colors: { unlocked: 'unlockedColors', equipped: 'equippedColor' },
+      hats:   { unlocked: 'unlockedHats',   equipped: 'equippedHat' },
+      suits:  { unlocked: 'unlockedSuits',  equipped: 'equippedSuit' },
+      pets:   { unlocked: 'unlockedPets',   equipped: 'equippedPet' },
+      trails: { unlocked: 'unlockedTrails', equipped: 'equippedTrail' },
+      skins:  { unlocked: 'unlockedSkins',  equipped: 'equippedSkin' },
+      drones: { unlocked: 'unlockedDrones', equipped: 'equippedDrone' },
+      emotes: { unlocked: 'unlockedEmotes', equipped: 'equippedEmote' }
+    };
+
+    // Legacy migration maps: old skin -> [color, suit], old drone -> pet.
+    const LEGACY_SKIN_MAP = {
+      coral:  ['coral', 'plain'],
+      astro:  ['white', 'astro'],
+      alien:  ['green', 'stars'],
+      cyber:  ['cyan', 'cyber'],
+      void:   ['purple', 'void'],
+      golden: ['yellow', 'gold']
+    };
+    const LEGACY_DRONE_MAP = { none: 'none', sat: 'rocket', wisp: 'star', squid: 'squid', ufo: 'ufo' };
+
+    /* Resolved-look helpers. A "look" is the fully-resolved render
+       input for PixelCanvas.drawCharacter: color paint + hat + suit
+       pattern + pet + trail, with catalog fallbacks so a corrupt or
+       foreign id can never break a render. The network form is one
+       compact string: "color.hat.suit.pet.trail". */
+    const AvatarKit = {
+      find(slot, id) {
+        const list = COSMETICS[slot] || [];
+        return list.find(i => i.id === id) || list[0] || null;
+      },
+
+      resolve(ids) {
+        const color = this.find('colors', ids.color) || COSMETICS.colors[0];
+        const hat = this.find('hats', ids.hat) || COSMETICS.hats[0];
+        const suit = this.find('suits', ids.suit) || COSMETICS.suits[0];
+        const pet = this.find('pets', ids.pet) || COSMETICS.pets[0];
+        const trail = this.find('trails', ids.trail) || COSMETICS.trails[0];
+        return {
+          colorId: color.id, hatId: hat.id, suitId: suit.id, petId: pet.id, trailId: trail.id,
+          body: color.body, accent: color.accent,
+          visor: suit.visor || color.visor || '#38bdf8',
+          color, hat, suit, pet, trail
+        };
+      },
+
+      lookFromSave(save) {
+        const s = save || {};
+        return this.resolve({
+          color: s.equippedColor, hat: s.equippedHat, suit: s.equippedSuit,
+          pet: s.equippedPet, trail: s.equippedTrail
+        });
+      },
+
+      // Swap one slot of a resolved look (locker item previews).
+      lookWith(look, slot, id) {
+        const ids = {
+          color: look.colorId, hat: look.hatId, suit: look.suitId,
+          pet: look.petId, trail: look.trailId
+        };
+        const key = { colors: 'color', hats: 'hat', suits: 'suit', pets: 'pet', trails: 'trail' }[slot];
+        if (key) ids[key] = id;
+        return this.resolve(ids);
+      },
+
+      encode(save) {
+        const l = this.lookFromSave(save);
+        return [l.colorId, l.hatId, l.suitId, l.petId, l.trailId].join('.');
+      },
+
+      decode(str) {
+        const parts = String(str || '').split('.');
+        return this.resolve({
+          color: parts[0], hat: parts[1], suit: parts[2], pet: parts[3], trail: parts[4]
+        });
+      },
+
+      encodeLook(look) {
+        return [look.colorId, look.hatId, look.suitId, look.petId, look.trailId].join('.');
+      },
+
+      // <img> mini-avatar for a cosmetic string (rosters, leaderboards,
+      // duel bars, friends list). data-cos carries the exact look so
+      // the UI (and tests) can tell whose outfit is whose.
+      img(cos, extraStyle) {
+        const safe = String(cos || '').replace(/[^a-z0-9.]/gi, '');
+        const url = (typeof PixelCanvas !== 'undefined' && PixelCanvas.avatarURL)
+          ? PixelCanvas.avatarURL(safe) : '';
+        return `<img class="mini-avatar" data-cos="${safe}" src="${url}" alt="" style="${extraStyle || ''}">`;
+      }
     };
 
     function normalizeText(str) {
@@ -3030,6 +3226,341 @@
     })();
 
 
+
+    /* =========================================================================
+       3D. CONTENT EXPANSION PACK 3 — third wave of new categories.
+    ========================================================================= */
+    const NEW_CATEGORIES_3 = [
+      { id: 'sci_bear', sector: 'Space & Science', prompt: 'Name a Bear Species', webKeywords: ['bear', 'bear species', 'ursid'],
+        answers: { 10: ['Polar Bear', 'Brown Bear', 'Grizzly Bear', 'Black Bear'], 15: ['Giant Panda', 'Kodiak Bear'], 30: ['Sloth Bear', 'Sun Bear', 'Spectacled Bear'], 60: ['Asiatic Black Bear', 'Ussuri Brown Bear', 'Syrian Brown Bear'], 85: ['Himalayan Black Bear', 'Japanese Black Bear', 'Tibetan Blue Bear'], 100: ['Gobi Bear', 'Formosan Black Bear', 'Spirit Bear'] } },
+      { id: 'sci_owl', sector: 'Space & Science', prompt: 'Name an Owl Species', webKeywords: ['owl', 'owl species'],
+        answers: { 10: ['Barn Owl', 'Snowy Owl', 'Great Horned Owl'], 15: ['Barred Owl', 'Screech Owl', 'Tawny Owl'], 30: ['Elf Owl', 'Burrowing Owl', 'Little Owl', 'Long-Eared Owl'], 60: ['Eurasian Eagle-Owl', 'Great Grey Owl', 'Northern Hawk-Owl', 'Spectacled Owl'], 85: ['Blakiston\'s Fish Owl', 'Oriental Bay Owl', 'Pel\'s Fishing Owl'], 100: ['Laughing Owl', 'Rufous Owl', 'Sokoke Scops Owl'] } },
+      { id: 'sci_penguin', sector: 'Space & Science', prompt: 'Name a Penguin Species', webKeywords: ['penguin', 'penguin species'],
+        answers: { 10: ['Emperor Penguin', 'King Penguin', 'Gentoo Penguin'], 15: ['Chinstrap Penguin', 'Adélie Penguin', 'Macaroni Penguin'], 30: ['Rockhopper Penguin', 'Little Penguin', 'African Penguin'], 60: ['Humboldt Penguin', 'Magellanic Penguin', 'Royal Penguin'], 85: ['Fiordland Penguin', 'Snares Penguin', 'Erect-Crested Penguin'], 100: ['Yellow-Eyed Penguin', 'Galápagos Penguin', 'White-Flippered Penguin'] } },
+      { id: 'sci_turtle', sector: 'Space & Science', prompt: 'Name a Turtle or Tortoise Species', webKeywords: ['turtle', 'tortoise', 'terrapin'],
+        answers: { 10: ['Sea Turtle', 'Box Turtle', 'Snapping Turtle'], 15: ['Leatherback', 'Green Sea Turtle', 'Galápagos Tortoise'], 30: ['Loggerhead', 'Hawksbill', 'Red-Eared Slider'], 60: ['Gopher Tortoise', 'Desert Tortoise', 'Painted Turtle'], 85: ['Aldabra Giant Tortoise', 'Radiated Tortoise', 'Diamondback Terrapin'], 100: ['Yangtze Giant Softshell', 'Ploughshare Tortoise', 'Bog Turtle'] } },
+      { id: 'sci_lizard', sector: 'Space & Science', prompt: 'Name a Lizard Species', webKeywords: ['lizard', 'lizard species', 'reptile'],
+        answers: { 10: ['Gecko', 'Iguana', 'Chameleon', 'Komodo Dragon'], 15: ['Bearded Dragon', 'Anole', 'Skink'], 30: ['Gila Monster', 'Monitor Lizard', 'Leopard Gecko'], 60: ['Tegu', 'Frilled Lizard', 'Thorny Devil'], 85: ['Earless Monitor', 'Fiji Iguana', 'Satanic Leaf-Tailed Gecko'], 100: ['Draco Lizard', 'Guatemalan Beaded Lizard', 'Shingleback Skink', 'Caiman Lizard'] } },
+      { id: 'sci_bat', sector: 'Space & Science', prompt: 'Name a Bat Species', webKeywords: ['bat', 'bat species', 'chiroptera'],
+        answers: { 10: ['Fruit Bat', 'Vampire Bat', 'Flying Fox'], 15: ['Horseshoe Bat', 'Brown Bat', 'Honduran White Bat'], 30: ['Pipistrelle', 'Noctule', 'Hammer-Headed Bat'], 60: ['Bumblebee Bat', 'Ghost Bat', 'Spectral Bat'], 85: ['Wrinkle-Faced Bat', 'Tube-Nosed Bat', 'Naked-Backed Fruit Bat'], 100: ['Fijian Monkey-Faced Bat', 'Giant Golden-Crowned Flying Fox', 'Wallace\'s Stripe-Faced Fruit Bat'] } },
+      { id: 'sci_primate', sector: 'Space & Science', prompt: 'Name a Monkey, Ape, or Other Primate Species', webKeywords: ['primate', 'monkey', 'ape'],
+        answers: { 10: ['Chimpanzee', 'Gorilla', 'Orangutan', 'Baboon'], 15: ['Gibbon', 'Lemur', 'Capuchin', 'Howler Monkey'], 30: ['Ring-Tailed Lemur', 'Spider Monkey', 'Marmoset', 'Tamarin'], 60: ['Proboscis Monkey', 'Mandrill', 'Squirrel Monkey', 'Aye-Aye'], 85: ['Tarsier', 'Loris', 'Gelada', 'Uakari'], 100: ['Indri', 'Sifaka', 'Snub-Nosed Monkey', 'Drill'] } },
+      { id: 'sci_cephalopod', sector: 'Space & Science', prompt: 'Name an Octopus, Squid, or Cuttlefish Species', webKeywords: ['octopus', 'squid', 'cuttlefish', 'cephalopod'],
+        answers: { 10: ['Common Octopus', 'Giant Pacific Octopus', 'Humboldt Squid'], 15: ['Giant Squid', 'Blue-Ringed Octopus', 'Caribbean Reef Octopus'], 30: ['Colossal Squid', 'Dumbo Octopus', 'Mimic Octopus'], 60: ['Vampire Squid', 'Flamboyant Cuttlefish', 'Firefly Squid'], 85: ['Glass Octopus', 'Telescope Octopus', 'Blanket Octopus'], 100: ['Wonderpus', 'Paper Nautilus', 'Striped Pyjama Squid'] } },
+      { id: 'sci_raptor', sector: 'Space & Science', prompt: 'Name a Bird of Prey Species', webKeywords: ['bird of prey', 'raptor', 'eagle', 'hawk'],
+        answers: { 10: ['Bald Eagle', 'Golden Eagle', 'Peregrine Falcon', 'Red-Tailed Hawk'], 15: ['Osprey', 'Kestrel', 'Cooper\'s Hawk', 'Turkey Vulture'], 30: ['Harpy Eagle', 'Secretary Bird', 'Harris\'s Hawk', 'Merlin'], 60: ['Lammergeier', 'Philippine Eagle', 'Crested Caracara', 'Gyrfalcon'], 85: ['Martial Eagle', 'Crowned Eagle', 'Bat Hawk'], 100: ['Ridgway\'s Hawk', 'Gundlach\'s Hawk', 'Madagascar Fish Eagle'] } },
+      { id: 'sci_parrot', sector: 'Space & Science', prompt: 'Name a Parrot, Macaw, or Cockatoo Species', webKeywords: ['parrot', 'macaw', 'cockatoo'],
+        answers: { 10: ['African Grey', 'Budgerigar', 'Cockatiel', 'Scarlet Macaw'], 15: ['Blue-and-Gold Macaw', 'Amazon Parrot', 'Eclectus', 'Sun Conure'], 30: ['Hyacinth Macaw', 'Moluccan Cockatoo', 'Quaker Parrot', 'Lovebird'], 60: ['Kakapo', 'Kea', 'Galah', 'Senegal Parrot'], 85: ['Spix\'s Macaw', 'Lear\'s Macaw', 'Night Parrot'], 100: ['Puerto Rican Amazon', 'Imperial Amazon', 'Antipodes Island Parakeet'] } },
+      { id: 'sci_crustacean', sector: 'Space & Science', prompt: 'Name a Crab, Lobster, Shrimp, or Other Crustacean', webKeywords: ['crustacean', 'crab', 'lobster', 'shrimp'],
+        answers: { 10: ['Blue Crab', 'Lobster', 'Hermit Crab', 'King Crab'], 15: ['Dungeness Crab', 'Fiddler Crab', 'Mantis Shrimp', 'Krill'], 30: ['Japanese Spider Crab', 'Coconut Crab', 'Ghost Crab'], 60: ['Yeti Crab', 'Peacock Mantis Shrimp', 'Tadpole Shrimp', 'Giant Isopod'], 85: ['Christmas Island Red Crab', 'Sally Lightfoot Crab', 'Boxer Crab'], 100: ['Tasmanian Giant Crab', 'Remipede', 'Fairy Shrimp'] } },
+      { id: 'sci_bee_wasp', sector: 'Space & Science', prompt: 'Name a Bee, Wasp, or Ant Species', webKeywords: ['bee', 'wasp', 'ant', 'hymenoptera'],
+        answers: { 10: ['Honey Bee', 'Bumblebee', 'Carpenter Ant', 'Fire Ant'], 15: ['Paper Wasp', 'Yellowjacket', 'Leafcutter Ant', 'Mason Bee'], 30: ['Asian Giant Hornet', 'Bullet Ant', 'Army Ant', 'Sweat Bee'], 60: ['Tarantula Hawk', 'Velvet Ant', 'Weaver Ant', 'Orchid Bee'], 85: ['Cuckoo Wasp', 'Potter Wasp', 'Trap-Jaw Ant'], 100: ['Wallace\'s Giant Bee', 'Panda Ant', 'Exploding Ant'] } },
+      { id: 'sci_marsupial', sector: 'Space & Science', prompt: 'Name a Marsupial Species', webKeywords: ['marsupial', 'kangaroo', 'koala'],
+        answers: { 10: ['Kangaroo', 'Koala', 'Opossum', 'Wombat'], 15: ['Wallaby', 'Tasmanian Devil', 'Sugar Glider', 'Quokka'], 30: ['Red Kangaroo', 'Tree Kangaroo', 'Bandicoot', 'Bilby'], 60: ['Quoll', 'Pademelon', 'Cuscus', 'Brushtail Possum'], 85: ['Dibbler', 'Marsupial Mole', 'Woylie'], 100: ['Sandhill Dunnart', 'Long-Tailed Planigale', 'Julia Creek Dunnart'] } },
+      { id: 'sci_rodent', sector: 'Space & Science', prompt: 'Name a Rodent Species', webKeywords: ['rodent', 'rodent species'],
+        answers: { 10: ['Mouse', 'Rat', 'Squirrel', 'Beaver'], 15: ['Hamster', 'Guinea Pig', 'Capybara', 'Porcupine'], 30: ['Chipmunk', 'Prairie Dog', 'Groundhog', 'Muskrat'], 60: ['Chinchilla', 'Agouti', 'Vole', 'Lemming'], 85: ['Paca', 'Gopher', 'Dormouse'], 100: ['Pacarana', 'Naked Mole Rat', 'Gambian Pouched Rat'] } },
+      { id: 'sci_canid', sector: 'Space & Science', prompt: 'Name a Wild Dog Family (Canid) Species', webKeywords: ['canid', 'wild dog', 'fox', 'wolf'],
+        answers: { 10: ['Gray Wolf', 'Red Fox', 'Coyote'], 15: ['Arctic Fox', 'African Wild Dog', 'Jackal'], 30: ['Dhole', 'Maned Wolf', 'Fennec Fox'], 60: ['Ethiopian Wolf', 'Bush Dog', 'Raccoon Dog'], 85: ['Island Fox', 'Darwin\'s Fox', 'Crab-Eating Fox'], 100: ['Short-Eared Dog', 'Hoary Fox', 'Sechuran Fox'] } },
+      { id: 'sci_biome', sector: 'Space & Science', prompt: 'Name a Biome or Major Ecosystem Type', webKeywords: ['biome', 'ecosystem'],
+        answers: { 10: ['Rainforest', 'Desert', 'Tundra', 'Grassland'], 15: ['Savanna', 'Taiga', 'Deciduous Forest', 'Coral Reef'], 30: ['Chaparral', 'Steppe', 'Wetland', 'Mangrove'], 60: ['Boreal Forest', 'Alpine Tundra', 'Kelp Forest', 'Scrubland'], 85: ['Pampas', 'Flooded Grassland', 'Montane Forest'], 100: ['Cloud Forest', 'Xeric Shrubland', 'Temperate Rainforest'] } },
+      { id: 'sci_microbe', sector: 'Space & Science', prompt: 'Name a Bacterium or Virus', webKeywords: ['bacterium', 'virus', 'pathogen'],
+        answers: { 10: ['E. Coli', 'Influenza', 'Coronavirus', 'Salmonella'], 15: ['Streptococcus', 'Staphylococcus', 'HIV', 'Rabies Virus'], 30: ['Anthrax', 'Ebola', 'Herpes'], 60: ['Helicobacter Pylori', 'Lactobacillus', 'Yersinia Pestis', 'Norovirus'], 85: ['Clostridium Botulinum', 'Treponema Pallidum', 'Borrelia Burgdorferi'], 100: ['Deinococcus Radiodurans', 'Thermus Aquaticus', 'Bdellovibrio'] } },
+      { id: 'sci_disease', sector: 'Space & Science', prompt: 'Name a Disease or Medical Condition', webKeywords: ['disease', 'medical condition', 'illness'],
+        answers: { 10: ['Diabetes', 'Asthma', 'Cancer', 'Flu'], 15: ['Alzheimer\'s', 'Arthritis', 'Migraine', 'Epilepsy'], 30: ['Malaria', 'Tuberculosis', 'Cholera', 'Measles'], 60: ['Parkinson\'s', 'Crohn\'s Disease', 'Lupus', 'Multiple Sclerosis'], 85: ['Huntington\'s Disease', 'Cystic Fibrosis', 'Sickle Cell Anemia'], 100: ['Progeria', 'Kuru', 'Fatal Familial Insomnia'] } },
+      { id: 'sci_doctor', sector: 'Space & Science', prompt: 'Name a Type of Doctor or Medical Specialist', webKeywords: ['doctor', 'medical specialist', 'physician'],
+        answers: { 10: ['Surgeon', 'Pediatrician', 'Dentist', 'Cardiologist'], 15: ['Neurologist', 'Dermatologist', 'Psychiatrist', 'Radiologist'], 30: ['Oncologist', 'Ophthalmologist', 'Orthopedic Surgeon', 'Anesthesiologist'], 60: ['Nephrologist', 'Endocrinologist', 'Gastroenterologist', 'Rheumatologist'], 85: ['Hematologist', 'Pulmonologist', 'Urologist'], 100: ['Phlebologist', 'Hepatologist', 'Otolaryngologist'] } },
+      { id: 'sci_instrument', sector: 'Space & Science', prompt: 'Name a Scientific Instrument', webKeywords: ['scientific instrument', 'measuring instrument'],
+        answers: { 10: ['Microscope', 'Telescope', 'Thermometer', 'Barometer'], 15: ['Spectrometer', 'Seismograph', 'Geiger Counter', 'Centrifuge'], 30: ['Particle Accelerator', 'Chromatograph', 'Oscilloscope', 'Hygrometer'], 60: ['Mass Spectrometer', 'Interferometer', 'Photometer', 'Calorimeter'], 85: ['Bolometer', 'Pyrometer', 'Spectrophotometer'], 100: ['Nephelometer', 'Clinometer', 'Planimeter'] } },
+      { id: 'sci_black_hole', sector: 'Space & Science', prompt: 'Name a Black Hole', webKeywords: ['black hole', 'supermassive black hole'],
+        answers: { 10: ['Sagittarius A*', 'Cygnus X-1'], 15: ['M87*', 'V404 Cygni'], 30: ['TON 618', 'OJ 287'], 60: ['Gaia BH1', 'The Unicorn'], 85: ['Phoenix A', 'Holmberg 15A'], 100: ['SDSS J140821', 'Abell 1201'] } },
+      { id: 'sci_exoplanet', sector: 'Space & Science', prompt: 'Name an Exoplanet', webKeywords: ['exoplanet', 'extrasolar planet'],
+        answers: { 10: ['Proxima Centauri B', 'TRAPPIST-1e'], 15: ['Kepler-186f', '51 Pegasi B', 'K2-18b'], 30: ['HD 209458 B', 'Kepler-452b', 'TOI 700 D', 'Gliese 667 Cc'], 60: ['WASP-12b', 'Kepler-16b', 'HD 189733 B'], 85: ['Ross 128 B', 'Poltergeist'], 100: ['Draugr', 'Kepler-444b', 'WD J0914+1914 B'] } },
+      { id: 'sci_compound', sector: 'Space & Science', prompt: 'Name a Chemical Compound or Common Chemical', webKeywords: ['chemical compound', 'chemical substance'],
+        answers: { 10: ['Water', 'Sodium Chloride', 'Carbon Dioxide', 'Sucrose'], 15: ['Ammonia', 'Methane', 'Ethanol', 'Hydrogen Peroxide'], 30: ['Sulfuric Acid', 'Calcium Carbonate', 'Sodium Bicarbonate', 'Acetone'], 60: ['Benzene', 'Formaldehyde', 'Chloroform', 'Nitrous Oxide'], 85: ['Potassium Permanganate', 'Hydrogen Sulfide', 'Carbon Tetrachloride'], 100: ['Dimethyl Sulfoxide', 'Tetraethyllead', 'Phosgene'] } },
+      { id: 'sci_surface_feature', sector: 'Space & Science', prompt: 'Name a Feature on the Moon or Mars (Crater, Sea, or Mountain)', webKeywords: ['lunar crater', 'mars crater', 'mare', 'mons'],
+        answers: { 10: ['Sea of Tranquility', 'Olympus Mons'], 15: ['Tycho Crater', 'Copernicus Crater', 'Ocean of Storms'], 30: ['Hellas Basin', 'Valles Marineris', 'Mare Imbrium'], 60: ['Tharsis Montes', 'Clavius Crater', 'Kepler Crater'], 85: ['Gale Crater', 'Jezero Crater', 'Alba Mons'], 100: ['Korolev Crater', 'Schrödinger Basin', 'Mount Sharp'] } },
+      { id: 'sci_fish_fresh', sector: 'Space & Science', prompt: 'Name a Freshwater Fish Species', webKeywords: ['freshwater fish', 'fish species'],
+        answers: { 10: ['Trout', 'Bass', 'Catfish', 'Salmon'], 15: ['Rainbow Trout', 'Largemouth Bass', 'Bluegill', 'Perch'], 30: ['Walleye', 'Muskie', 'Sturgeon', 'Piranha'], 60: ['Arapaima', 'Alligator Gar', 'Electric Eel', 'Archerfish'], 85: ['Arowana', 'Payara', 'Mekong Catfish'], 100: ['Beluga Sturgeon', 'Goonch', 'Paddlefish'] } },
+      { id: 'sci_fish_salt', sector: 'Space & Science', prompt: 'Name a Saltwater Fish Species', webKeywords: ['saltwater fish', 'marine fish', 'ocean fish'],
+        answers: { 10: ['Clownfish', 'Tuna', 'Cod', 'Swordfish'], 15: ['Bluefin Tuna', 'Mahi-Mahi', 'Halibut', 'Sea Bass'], 30: ['Anglerfish', 'Grouper', 'Snapper', 'Barracuda'], 60: ['Ocean Sunfish', 'Coelacanth', 'Oarfish', 'Lionfish'], 85: ['Fangtooth', 'Barreleye', 'Stoplight Loosejaw'], 100: ['Sloane\'s Viperfish', 'Psychedelic Frogfish', 'Hairy Frogfish'] } },
+      { id: 'sci_cat_breed', sector: 'Space & Science', prompt: 'Name a Cat Breed', webKeywords: ['cat breed', 'breed of cat'],
+        answers: { 10: ['Siamese', 'Persian', 'Maine Coon', 'Bengal'], 15: ['Ragdoll', 'British Shorthair', 'Sphynx', 'Scottish Fold'], 30: ['Abyssinian', 'Russian Blue', 'Norwegian Forest Cat', 'Burmese'], 60: ['Savannah', 'Turkish Angora', 'Cornish Rex', 'Chartreux'], 85: ['Singapura', 'Khao Manee', 'Lykoi'], 100: ['Sokoke', 'Kurilian Bobtail', 'Peterbald'] } },
+      { id: 'sci_horse_breed', sector: 'Space & Science', prompt: 'Name a Horse Breed', webKeywords: ['horse breed', 'breed of horse'],
+        answers: { 10: ['Arabian', 'Thoroughbred', 'Quarter Horse', 'Mustang'], 15: ['Clydesdale', 'Appaloosa', 'Morgan', 'Friesian'], 30: ['Andalusian', 'Percheron', 'Shetland Pony', 'Lipizzaner'], 60: ['Akhal-Teke', 'Icelandic Horse', 'Hanoverian', 'Gypsy Vanner'], 85: ['Marwari', 'Fjord Horse', 'Suffolk Punch'], 100: ['Przewalski\'s Horse', 'Caspian Horse', 'Exmoor Pony'] } },
+      { id: 'sci_cattle_breed', sector: 'Space & Science', prompt: 'Name a Cattle Breed', webKeywords: ['cattle breed', 'cow breed', 'breed of cattle'],
+        answers: { 10: ['Holstein', 'Angus', 'Hereford', 'Jersey'], 15: ['Texas Longhorn', 'Highland', 'Charolais', 'Simmental'], 30: ['Brahman', 'Limousin', 'Guernsey', 'Brown Swiss'], 60: ['Wagyu', 'Belgian Blue', 'Dexter', 'Ayrshire'], 85: ['Galloway', 'Red Poll', 'Milking Shorthair'], 100: ['Ankole-Watusi', 'Yak', 'Florida Cracker'] } },
+      { id: 'geo_river_africa', sector: 'Geography', prompt: 'Name a River in Africa', webKeywords: ['river in africa', 'african river'],
+        answers: { 10: ['Nile'], 15: ['Congo River', 'Niger River'], 30: ['Zambezi', 'Orange River', 'Limpopo'], 60: ['Blue Nile', 'White Nile', 'Senegal River'], 85: ['Kasai River', 'Ubangi River', 'Volta River'], 100: ['Okavango River', 'Benue River', 'Rufiji River'] } },
+      { id: 'geo_river_americas', sector: 'Geography', prompt: 'Name a River in North or South America', webKeywords: ['river in america', 'american river'],
+        answers: { 10: ['Mississippi River', 'Amazon River', 'Rio Grande'], 15: ['Missouri River', 'Colorado River', 'Yukon River'], 30: ['Paraná River', 'Orinoco River', 'Mackenzie River'], 60: ['São Francisco River', 'Magdalena River', 'Snake River'], 85: ['Fraser River', 'Nelson River', 'Tocantins River'], 100: ['Pilcomayo River', 'Bermejo River', 'Peace River'] } },
+      { id: 'geo_city_africa', sector: 'Geography', prompt: 'Name an African City That Is Not a Capital', webKeywords: ['african city', 'city in africa'],
+        answers: { 10: ['Johannesburg', 'Durban'], 15: ['Alexandria', 'Casablanca', 'Marrakech'], 30: ['Mombasa', 'Ibadan', 'Kumasi', 'Lagos'], 60: ['Arusha', 'Blantyre', 'Kano', 'Port Harcourt'], 85: ['Lubumbashi', 'Huambo', 'Meknes'], 100: ['Oujda', 'Garoua', 'Ndola'] } },
+      { id: 'geo_capital_oceania', sector: 'Geography', prompt: 'Name a Capital City in Oceania', webKeywords: ['capital city', 'oceania', 'pacific capital'],
+        answers: { 10: ['Wellington', 'Canberra', 'Suva'], 15: ['Port Moresby', 'Honiara', 'Port Vila'], 30: ['Apia', 'Nuku\'alofa', 'Funafuti'], 60: ['Tarawa', 'Majuro', 'Palikir'], 85: ['Yaren', 'Ngerulmud'], 100: ['Avarua', 'Hagåtña'] } },
+      { id: 'geo_country_oceania', sector: 'Geography', prompt: 'Name a Country in Oceania', webKeywords: ['country in oceania', 'pacific island nation'],
+        answers: { 10: ['Australia', 'New Zealand', 'Fiji'], 15: ['Papua New Guinea', 'Samoa', 'Tonga'], 30: ['Solomon Islands', 'Vanuatu', 'Kiribati'], 60: ['Tuvalu', 'Nauru', 'Palau'], 85: ['Marshall Islands', 'Micronesia'], 100: ['Cook Islands', 'Niue'] } },
+      { id: 'geo_country_mideast', sector: 'Geography', prompt: 'Name a Country in the Middle East', webKeywords: ['middle east country', 'country in the middle east'],
+        answers: { 10: ['Saudi Arabia', 'Israel', 'Iran', 'Iraq'], 15: ['Turkey', 'Egypt', 'Jordan', 'Lebanon'], 30: ['Syria', 'Yemen', 'Oman', 'Kuwait'], 60: ['Qatar', 'Bahrain', 'United Arab Emirates', 'Cyprus'], 85: ['Palestine'], 100: [] } },
+      { id: 'geo_country_caribbean', sector: 'Geography', prompt: 'Name a Caribbean Island Nation', webKeywords: ['caribbean country', 'caribbean island nation'],
+        answers: { 10: ['Cuba', 'Jamaica', 'Bahamas'], 15: ['Haiti', 'Dominican Republic', 'Barbados', 'Trinidad and Tobago'], 30: ['Grenada', 'Saint Lucia', 'Antigua and Barbuda'], 60: ['Dominica', 'Saint Kitts and Nevis'], 85: ['Saint Vincent and the Grenadines'], 100: [] } },
+      { id: 'geo_city_europe', sector: 'Geography', prompt: 'Name a European City That Is Not a Capital', webKeywords: ['european city', 'city in europe'],
+        answers: { 10: ['Barcelona', 'Munich', 'Milan', 'Hamburg'], 15: ['Venice', 'Florence', 'Krakow', 'Bruges'], 30: ['Salzburg', 'Gothenburg', 'Bilbao', 'Antwerp'], 60: ['Heidelberg', 'Innsbruck', 'Coimbra', 'Bergen'], 85: ['Tartu', 'Plovdiv', 'Sibiu', 'Mostar'], 100: ['Český Krumlov', 'Colmar', 'Giethoorn', 'Hallstatt'] } },
+      { id: 'geo_city_us', sector: 'Geography', prompt: 'Name a U.S. City That Is Not a State Capital', webKeywords: ['american city', 'city in the united states'],
+        answers: { 10: ['New York City', 'Los Angeles', 'Chicago', 'Houston'], 15: ['San Francisco', 'Seattle', 'Miami', 'Dallas'], 30: ['San Diego', 'Portland', 'Las Vegas', 'New Orleans'], 60: ['Baltimore', 'Memphis', 'Milwaukee', 'Albuquerque'], 85: ['Fresno', 'Tucson', 'El Paso', 'Virginia Beach'], 100: ['Mesa', 'Bakersfield', 'Stockton', 'Corpus Christi'] } },
+      { id: 'geo_airport', sector: 'Geography', prompt: 'Name a Major International Airport', webKeywords: ['international airport', 'airport'],
+        answers: { 10: ['Heathrow', 'JFK', 'LAX', 'Dubai International'], 15: ['Charles de Gaulle', 'Haneda', 'Schiphol', 'Frankfurt Airport'], 30: ['Changi', 'Incheon', 'Denver International', 'Hartsfield-Jackson'], 60: ['Suvarnabhumi', 'Hamad International', 'Istanbul Airport', 'Sydney Airport'], 85: ['Narita', 'Vancouver International', 'Zurich Airport'], 100: ['Kansai International', 'Bole International', 'Jorge Chávez International'] } },
+      { id: 'geo_language', sector: 'Geography', prompt: 'Name a Language Spoken Anywhere in the World', webKeywords: ['language', 'world language', 'spoken language'],
+        answers: { 10: ['English', 'Spanish', 'Mandarin', 'Hindi'], 15: ['French', 'Arabic', 'Bengali', 'Portuguese', 'Russian'], 30: ['Urdu', 'Swahili', 'Korean', 'Vietnamese', 'Polish'], 60: ['Quechua', 'Amharic', 'Hausa', 'Yoruba', 'Basque'], 85: ['Welsh', 'Kurdish', 'Khmer', 'Lao'], 100: ['Aymara', 'Tigrinya', 'Shona', 'Guarani'] } },
+      { id: 'geo_glacier', sector: 'Geography', prompt: 'Name a Glacier', webKeywords: ['glacier'],
+        answers: { 10: ['Perito Moreno'], 15: ['Vatnajökull', 'Athabasca Glacier'], 30: ['Aletsch Glacier', 'Khumbu Glacier', 'Franz Josef Glacier'], 60: ['Lambert Glacier', 'Siachen Glacier', 'Jostedalsbreen'], 85: ['Baltoro Glacier', 'Fedchenko Glacier', 'Pasterze'], 100: ['Thwaites Glacier', 'Pine Island Glacier', 'Bering Glacier'] } },
+      { id: 'geo_archipelago', sector: 'Geography', prompt: 'Name an Archipelago', webKeywords: ['archipelago', 'island group'],
+        answers: { 10: ['Galápagos Islands', 'Hawaiian Islands', 'Aleutian Islands'], 15: ['Faroe Islands', 'Azores', 'Canary Islands'], 30: ['Svalbard', 'Hebrides', 'Cyclades'], 60: ['Zanzibar', 'Lofoten Islands', 'Scilly Isles'], 85: ['Åland Islands', 'Kornati', 'Maddalena'], 100: ['Chagos Archipelago', 'Kerguelen Islands', 'South Sandwich Islands'] } },
+      { id: 'geo_cave', sector: 'Geography', prompt: 'Name a Famous Cave or Cave System', webKeywords: ['cave', 'cave system', 'cavern'],
+        answers: { 10: ['Mammoth Cave', 'Carlsbad Caverns'], 15: ['Lascaux', 'Altamira', 'Son Doong'], 30: ['Cango Caves', 'Waitomo Caves', 'Postojna Cave'], 60: ['Škocjan Caves', 'Fingal\'s Cave', 'Eisriesenwelt'], 85: ['Mulu Caves', 'Krubera Cave', 'Lechuguilla Cave'], 100: ['Sistema Sac Actun', 'Jewel Cave', 'Phong Nha Cave'] } },
+      { id: 'geo_forest', sector: 'Geography', prompt: 'Name a Famous Forest', webKeywords: ['forest', 'rainforest', 'famous forest'],
+        answers: { 10: ['Amazon Rainforest', 'Black Forest', 'Sherwood Forest'], 15: ['Białowieża Forest', 'Daintree Rainforest', 'Monteverde Cloud Forest'], 30: ['Hoh Rainforest', 'Yakushima Forest', 'Tarkine Forest'], 60: ['Bwindi Impenetrable Forest', 'Sinharaja Forest', 'Valdivian Rainforest'], 85: ['Crooked Forest', 'Aokigahara', 'Hoia Baciu'], 100: ['Waipoua Forest', 'Araucaria Forest', 'Sundarbans'] } },
+      { id: 'geo_beach', sector: 'Geography', prompt: 'Name a Famous Beach', webKeywords: ['beach', 'famous beach'],
+        answers: { 10: ['Copacabana', 'Bondi Beach', 'Waikiki'], 15: ['South Beach', 'Venice Beach', 'Ipanema'], 30: ['Whitehaven Beach', 'Anse Source d\'Argent', 'Matira Beach'], 60: ['Reynisfjara', 'Pink Sands Beach', 'Horseshoe Bay'], 85: ['Railay Beach', 'Navagio Beach', 'Elafonissi'], 100: ['Boulders Beach', 'Glass Beach', 'Hidden Beach'] } },
+      { id: 'geo_road', sector: 'Geography', prompt: 'Name a Famous Road, Highway, or Route', webKeywords: ['famous road', 'highway', 'scenic route'],
+        answers: { 10: ['Route 66', 'Pacific Coast Highway', 'Autobahn'], 15: ['Great Ocean Road', 'Amalfi Coast Road', 'Blue Ridge Parkway'], 30: ['Trans-Siberian Highway', 'Pan-American Highway', 'US Route 101'], 60: ['North Coast 500', 'Trollstigen', 'Stelvio Pass'], 85: ['Atlantic Road', 'Guoliang Tunnel Road', 'Karakoram Highway'], 100: ['Dempster Highway', 'Sani Pass', 'Zoji La'] } },
+      { id: 'geo_dam', sector: 'Geography', prompt: 'Name a Famous Dam', webKeywords: ['dam', 'hydroelectric dam'],
+        answers: { 10: ['Hoover Dam', 'Three Gorges Dam'], 15: ['Aswan High Dam', 'Grand Coulee Dam'], 30: ['Itaipu Dam', 'Kariba Dam', 'Glen Canyon Dam'], 60: ['Nurek Dam', 'Inguri Dam', 'Jinping-I Dam'], 85: ['Vajont Dam', 'Oroville Dam', 'Bhakra Dam'], 100: ['Tehri Dam', 'Chicoasén Dam', 'Lianghekou Dam'] } },
+      { id: 'geo_island_med', sector: 'Geography', prompt: 'Name a Mediterranean Island', webKeywords: ['mediterranean island', 'island in the mediterranean'],
+        answers: { 10: ['Sicily', 'Sardinia', 'Crete', 'Cyprus'], 15: ['Mallorca', 'Corsica', 'Ibiza', 'Malta'], 30: ['Rhodes', 'Corfu', 'Menorca', 'Santorini'], 60: ['Elba', 'Capri', 'Hvar', 'Djerba'], 85: ['Pantelleria', 'Gozo', 'Vis', 'Lampedusa'], 100: ['Stromboli', 'Marettimo', 'Cabrera', 'Alboran Island'] } },
+      { id: 'geo_capital_b', sector: 'Geography', prompt: 'Name a National Capital City Starting With the Letter B', startsWith: 'b', webKeywords: ['capital city', 'capital'],
+        answers: { 10: ['Berlin', 'Beijing', 'Bangkok', 'Baghdad'], 15: ['Brussels', 'Bern', 'Budapest', 'Bucharest'], 30: ['Belgrade', 'Bratislava', 'Baku', 'Bogotá', 'Brasilia'], 60: ['Beirut', 'Bamako', 'Bissau', 'Banjul'], 85: ['Bangui', 'Bujumbura', 'Basseterre'], 100: ['Bandar Seri Begawan', 'Belmopan', 'Bloemfontein'] } },
+      { id: 'geo_valley', sector: 'Geography', prompt: 'Name a Famous Valley', webKeywords: ['valley', 'famous valley'],
+        answers: { 10: ['Yosemite Valley', 'Death Valley', 'Silicon Valley'], 15: ['Loire Valley', 'Rhine Valley', 'Hunter Valley'], 30: ['Valley of the Kings', 'Kashmir Valley', 'Sacred Valley'], 60: ['Barossa Valley', 'Douro Valley', 'Waipi\'o Valley'], 85: ['Lauterbrunnen Valley', 'Hunza Valley', 'Spiti Valley'], 100: ['Kalalau Valley', 'Nubra Valley', 'Valle de la Luna'] } },
+      { id: 'geo_reef', sector: 'Geography', prompt: 'Name a Coral Reef', webKeywords: ['coral reef', 'reef'],
+        answers: { 10: ['Great Barrier Reef'], 15: ['Belize Barrier Reef', 'Red Sea Coral Reef'], 30: ['Palancar Reef', 'Tubbataha Reef', 'Great Chagos Bank'], 60: ['Raja Ampat Reef', 'Aldabra', 'New Caledonia Barrier Reef'], 85: ['Andros Barrier Reef', 'Mesoamerican Reef', 'Rainbow Reef'], 100: ['Saya de Malha Bank', 'Kingman Reef', 'Scott Reef'] } },
+      { id: 'mov_actor', sector: 'Movies & TV', prompt: 'Name an Actor or Actress From Any Era', webKeywords: ['actor', 'actress', 'film star'],
+        answers: { 10: ['Tom Hanks', 'Leonardo DiCaprio', 'Meryl Streep', 'Denzel Washington'], 15: ['Robert De Niro', 'Morgan Freeman', 'Julia Roberts', 'Brad Pitt'], 30: ['Humphrey Bogart', 'Audrey Hepburn', 'James Stewart', 'Katharine Hepburn'], 60: ['Charlie Chaplin', 'Bette Davis', 'Marlon Brando', 'Ingrid Bergman'], 85: ['Toshiro Mifune', 'Anna May Wong', 'Sidney Poitier'], 100: ['Sessue Hayakawa', 'Theda Bara', 'Lon Chaney'] } },
+      { id: 'mov_voice_actor', sector: 'Movies & TV', prompt: 'Name a Voice Actor or Actress', webKeywords: ['voice actor', 'voice actress', 'voice artist'],
+        answers: { 10: ['Mel Blanc', 'Frank Welker', 'Tara Strong'], 15: ['Mark Hamill', 'Kevin Conroy', 'Grey DeLisle'], 30: ['Jim Cummings', 'Billy West', 'Nancy Cartwright'], 60: ['June Foray', 'Daws Butler', 'Phil LaMarr'], 85: ['Clarence Nash', 'Pinto Colvig', 'Mae Questel'], 100: ['Adriana Caselotti', 'Verna Felton', 'Sterling Holloway'] } },
+      { id: 'mov_monster', sector: 'Movies & TV', prompt: 'Name a Movie Monster', webKeywords: ['movie monster', 'kaiju', 'film monster'],
+        answers: { 10: ['Godzilla', 'King Kong', 'Dracula'], 15: ['Frankenstein\'s Monster', 'The Xenomorph', 'Predator'], 30: ['The Kraken', 'Mothra', 'Rodan'], 60: ['The Creature from the Black Lagoon', 'Gamera', 'Biollante'], 85: ['Destoroyah', 'Orga', 'The Blob'], 100: ['Ebirah', 'Hedorah', 'Gigan'] } },
+      { id: 'mov_robot', sector: 'Movies & TV', prompt: 'Name a Robot or Android From Movies or TV', webKeywords: ['robot', 'android', 'fictional robot'],
+        answers: { 10: ['R2-D2', 'C-3PO', 'WALL-E', 'The Terminator'], 15: ['Data', 'Optimus Prime', 'Bender', 'Baymax'], 30: ['HAL 9000', 'Marvin the Paranoid Android', 'Rosie the Robot', 'K-2SO'], 60: ['Gort', 'Robby the Robot', 'Bishop', 'TARS'], 85: ['Johnny 5', 'ED-209', 'Sonny'], 100: ['Maria', 'Tik-Tok', 'Dot Matrix'] } },
+      { id: 'mov_spaceship', sector: 'Movies & TV', prompt: 'Name a Fictional Spaceship', webKeywords: ['fictional spaceship', 'starship', 'spaceship'],
+        answers: { 10: ['Millennium Falcon', 'USS Enterprise', 'Serenity'], 15: ['Nostromo', 'Battlestar Galactica', 'TARDIS'], 30: ['Discovery One', 'Heart of Gold', 'Rocinante'], 60: ['Sulaco', 'Event Horizon', 'Bebop'], 85: ['Moya', 'Lexx', 'Andromeda Ascendant'], 100: ['Gunstar', 'Starbug', 'Valley Forge'] } },
+      { id: 'mov_movie_car', sector: 'Movies & TV', prompt: 'Name a Famous Car From a Movie or TV Show', webKeywords: ['movie car', 'famous car', 'tv car'],
+        answers: { 10: ['Batmobile', 'DeLorean', 'KITT'], 15: ['General Lee', 'The Mystery Machine', 'Herbie'], 30: ['Ecto-1', 'Mad Max Interceptor', 'Bumblebee'], 60: ['The A-Team Van', 'Bluesmobile', 'Mach 5'], 85: ['Chitty Chitty Bang Bang', 'Black Beauty', 'The Munster Koach'], 100: ['The Homer', 'Brum'] } },
+      { id: 'mov_biopic', sector: 'Movies & TV', prompt: 'Name a Biographical Movie (Biopic)', webKeywords: ['biopic', 'biographical film'],
+        answers: { 10: ['Oppenheimer', 'Bohemian Rhapsody', 'The Social Network'], 15: ['Schindler\'s List', 'A Beautiful Mind', '12 Years a Slave'], 30: ['Gandhi', 'Amadeus', 'Raging Bull'], 60: ['Lawrence of Arabia', 'The Elephant Man', 'Ed Wood'], 85: ['Mishima', 'Sid and Nancy', 'Control'], 100: ['Caravaggio', 'Vincent & Theo'] } },
+      { id: 'mov_documentary', sector: 'Movies & TV', prompt: 'Name a Documentary Film', webKeywords: ['documentary film', 'documentary'],
+        answers: { 10: ['March of the Penguins', 'Free Solo', 'Super Size Me'], 15: ['An Inconvenient Truth', 'Blackfish', 'Bowling for Columbine'], 30: ['Man on Wire', 'The Act of Killing', 'Hoop Dreams'], 60: ['Grizzly Man', 'Nanook of the North', 'Salesman'], 85: ['Harlan County USA', 'Titicut Follies', 'Sans Soleil'], 100: ['Man with a Movie Camera', 'Shoah', 'Chronicle of a Summer'] } },
+      { id: 'mov_foreign', sector: 'Movies & TV', prompt: 'Name a Non-English-Language Film', webKeywords: ['foreign language film', 'world cinema'],
+        answers: { 10: ['Parasite', 'Amélie', 'Crouching Tiger Hidden Dragon'], 15: ['Pan\'s Labyrinth', 'Life Is Beautiful', 'Spirited Away'], 30: ['Seven Samurai', 'Bicycle Thieves', 'Cinema Paradiso'], 60: ['In the Mood for Love', 'Persona', 'Wild Strawberries'], 85: ['Jeanne Dielman', 'Satantango', 'The Human Condition'], 100: ['A Brighter Summer Day', 'L\'Avventura', 'Touki Bouki'] } },
+      { id: 'mov_noir', sector: 'Movies & TV', prompt: 'Name a Film Noir', webKeywords: ['film noir', 'noir film'],
+        answers: { 10: ['The Maltese Falcon', 'Double Indemnity'], 15: ['Sunset Boulevard', 'The Big Sleep', 'Touch of Evil'], 30: ['Out of the Past', 'Kiss Me Deadly', 'The Third Man'], 60: ['Gun Crazy', 'Detour', 'The Killers'], 85: ['Scarlet Street', 'Phantom Lady', 'Criss Cross'], 100: ['The Strange Love of Martha Ivers', 'Decoy', 'Blast of Silence'] } },
+      { id: 'mov_cult', sector: 'Movies & TV', prompt: 'Name a Cult Classic Movie', webKeywords: ['cult film', 'cult classic movie'],
+        answers: { 10: ['The Rocky Horror Picture Show', 'The Big Lebowski', 'The Room'], 15: ['Donnie Darko', 'Office Space', 'Heathers'], 30: ['Repo Man', 'Withnail and I', 'They Live'], 60: ['Eraserhead', 'El Topo', 'Pink Flamingos'], 85: ['Manos The Hands of Fate', 'Troll 2', 'Fateful Findings'], 100: ['Zardoz', 'The Forbidden Zone', 'Hausu'] } },
+      { id: 'mov_teen', sector: 'Movies & TV', prompt: 'Name a Teen Movie', webKeywords: ['teen movie', 'teen film', 'coming of age film'],
+        answers: { 10: ['Mean Girls', 'Clueless', 'The Breakfast Club'], 15: ['Ferris Bueller\'s Day Off', 'Superbad', '10 Things I Hate About You'], 30: ['Dazed and Confused', 'Sixteen Candles', 'Pretty in Pink'], 60: ['Fast Times at Ridgemont High', 'Cooley High', 'Lucas'], 85: ['Over the Edge', 'River\'s Edge', 'Brick'], 100: ['The Chocolate War', 'Massacre at Central High', 'Rock \'n\' Roll High School'] } },
+      { id: 'mov_detective', sector: 'Movies & TV', prompt: 'Name a TV Detective or Crime-Solver', webKeywords: ['tv detective', 'television detective', 'crime solver'],
+        answers: { 10: ['Sherlock Holmes', 'Columbo', 'Jessica Fletcher'], 15: ['Hercule Poirot', 'Miss Marple', 'Adrian Monk'], 30: ['Jim Rockford', 'Thomas Magnum', 'Veronica Mars'], 60: ['Banacek', 'Harry Bosch', 'Jimmy McNulty'], 85: ['Endeavour Morse', 'Kurt Wallander', 'Sarah Lund'], 100: ['Maigret', 'Inspector Frost', 'Vera Stanhope'] } },
+      { id: 'mov_scifi_tv', sector: 'Movies & TV', prompt: 'Name a Sci-Fi TV Series', webKeywords: ['science fiction television series', 'sci-fi tv show'],
+        answers: { 10: ['Star Trek', 'Doctor Who', 'Stranger Things'], 15: ['The X-Files', 'Firefly', 'Black Mirror'], 30: ['Battlestar Galactica', 'Stargate SG-1', 'Farscape'], 60: ['Babylon 5', 'Dark', 'Lexx'], 85: ['Blake\'s 7', 'Space 1999', 'Max Headroom'], 100: ['Quark', 'Otherworld', 'The Starlost'] } },
+      { id: 'mov_fantasy_tv', sector: 'Movies & TV', prompt: 'Name a Fantasy TV Series', webKeywords: ['fantasy television series', 'fantasy tv show'],
+        answers: { 10: ['Game of Thrones', 'The Witcher', 'Wednesday'], 15: ['Buffy the Vampire Slayer', 'Xena Warrior Princess', 'Merlin'], 30: ['Legend of the Seeker', 'The Shannara Chronicles', 'Carnival Row'], 60: ['Galavant', 'The 10th Kingdom', 'Kröd Mändoon'], 85: ['Roar', 'Wizards and Warriors', 'The Charmings'], 100: ['Beauty and the Beast', 'Covington Cross', 'Manimal'] } },
+      { id: 'mov_adult_anim', sector: 'Movies & TV', prompt: 'Name an Adult Animated TV Series', webKeywords: ['adult animated series', 'adult cartoon'],
+        answers: { 10: ['The Simpsons', 'South Park', 'Family Guy'], 15: ['Rick and Morty', 'Bob\'s Burgers', 'Futurama'], 30: ['Archer', 'BoJack Horseman', 'King of the Hill'], 60: ['The Critic', 'Duckman', 'Metalocalypse'], 85: ['Dr. Katz', 'Home Movies', 'Sealab 2021'], 100: ['The Oblongs', 'Mission Hill', 'God the Devil and Bob'] } },
+      { id: 'mov_kids_tv', sector: 'Movies & TV', prompt: 'Name a Children\'s TV Show', webKeywords: ['children\'s television show', 'kids tv show'],
+        answers: { 10: ['Sesame Street', 'Bluey', 'SpongeBob SquarePants'], 15: ['Blue\'s Clues', 'Dora the Explorer', 'Paw Patrol'], 30: ['Arthur', 'The Magic School Bus', 'Reading Rainbow'], 60: ['Fraggle Rock', 'Lamb Chop\'s Play-Along', 'Shining Time Station'], 85: ['The Puzzle Place', 'Allegra\'s Window', 'Gullah Gullah Island'], 100: ['The Great Space Coaster', 'H.R. Pufnstuf', 'Lidsville'] } },
+      { id: 'mov_talk_show', sector: 'Movies & TV', prompt: 'Name a Talk Show or Late-Night Show', webKeywords: ['talk show', 'late night show'],
+        answers: { 10: ['The Tonight Show', 'The Oprah Winfrey Show', 'Ellen'], 15: ['Late Night with David Letterman', 'The Daily Show', 'Jimmy Kimmel Live'], 30: ['Conan', 'The Graham Norton Show', 'Dr. Phil'], 60: ['The Dick Cavett Show', 'Larry King Live', 'The Arsenio Hall Show'], 85: ['The Merv Griffin Show', 'Dinah!', 'The Tomorrow Show'], 100: ['The Jack Paar Show', 'The Ernie Kovacs Show', 'Fernwood 2 Night'] } },
+      { id: 'mov_cooking_show', sector: 'Movies & TV', prompt: 'Name a Cooking or Food TV Show', webKeywords: ['cooking show', 'food television show'],
+        answers: { 10: ['MasterChef', 'The Great British Bake Off', 'Iron Chef'], 15: ['Hell\'s Kitchen', 'Top Chef', 'Chopped'], 30: ['The French Chef', 'Good Eats', 'Anthony Bourdain Parts Unknown'], 60: ['Two Fat Ladies', 'The Naked Chef', 'Yan Can Cook'], 85: ['The Galloping Gourmet', 'Floyd on Food', 'Delia\'s How to Cook'], 100: ['The Frugal Gourmet', 'Louisiana Cookin\'', 'Wok with Yan'] } },
+      { id: 'mov_pirate', sector: 'Movies & TV', prompt: 'Name a Pirate Movie', webKeywords: ['pirate film', 'pirate movie'],
+        answers: { 10: ['Pirates of the Caribbean'], 15: ['Treasure Planet', 'Muppet Treasure Island', 'Captain Phillips'], 30: ['The Princess Bride', 'The Sea Hawk', 'Captain Blood'], 60: ['Yellowbeard', 'The Ice Pirates', 'Swashbuckler'], 85: ['The Black Swan', 'Against All Flags', 'The Crimson Pirate'], 100: ['Morgan the Pirate', 'The King\'s Pirate', 'Rage of the Buccaneers'] } },
+      { id: 'mov_time_travel', sector: 'Movies & TV', prompt: 'Name a Time-Travel Movie', webKeywords: ['time travel film', 'time travel movie'],
+        answers: { 10: ['Back to the Future', 'Terminator 2', 'Groundhog Day'], 15: ['The Terminator', 'Twelve Monkeys', 'Looper'], 30: ['Primer', 'Time Bandits', 'Bill & Ted\'s Excellent Adventure'], 60: ['Somewhere in Time', 'Predestination', 'Timecrimes'], 85: ['La Jetée', 'Beyond the Time Barrier', 'Retroactive'], 100: ['The Time Travelers', 'World Without End', 'Je t\'aime je t\'aime'] } },
+      { id: 'mov_prison', sector: 'Movies & TV', prompt: 'Name a Prison Movie', webKeywords: ['prison film', 'prison movie'],
+        answers: { 10: ['The Shawshank Redemption', 'The Green Mile'], 15: ['Escape from Alcatraz', 'Cool Hand Luke', 'Papillon'], 30: ['Midnight Express', 'American History X', 'The Longest Yard'], 60: ['Brubaker', 'Kiss of the Spider Woman', 'A Prophet'], 85: ['Scum', 'Chopper', 'Hunger'], 100: ['Le Trou', 'Riot in Cell Block 11', 'The Hill'] } },
+      { id: 'mov_courtroom', sector: 'Movies & TV', prompt: 'Name a Courtroom or Legal Drama Film', webKeywords: ['courtroom drama', 'legal drama film'],
+        answers: { 10: ['12 Angry Men', 'To Kill a Mockingbird', 'A Few Good Men'], 15: ['Philadelphia', 'Erin Brockovich', 'My Cousin Vinny'], 30: ['Anatomy of a Murder', 'The Verdict', 'Kramer vs Kramer'], 60: ['Witness for the Prosecution', 'Judgment at Nuremberg', 'Inherit the Wind'], 85: ['Compulsion', 'The Young Philadelphians'], 100: ['The Mouthpiece', 'Counsellor at Law', 'Madame X'] } },
+      { id: 'mov_survival', sector: 'Movies & TV', prompt: 'Name a Survival Movie', webKeywords: ['survival film', 'survival movie'],
+        answers: { 10: ['Cast Away', 'The Revenant', 'Gravity'], 15: ['127 Hours', 'Alive', 'The Martian'], 30: ['Apollo 13', 'Open Water', 'The Grey'], 60: ['Rescue Dawn', 'Touching the Void', 'Arctic'], 85: ['The Snow Walker', 'The Edge', 'Never Cry Wolf'], 100: ['Hell in the Pacific', 'The Naked Prey', 'Walkabout'] } },
+      { id: 'mov_alien', sector: 'Movies & TV', prompt: 'Name an Alien Species From Movies or TV', webKeywords: ['alien species', 'fictional alien race'],
+        answers: { 10: ['Klingon', 'Vulcan', 'Wookiee'], 15: ['Na\'vi', 'Ewok', 'Xenomorph'], 30: ['Ferengi', 'Cardassian', 'Goa\'uld'], 60: ['Vorlon', 'Narn', 'Minbari'], 85: ['Pak\'ma\'ra', 'Taelon', 'Vree'], 100: ['Organians', 'Tholians', 'Horta'] } },
+      { id: 'mov_planet_fictional', sector: 'Movies & TV', prompt: 'Name a Fictional Planet', webKeywords: ['fictional planet', 'imaginary planet'],
+        answers: { 10: ['Tatooine', 'Krypton', 'Arrakis'], 15: ['Vulcan', 'Pandora', 'Coruscant'], 30: ['Naboo', 'Alderaan', 'Gallifrey'], 60: ['Bajor', 'Qo\'noS', 'Trantor'], 85: ['Klendathu', 'Mesklin', 'Solaris'], 100: ['Barsoom', 'Amtor', 'Riverworld'] } },
+      { id: 'mov_silent', sector: 'Movies & TV', prompt: 'Name a Silent Film', webKeywords: ['silent film', 'silent movie', 'silent era'],
+        answers: { 10: ['Metropolis', 'The Kid', 'Nosferatu'], 15: ['Modern Times', 'City Lights', 'The Gold Rush'], 30: ['Battleship Potemkin', 'The General', 'Safety Last'], 60: ['The Passion of Joan of Arc', 'The Cabinet of Dr. Caligari', 'Intolerance'], 85: ['The Birth of a Nation', 'Greed', 'The Wind'], 100: ['Les Vampires', 'Fantômas', 'The Italian Straw Hat'] } },
+      { id: 'pop_mlb_team', sector: 'Pop Culture & Games', prompt: 'Name an MLB Baseball Team', webKeywords: ['mlb team', 'baseball team', 'major league baseball'],
+        answers: { 10: ['New York Yankees', 'Boston Red Sox', 'Los Angeles Dodgers'], 15: ['Chicago Cubs', 'St. Louis Cardinals', 'San Francisco Giants'], 30: ['Houston Astros', 'Atlanta Braves', 'New York Mets'], 60: ['Oakland Athletics', 'Cincinnati Reds', 'Baltimore Orioles'], 85: ['Kansas City Royals', 'Minnesota Twins', 'Seattle Mariners'], 100: ['Tampa Bay Rays', 'Arizona Diamondbacks', 'Colorado Rockies'] } },
+      { id: 'pop_nhl_team', sector: 'Pop Culture & Games', prompt: 'Name an NHL Hockey Team', webKeywords: ['nhl team', 'hockey team', 'national hockey league'],
+        answers: { 10: ['Toronto Maple Leafs', 'Montreal Canadiens', 'Boston Bruins'], 15: ['Chicago Blackhawks', 'New York Rangers', 'Detroit Red Wings'], 30: ['Pittsburgh Penguins', 'Edmonton Oilers', 'Los Angeles Kings'], 60: ['Vegas Golden Knights', 'Colorado Avalanche', 'Philadelphia Flyers'], 85: ['Winnipeg Jets', 'Ottawa Senators', 'Buffalo Sabres'], 100: ['Seattle Kraken', 'Columbus Blue Jackets', 'Nashville Predators'] } },
+      { id: 'pop_soccer_club', sector: 'Pop Culture & Games', prompt: 'Name a Soccer (Football) Club', webKeywords: ['football club', 'soccer club', 'soccer team'],
+        answers: { 10: ['Real Madrid', 'Barcelona', 'Manchester United'], 15: ['Liverpool', 'Bayern Munich', 'Arsenal'], 30: ['AC Milan', 'Juventus', 'Chelsea'], 60: ['Ajax', 'Celtic', 'Borussia Dortmund'], 85: ['FC Porto', 'Galatasaray', 'River Plate'], 100: ['Al Ahly', 'Peñarol', 'Dinamo Zagreb'] } },
+      { id: 'pop_soccer_player', sector: 'Pop Culture & Games', prompt: 'Name a Soccer Player (Any Era)', webKeywords: ['footballer', 'soccer player'],
+        answers: { 10: ['Lionel Messi', 'Cristiano Ronaldo', 'Pelé'], 15: ['Neymar', 'Kylian Mbappé', 'Maradona'], 30: ['Zinedine Zidane', 'Ronaldinho', 'Johan Cruyff'], 60: ['Franz Beckenbauer', 'Michel Platini', 'George Best'], 85: ['Lev Yashin', 'Eusébio', 'Ferenc Puskás'], 100: ['Garrincha', 'Alfredo Di Stéfano', 'Just Fontaine'] } },
+      { id: 'pop_nba_player', sector: 'Pop Culture & Games', prompt: 'Name an NBA Player (Any Era)', webKeywords: ['nba player', 'basketball player'],
+        answers: { 10: ['Michael Jordan', 'LeBron James', 'Kobe Bryant'], 15: ['Shaquille O\'Neal', 'Stephen Curry', 'Larry Bird'], 30: ['Magic Johnson', 'Kareem Abdul-Jabbar', 'Tim Duncan'], 60: ['Wilt Chamberlain', 'Bill Russell', 'Hakeem Olajuwon'], 85: ['Oscar Robertson', 'Jerry West', 'Elgin Baylor'], 100: ['Bob Pettit', 'George Mikan', 'Dolph Schayes'] } },
+      { id: 'pop_nfl_player', sector: 'Pop Culture & Games', prompt: 'Name an NFL Player (Any Era)', webKeywords: ['nfl player', 'american football player'],
+        answers: { 10: ['Tom Brady', 'Patrick Mahomes', 'Aaron Rodgers'], 15: ['Joe Montana', 'Peyton Manning', 'Travis Kelce'], 30: ['Jerry Rice', 'Lawrence Taylor', 'Barry Sanders'], 60: ['Jim Brown', 'Johnny Unitas', 'Walter Payton'], 85: ['Dick Butkus', 'Deacon Jones', 'Otto Graham'], 100: ['Sammy Baugh', 'Don Hutson', 'Bronko Nagurski'] } },
+      { id: 'pop_olympian', sector: 'Pop Culture & Games', prompt: 'Name an Olympic Athlete (Any Era)', webKeywords: ['olympic athlete', 'olympian'],
+        answers: { 10: ['Michael Phelps', 'Usain Bolt', 'Simone Biles'], 15: ['Katie Ledecky', 'Carl Lewis', 'Nadia Comăneci'], 30: ['Jesse Owens', 'Mark Spitz', 'Larisa Latynina'], 60: ['Paavo Nurmi', 'Fanny Blankers-Koen', 'Emil Zátopek'], 85: ['Birgit Fischer', 'Al Oerter', 'Sawao Kato'], 100: ['Vera Caslavska', 'Boris Shakhlin', 'Edoardo Mangiarotti'] } },
+      { id: 'pop_chess_player', sector: 'Pop Culture & Games', prompt: 'Name a Chess Champion or Grandmaster', webKeywords: ['chess grandmaster', 'chess champion', 'chess player'],
+        answers: { 10: ['Magnus Carlsen', 'Garry Kasparov', 'Bobby Fischer'], 15: ['Viswanathan Anand', 'Anatoly Karpov', 'Hikaru Nakamura'], 30: ['Mikhail Botvinnik', 'José Raúl Capablanca', 'Alexander Alekhine'], 60: ['Emanuel Lasker', 'Tigran Petrosian', 'Vasily Smyslov'], 85: ['Wilhelm Steinitz', 'Max Euwe', 'Vera Menchik'], 100: ['Aron Nimzowitsch', 'Paul Morphy', 'Adolf Anderssen'] } },
+      { id: 'pop_vg_character', sector: 'Pop Culture & Games', prompt: 'Name a Video Game Character', webKeywords: ['video game character', 'game protagonist'],
+        answers: { 10: ['Mario', 'Sonic', 'Pikachu'], 15: ['Link', 'Master Chief', 'Lara Croft'], 30: ['Kratos', 'Nathan Drake', 'Samus Aran'], 60: ['Gordon Freeman', 'Ezio Auditore', 'Commander Shepard'], 85: ['Guybrush Threepwood', 'Manny Calavera', 'Razputin'], 100: ['April Ryan', 'Kate Walker', 'Jade'] } },
+      { id: 'pop_vg_villain', sector: 'Pop Culture & Games', prompt: 'Name a Video Game Villain', webKeywords: ['video game villain', 'game antagonist', 'boss'],
+        answers: { 10: ['Bowser', 'Dr. Eggman', 'Ganon'], 15: ['Sephiroth', 'Vaas Montenegro', 'Handsome Jack'], 30: ['GLaDOS', 'Andrew Ryan', 'Albert Wesker'], 60: ['SHODAN', 'Kane', 'Sarah Kerrigan'], 85: ['Dagoth Ur', 'Irenicus', 'LeChuck'], 100: ['The Transcendent One', 'Kreia', 'Gaunter O\'Dimm'] } },
+      { id: 'pop_rpg_class', sector: 'Pop Culture & Games', prompt: 'Name an RPG or Fantasy Character Class', webKeywords: ['character class', 'rpg class', 'fantasy class'],
+        answers: { 10: ['Wizard', 'Warrior', 'Rogue', 'Cleric'], 15: ['Paladin', 'Ranger', 'Bard', 'Warlock'], 30: ['Necromancer', 'Druid', 'Monk', 'Barbarian'], 60: ['Spellsword', 'Battlemage', 'Assassin', 'Summoner'], 85: ['Artificer', 'Blood Hunter', 'Psion'], 100: ['Factotum', 'Truenamer', 'Incarnate'] } },
+      { id: 'pop_pokemon_legendary', sector: 'Pop Culture & Games', prompt: 'Name a Legendary or Mythical Pokémon', webKeywords: ['legendary pokemon', 'mythical pokemon'],
+        answers: { 10: ['Mewtwo', 'Mew', 'Lugia'], 15: ['Ho-Oh', 'Rayquaza', 'Giratina'], 30: ['Dialga', 'Palkia', 'Darkrai'], 60: ['Celebi', 'Jirachi', 'Deoxys'], 85: ['Manaphy', 'Shaymin', 'Victini'], 100: ['Phione', 'Meloetta', 'Hoopa'] } },
+      { id: 'pop_toy', sector: 'Pop Culture & Games', prompt: 'Name a Classic Toy or Toy Brand', webKeywords: ['toy', 'classic toy', 'toy brand'],
+        answers: { 10: ['Barbie', 'LEGO', 'Hot Wheels'], 15: ['Rubik\'s Cube', 'G.I. Joe', 'My Little Pony'], 30: ['Furby', 'Teddy Ruxpin', 'Cabbage Patch Kids'], 60: ['Slinky', 'Etch A Sketch', 'Lite-Brite'], 85: ['Stretch Armstrong', 'Raggedy Ann', 'Tinkertoy'], 100: ['Erector Set', 'Lincoln Logs', 'Betsy Wetsy'] } },
+      { id: 'pop_mobile_game', sector: 'Pop Culture & Games', prompt: 'Name a Mobile Game', webKeywords: ['mobile game', 'phone game', 'app game'],
+        answers: { 10: ['Candy Crush', 'Pokémon GO', 'Angry Birds'], 15: ['Clash of Clans', 'Subway Surfers', 'Temple Run'], 30: ['PUBG Mobile', 'Genshin Impact', 'Among Us'], 60: ['Monument Valley', 'Fruit Ninja', 'Doodle Jump'], 85: ['2048', 'Flappy Bird', 'Crossy Road'], 100: ['Threes', 'Ridiculous Fishing', 'Device 6'] } },
+      { id: 'pop_horror_game', sector: 'Pop Culture & Games', prompt: 'Name a Horror Video Game', webKeywords: ['horror game', 'survival horror game'],
+        answers: { 10: ['Resident Evil', 'Silent Hill', 'Five Nights at Freddy\'s'], 15: ['Amnesia', 'Outlast', 'Dead Space'], 30: ['Fatal Frame', 'Clock Tower', 'Alien Isolation'], 60: ['Soma', 'Layers of Fear', 'The Evil Within'], 85: ['Rule of Rose', 'Kuon', 'Haunting Ground'], 100: ['Sweet Home', 'Echo Night', 'Hellnight'] } },
+      { id: 'pop_racing_game', sector: 'Pop Culture & Games', prompt: 'Name a Racing Game or Series', webKeywords: ['racing game', 'racing video game'],
+        answers: { 10: ['Mario Kart', 'Gran Turismo', 'Forza'], 15: ['Need for Speed', 'The Crew', 'F1'], 30: ['Burnout', 'Midnight Club', 'Project Cars'], 60: ['Ridge Racer', 'Wipeout', 'Daytona USA'], 85: ['Sega Rally', 'Colin McRae Rally', 'Beetle Adventure Racing'], 100: ['Stunts', 'Hard Drivin\'', 'V-Rally'] } },
+      { id: 'pop_fighting_game', sector: 'Pop Culture & Games', prompt: 'Name a Fighting Game or Series', webKeywords: ['fighting game', 'versus fighting game'],
+        answers: { 10: ['Street Fighter', 'Mortal Kombat', 'Tekken'], 15: ['Super Smash Bros', 'Soulcalibur', 'Guilty Gear'], 30: ['Virtua Fighter', 'Dead or Alive', 'King of Fighters'], 60: ['Samurai Shodown', 'Darkstalkers', 'Killer Instinct'], 85: ['Bloody Roar', 'Rival Schools', 'Power Stone'], 100: ['Karateka', 'Yie Ar Kung-Fu', 'Bushido Blade'] } },
+      { id: 'pop_game_company', sector: 'Pop Culture & Games', prompt: 'Name a Video Game Company or Developer', webKeywords: ['video game company', 'game developer', 'game studio'],
+        answers: { 10: ['Nintendo', 'Valve', 'Rockstar'], 15: ['Bethesda', 'Ubisoft', 'Electronic Arts'], 30: ['Blizzard', 'Naughty Dog', 'Bungie'], 60: ['id Software', 'BioWare', 'CD Projekt Red'], 85: ['LucasArts', 'Sierra', 'Origin Systems'], 100: ['Infocom', 'Sir-Tech', 'MicroProse'] } },
+      { id: 'pop_supervillain', sector: 'Pop Culture & Games', prompt: 'Name a Comic Book Supervillain', webKeywords: ['supervillain', 'comic book villain'],
+        answers: { 10: ['The Joker', 'Thanos', 'Magneto'], 15: ['Lex Luthor', 'Green Goblin', 'Doctor Doom'], 30: ['Darkseid', 'Loki', 'The Riddler'], 60: ['Ra\'s al Ghul', 'Sinestro', 'Venom'], 85: ['Black Adam', 'Brainiac', 'Deathstroke'], 100: ['Knull', 'The Maker', 'Prometheus'] } },
+      { id: 'pop_sidekick', sector: 'Pop Culture & Games', prompt: 'Name a Famous Sidekick', webKeywords: ['sidekick', 'fictional sidekick', 'companion'],
+        answers: { 10: ['Robin', 'Dr. Watson', 'Chewbacca'], 15: ['Samwise Gamgee', 'Tonto', 'Luigi'], 30: ['Sancho Panza', 'Friday', 'Bucky Barnes'], 60: ['Tattoo', 'Kato', 'Mini-Me'], 85: ['Boo Boo Bear', 'Penfold', 'Waylon Smithers'], 100: ['Gabrielle', 'Chester Goode', 'Ed Norton'] } },
+      { id: 'pop_wizard', sector: 'Pop Culture & Games', prompt: 'Name a Fictional Wizard, Witch, or Magic User', webKeywords: ['wizard', 'witch', 'fictional magic user'],
+        answers: { 10: ['Gandalf', 'Dumbledore', 'Harry Potter', 'Merlin'], 15: ['Radagast', 'Saruman', 'The Wicked Witch of the West', 'Sabrina'], 30: ['Elminster', 'Raistlin Majere', 'Ged'], 60: ['Tim the Enchanter', 'Jafar', 'Baba Yaga'], 85: ['Pug', 'Belgarath', 'Khelben Blackstaff'], 100: ['Fizban', 'Mordenkainen', 'Bigby'] } },
+      { id: 'pop_vampire', sector: 'Pop Culture & Games', prompt: 'Name a Fictional Vampire', webKeywords: ['vampire', 'fictional vampire'],
+        answers: { 10: ['Dracula', 'Blade', 'Angel'], 15: ['Lestat', 'Spike', 'Selene'], 30: ['Count Orlok', 'Barnabas Collins', 'Cassidy'], 60: ['Deacon Frost', 'Viktor', 'Armand'], 85: ['Eli', 'Claudia', 'Marius'], 100: ['Kurt Barlow', 'The Master', 'Petyr'] } },
+      { id: 'pop_dragon', sector: 'Pop Culture & Games', prompt: 'Name a Fictional Dragon', webKeywords: ['dragon', 'fictional dragon'],
+        answers: { 10: ['Smaug', 'Drogon', 'Toothless'], 15: ['Shenron', 'Spyro', 'Mushu'], 30: ['Falcor', 'Elliot', 'Figment'], 60: ['Jabberwocky', 'Kalessin', 'Temeraire'], 85: ['Ancalagon', 'Glaurung', 'Chrysophylax'], 100: ['Faranth', 'Ramoth', 'Mnementh'] } },
+      { id: 'pop_fictional_city', sector: 'Pop Culture & Games', prompt: 'Name a Fictional City', webKeywords: ['fictional city', 'fictional town'],
+        answers: { 10: ['Gotham City', 'Metropolis', 'Springfield'], 15: ['Bikini Bottom', 'King\'s Landing', 'Emerald City'], 30: ['Raccoon City', 'Silent Hill', 'Stars Hollow'], 60: ['Arcadia Bay', 'Night City', 'Columbia'], 85: ['Sigil', 'Waterdeep', 'Ankh-Morpork'], 100: ['Ulthar', 'Innsmouth', 'Derry'] } },
+      { id: 'pop_playground_game', sector: 'Pop Culture & Games', prompt: 'Name a Playground or Recess Game', webKeywords: ['playground game', 'recess game', 'children\'s game'],
+        answers: { 10: ['Tag', 'Hide and Seek', 'Kickball', 'Four Square'], 15: ['Red Rover', 'Duck Duck Goose', 'Capture the Flag', 'Hopscotch'], 30: ['Tetherball', 'Wall Ball', 'Marco Polo', 'Freeze Tag'], 60: ['Sardines', 'Ghost in the Graveyard', 'Spud', 'Butts Up'], 85: ['Steal the Bacon', 'TV Tag', 'Crack the Whip'], 100: ['Blind Man\'s Bluff', 'Kick the Can', 'Mumblety-Peg'] } },
+      { id: 'pop_hobby', sector: 'Pop Culture & Games', prompt: 'Name a Hobby or Pastime', webKeywords: ['hobby', 'pastime', 'leisure activity'],
+        answers: { 10: ['Fishing', 'Gardening', 'Painting', 'Photography'], 15: ['Knitting', 'Woodworking', 'Birdwatching', 'Coin Collecting'], 30: ['Geocaching', 'Falconry', 'Bonsai', 'Beekeeping'], 60: ['Letterboxing', 'Metal Detecting', 'Taxidermy', 'Calligraphy'], 85: ['Bookbinding', 'Whittling', 'Amateur Radio'], 100: ['Trainspotting', 'Stone Skimming', 'Extreme Ironing'] } },
+      { id: 'pop_trophy', sector: 'Pop Culture & Games', prompt: 'Name a Famous Sports Trophy', webKeywords: ['sports trophy', 'championship trophy'],
+        answers: { 10: ['Stanley Cup', 'Lombardi Trophy', 'World Cup Trophy'], 15: ['Larry O\'Brien Trophy', 'Commissioner\'s Trophy', 'Claret Jug'], 30: ['Heisman Trophy', 'Borg-Warner Trophy', 'Webb Ellis Cup'], 60: ['America\'s Cup', 'Ashes Urn', 'Ryder Cup'], 85: ['Jules Rimet Trophy', 'Wanamaker Trophy', 'Calder Cup'], 100: ['Bendix Trophy', 'Gordon Bennett Cup', 'Schneider Trophy'] } },
+      { id: 'pop_stadium', sector: 'Pop Culture & Games', prompt: 'Name a Famous Sports Stadium or Arena', webKeywords: ['stadium', 'sports arena', 'famous stadium'],
+        answers: { 10: ['Wembley Stadium', 'Fenway Park', 'Madison Square Garden'], 15: ['Maracanã', 'Yankee Stadium', 'Lambeau Field'], 30: ['Camp Nou', 'Old Trafford', 'Wrigley Field'], 60: ['San Siro', 'Azteca', 'Melbourne Cricket Ground'], 85: ['Eden Gardens', 'Lusail Stadium', 'Twickenham'], 100: ['Rungrado May Day Stadium', 'Narendra Modi Stadium', 'Michigan Stadium'] } },
+      { id: 'pop_tabletop_rpg', sector: 'Pop Culture & Games', prompt: 'Name a Tabletop Role-Playing Game (Other Than D&D)', webKeywords: ['tabletop role-playing game', 'pen and paper rpg'],
+        answers: { 10: ['Pathfinder', 'Call of Cthulhu', 'Warhammer'], 15: ['Cyberpunk', 'Vampire The Masquerade', 'Shadowrun'], 30: ['GURPS', 'Savage Worlds', 'Fate', 'Star Wars The Roleplaying Game'], 60: ['Traveller', 'RuneQuest', 'Ars Magica'], 85: ['Paranoia', 'Deadlands', 'Mutants & Masterminds'], 100: ['Chivalry & Sorcery', 'Tunnels & Trolls', 'Rolemaster'] } },
+      { id: 'pop_music_genre', sector: 'Pop Culture & Games', prompt: 'Name a Music Genre or Subgenre', webKeywords: ['music genre', 'music subgenre', 'style of music'],
+        answers: { 10: ['Rock', 'Jazz', 'Hip Hop', 'Country'], 15: ['Blues', 'Metal', 'Reggae', 'Techno'], 30: ['Funk', 'Soul', 'Bluegrass', 'Grunge'], 60: ['Shoegaze', 'Vaporwave', 'Drum and Bass', 'Post-Punk'], 85: ['Math Rock', 'Blackgaze', 'Skweee'], 100: ['Zeuhl', 'Lowercase', 'Dungeon Synth'] } },
+      { id: 'pop_pop_singer', sector: 'Pop Culture & Games', prompt: 'Name a Pop Singer', webKeywords: ['pop singer', 'pop star', 'pop musician'],
+        answers: { 10: ['Taylor Swift', 'Beyoncé', 'Ariana Grande'], 15: ['Ed Sheeran', 'Dua Lipa', 'Bruno Mars'], 30: ['Michael Jackson', 'Madonna', 'Prince'], 60: ['George Michael', 'Whitney Houston', 'Cher'], 85: ['Robbie Williams', 'Kylie Minogue', 'Rick Astley'], 100: ['Engelbert Humperdinck', 'Cliff Richard', 'Tom Jones'] } },
+      { id: 'pop_jazz_musician', sector: 'Pop Culture & Games', prompt: 'Name a Jazz Musician', webKeywords: ['jazz musician', 'jazz artist'],
+        answers: { 10: ['Miles Davis', 'Louis Armstrong', 'Duke Ellington'], 15: ['John Coltrane', 'Ella Fitzgerald', 'Charlie Parker'], 30: ['Thelonious Monk', 'Billie Holiday', 'Dizzy Gillespie'], 60: ['Charles Mingus', 'Ornette Coleman', 'Sun Ra'], 85: ['Art Tatum', 'Bud Powell', 'Mary Lou Williams'], 100: ['Jelly Roll Morton', 'Bix Beiderbecke', 'King Oliver'] } },
+      { id: 'pop_composer', sector: 'Pop Culture & Games', prompt: 'Name a Classical Composer', webKeywords: ['classical composer', 'composer'],
+        answers: { 10: ['Beethoven', 'Mozart', 'Bach'], 15: ['Chopin', 'Tchaikovsky', 'Vivaldi'], 30: ['Brahms', 'Debussy', 'Handel'], 60: ['Stravinsky', 'Rachmaninoff', 'Mahler'], 85: ['Hildegard von Bingen', 'Fanny Mendelssohn', 'Clara Schumann'], 100: ['Heinrich Schütz', 'Dieterich Buxtehude', 'Telemann'] } },
+      { id: 'pop_painter', sector: 'Pop Culture & Games', prompt: 'Name a Famous Painter', webKeywords: ['painter', 'famous artist', 'visual artist'],
+        answers: { 10: ['Picasso', 'Van Gogh', 'Leonardo da Vinci'], 15: ['Monet', 'Rembrandt', 'Michelangelo'], 30: ['Frida Kahlo', 'Salvador Dalí', 'Andy Warhol'], 60: ['Vermeer', 'Hokusai', 'Georgia O\'Keeffe'], 85: ['Artemisia Gentileschi', 'Vigée Le Brun', 'Caspar David Friedrich'], 100: ['Sofonisba Anguissola', 'Lavinia Fontana', 'Judith Leyster'] } },
+      { id: 'pop_explorer', sector: 'Pop Culture & Games', prompt: 'Name a Famous Explorer', webKeywords: ['explorer', 'famous explorer', 'voyager'],
+        answers: { 10: ['Christopher Columbus', 'Marco Polo', 'Lewis and Clark'], 15: ['Ferdinand Magellan', 'James Cook', 'Sacagawea'], 30: ['Ernest Shackleton', 'Roald Amundsen', 'Leif Erikson'], 60: ['Ibn Battuta', 'Zheng He', 'David Livingstone'], 85: ['Fridtjof Nansen', 'Mary Kingsley', 'Gertrude Bell'], 100: ['Pytheas', 'Faxian', 'Evliya Çelebi'] } },
+      { id: 'pop_pirate_real', sector: 'Pop Culture & Games', prompt: 'Name a Real Historical Pirate', webKeywords: ['pirate', 'historical pirate', 'buccaneer'],
+        answers: { 10: ['Blackbeard', 'Captain Kidd', 'Black Bart'], 15: ['Anne Bonny', 'Mary Read', 'Calico Jack'], 30: ['Henry Morgan', 'Francis Drake', 'Jean Lafitte'], 60: ['Ching Shih', 'Grace O\'Malley', 'Barbarossa'], 85: ['William Dampier', 'Stede Bonnet', 'Edward Low'], 100: ['Kanhoji Angre', 'Sayyida al Hurra', 'Awilda'] } },
+      { id: 'pop_president', sector: 'Pop Culture & Games', prompt: 'Name a U.S. President', webKeywords: ['president of the united states', 'us president'],
+        answers: { 10: ['George Washington', 'Abraham Lincoln', 'Theodore Roosevelt'], 15: ['Thomas Jefferson', 'John F. Kennedy', 'Franklin D. Roosevelt'], 30: ['Andrew Jackson', 'Dwight Eisenhower', 'Woodrow Wilson'], 60: ['James Monroe', 'John Quincy Adams', 'Zachary Taylor'], 85: ['Millard Fillmore', 'Franklin Pierce', 'William Henry Harrison'], 100: ['Martin Van Buren', 'Chester A. Arthur', 'Benjamin Harrison'] } },
+      { id: 'pop_car_model', sector: 'Pop Culture & Games', prompt: 'Name a Specific Car Model', webKeywords: ['car model', 'automobile model'],
+        answers: { 10: ['Ford Mustang', 'Toyota Camry', 'Honda Civic'], 15: ['Volkswagen Beetle', 'Chevrolet Corvette', 'Ford F-150'], 30: ['Mazda Miata', 'Jeep Wrangler', 'Subaru Outback'], 60: ['Datsun 240Z', 'AMC Gremlin', 'Plymouth Barracuda'], 85: ['Studebaker Avanti', 'Tucker Torpedo', 'DeLorean DMC-12'], 100: ['Bricklin SV-1', 'Jensen Interceptor', 'Facel Vega'] } },
+      { id: 'wrd_animal_i', sector: 'Words & Letters', prompt: 'Name an Animal Starting With the Letter I', startsWith: 'i', webKeywords: ['animal', 'species'],
+        answers: { 10: ['Iguana', 'Ibex', 'Impala'], 15: ['Ibis', 'Inchworm', 'Indian Elephant'], 30: ['Indri', 'Irrawaddy Dolphin', 'Ivory Gull'], 60: ['Iberian Lynx', 'Ili Pika', 'Indian Star Tortoise'], 85: ['Iriomote Cat', 'Inca Tern', 'Island Fox'], 100: ['Indian Pangolin', 'Izu Thrush', 'Iberian Frog'] } },
+      { id: 'wrd_animal_u', sector: 'Words & Letters', prompt: 'Name an Animal Starting With the Letter U', startsWith: 'u', webKeywords: ['animal', 'species'],
+        answers: { 10: ['Urchin'], 15: ['Uakari', 'Umbrellabird'], 30: ['Unicornfish', 'Urial', 'Uguisu'], 60: ['Urutu', 'Upland Sandpiper', 'Uganda Kob'], 85: ['Uinta Ground Squirrel', 'Ulysses Butterfly'], 100: ['Ussuri Tube-Nosed Bat', 'Uluguru Bushshrike'] } },
+      { id: 'wrd_animal_v', sector: 'Words & Letters', prompt: 'Name an Animal Starting With the Letter V', startsWith: 'v', webKeywords: ['animal', 'species'],
+        answers: { 10: ['Vole', 'Vulture', 'Viper'], 15: ['Vervet Monkey', 'Vicuña', 'Vampire Bat'], 30: ['Vaquita', 'Venezuelan Poodle Moth'], 60: ['Visayan Warty Pig', 'Volcano Rabbit', 'Vanga'], 85: ['Vancouver Island Marmot', 'Vernal Pool Fairy Shrimp'], 100: ['Vesper Rat', 'Violet Sabrewing'] } },
+      { id: 'wrd_bird_g', sector: 'Words & Letters', prompt: 'Name a Bird Starting With the Letter G', startsWith: 'g', webKeywords: ['bird', 'species'],
+        answers: { 10: ['Goose', 'Goldfinch', 'Grouse'], 15: ['Grackle', 'Grebe', 'Guillemot'], 30: ['Gannet', 'Godwit', 'Goldeneye'], 60: ['Garganey', 'Grasshopper Warbler', 'Galah'], 85: ['Giant Petrel', 'Grey Hypocolius'], 100: ['Gabar Goshawk', 'Gola Malimbe'] } },
+      { id: 'wrd_bird_d', sector: 'Words & Letters', prompt: 'Name a Bird Starting With the Letter D', startsWith: 'd', webKeywords: ['bird', 'species'],
+        answers: { 10: ['Dove', 'Duck', 'Dunlin'], 15: ['Dipper', 'Darter', 'Dotterel'], 30: ['Dunnock', 'Dark-Eyed Junco', 'Double-Crested Cormorant'], 60: ['Dacnis', 'Dickcissel', 'Dollarbird'], 85: ['Diuca Finch', 'Diademed Tanager', 'Dapple-Throat'], 100: ['Doria\'s Goshawk', 'Dwarf Koel'] } },
+      { id: 'wrd_bird_l', sector: 'Words & Letters', prompt: 'Name a Bird Starting With the Letter L', startsWith: 'l', webKeywords: ['bird', 'species'],
+        answers: { 10: ['Lark', 'Loon', 'Lovebird'], 15: ['Lapwing', 'Lorikeet', 'Lyrebird'], 30: ['Longspur', 'Linnet', 'Lammergeier'], 60: ['Lilac-Breasted Roller', 'Leafbird', 'Limpkin'], 85: ['Luzon Hornbill', 'Lidth\'s Jay', 'Lava Heron'], 100: ['Loango Weaver', 'Laysan Honeycreeper'] } },
+      { id: 'wrd_dog_a', sector: 'Words & Letters', prompt: 'Name a Dog Breed Starting With the Letter A', startsWith: 'a', webKeywords: ['dog breed', 'breed'],
+        answers: { 10: ['Akita', 'Australian Shepherd', 'Alaskan Malamute'], 15: ['Airedale Terrier', 'Afghan Hound', 'Australian Cattle Dog'], 30: ['American Bulldog', 'Anatolian Shepherd', 'Azawakh'], 60: ['Appenzeller Sennenhund', 'Alaskan Klee Kai', 'American Hairless Terrier'], 85: ['Ariegeois', 'Austrian Pinscher'], 100: ['Alopekis', 'Armant'] } },
+      { id: 'wrd_dog_m', sector: 'Words & Letters', prompt: 'Name a Dog Breed Starting With the Letter M', startsWith: 'm', webKeywords: ['dog breed', 'breed'],
+        answers: { 10: ['Maltese', 'Mastiff', 'Miniature Schnauzer'], 15: ['Manchester Terrier', 'Mudi', 'Miniature Pinscher'], 30: ['Mastino Napoletano', 'Mountain Cur', 'McNab'], 60: ['Mi-Ki', 'Moscow Watchdog', 'Mudhol Hound'], 85: ['Majorca Shepherd Dog', 'Montenegrin Mountain Hound'], 100: ['Markiesje', 'Molossus'] } },
+      { id: 'wrd_dog_r', sector: 'Words & Letters', prompt: 'Name a Dog Breed Starting With the Letter R', startsWith: 'r', webKeywords: ['dog breed', 'breed'],
+        answers: { 10: ['Rottweiler', 'Rhodesian Ridgeback', 'Rat Terrier'], 15: ['Russell Terrier', 'Redbone Coonhound', 'Romanian Mioritic Shepherd'], 30: ['Russian Toy', 'Rajapalayam', 'Rampur Greyhound'], 60: ['Ratonero Bodeguero', 'Russian Spaniel', 'Ryukyu Inu'], 85: ['Rastreador Brasileiro', 'Rumanian Raven Shepherd'], 100: ['Ratonero Mallorquín', 'Russian Tsvetnaya Bolonka'] } },
+      { id: 'wrd_dog_w', sector: 'Words & Letters', prompt: 'Name a Dog Breed Starting With the Letter W', startsWith: 'w', webKeywords: ['dog breed', 'breed'],
+        answers: { 10: ['Weimaraner', 'Whippet', 'West Highland White Terrier'], 15: ['Welsh Terrier', 'Wirehaired Pointing Griffon', 'Welsh Springer Spaniel'], 30: ['Wire Fox Terrier', 'Welsh Corgi', 'Wolfsspitz'], 60: ['Wetterhoun', 'West Siberian Laika', 'White Swiss Shepherd'], 85: ['Westphalian Dachsbracke', 'Welsh Sheepdog'], 100: ['Wäller', 'Wirehaired Vizsla'] } },
+      { id: 'wrd_fruit_d', sector: 'Words & Letters', prompt: 'Name a Fruit Starting With the Letter D', startsWith: 'd', webKeywords: ['fruit'],
+        answers: { 10: ['Dragon Fruit', 'Date', 'Durian'], 15: ['Damson', 'Dewberry', 'Desert Lime'], 30: ['Davidson\'s Plum', 'Duku', 'Dekopon'], 60: ['Dabai', 'Doum Palm Fruit', 'Dangleberry'], 85: ['Desert Quandong', 'Dillenia'], 100: ['Duguetia', 'Dacryodes'] } },
+      { id: 'wrd_fruit_g', sector: 'Words & Letters', prompt: 'Name a Fruit Starting With the Letter G', startsWith: 'g', webKeywords: ['fruit'],
+        answers: { 10: ['Grape', 'Grapefruit', 'Guava'], 15: ['Gooseberry', 'Greengage', 'Grumichama'], 30: ['Governor\'s Plum', 'Gac Fruit', 'Giant Granadilla'], 60: ['Genip', 'Genipap', 'Guarana'], 85: ['Gambooge', 'Grosella'], 100: ['Gandaria', 'Gowok'] } },
+      { id: 'wrd_fruit_k', sector: 'Words & Letters', prompt: 'Name a Fruit Starting With the Letter K', startsWith: 'k', webKeywords: ['fruit'],
+        answers: { 10: ['Kiwi', 'Kumquat'], 15: ['Kaffir Lime', 'Kiwano', 'Kabosu'], 30: ['Key Lime', 'Korean Melon', 'Kousa Dogwood Berry'], 60: ['Kei Apple', 'Kwai Muk', 'Kundong'], 85: ['Korlan', 'Kepel Fruit'], 100: ['Kadsura', 'Karkalla'] } },
+      { id: 'wrd_fruit_l', sector: 'Words & Letters', prompt: 'Name a Fruit Starting With the Letter L', startsWith: 'l', webKeywords: ['fruit'],
+        answers: { 10: ['Lemon', 'Lime', 'Lychee'], 15: ['Longan', 'Loquat', 'Loganberry'], 30: ['Lingonberry', 'Lemon Aspen', 'Langsat'], 60: ['Lucuma', 'Lilly Pilly', 'Lemon Myrtle Fruit'], 85: ['Lovi-Lovi', 'Lulo', 'Lakoocha'], 100: ['Lemato', 'Lapsi'] } },
+      { id: 'wrd_nut', sector: 'Words & Letters', prompt: 'Name a Nut or Nut-Like Seed', webKeywords: ['nut', 'edible nut', 'seed'],
+        answers: { 10: ['Almond', 'Walnut', 'Peanut', 'Cashew'], 15: ['Pistachio', 'Hazelnut', 'Pecan', 'Brazil Nut'], 30: ['Macadamia', 'Chestnut', 'Pine Nut', 'Acorn'], 60: ['Candlenut', 'Beechnut', 'Hickory Nut', 'Gevuina'], 85: ['Kola Nut', 'Tiger Nut', 'Mongongo'], 100: ['Baru Nut', 'Paradise Nut', 'Yeheb Nut'] } },
+      { id: 'wrd_pie', sector: 'Words & Letters', prompt: 'Name a Type of Pie', webKeywords: ['pie', 'type of pie'],
+        answers: { 10: ['Apple Pie', 'Pumpkin Pie', 'Cherry Pie'], 15: ['Key Lime Pie', 'Pecan Pie', 'Shepherd\'s Pie'], 30: ['Lemon Meringue', 'Chicken Pot Pie', 'Mince Pie'], 60: ['Banoffee Pie', 'Shoofly Pie', 'Mud Pie'], 85: ['Tourtière', 'Chess Pie', 'Humble Pie'], 100: ['Stargazy Pie', 'Melton Mowbray Pie', 'Flipper Pie'] } },
+      { id: 'wrd_sandwich', sector: 'Words & Letters', prompt: 'Name a Type of Sandwich', webKeywords: ['sandwich', 'type of sandwich'],
+        answers: { 10: ['BLT', 'Club Sandwich', 'Grilled Cheese'], 15: ['Reuben', 'Po\' Boy', 'Banh Mi'], 30: ['Cubano', 'Monte Cristo', 'Philly Cheesesteak'], 60: ['Muffuletta', 'Croque Monsieur', 'Cemita'], 85: ['Francesinha', 'Vada Pav', 'Chivito'], 100: ['Tramezzino', 'Smørrebrød', 'Bocadillo'] } },
+      { id: 'wrd_pizza_topping', sector: 'Words & Letters', prompt: 'Name a Pizza Topping', webKeywords: ['pizza topping', 'pizza ingredient'],
+        answers: { 10: ['Pepperoni', 'Mushroom', 'Sausage', 'Onion'], 15: ['Bell Pepper', 'Olive', 'Bacon', 'Ham'], 30: ['Anchovy', 'Jalapeño', 'Pineapple', 'Spinach'], 60: ['Artichoke', 'Prosciutto', 'Gorgonzola', 'Arugula'], 85: ['\'Nduja', 'Guanciale', 'Friarielli', 'Bottarga'], 100: ['Stracciatella', 'Soppressata', 'Calabrian Chili', 'Squash Blossom'] } },
+      { id: 'wrd_ice_cream', sector: 'Words & Letters', prompt: 'Name an Ice Cream Flavor', webKeywords: ['ice cream flavor', 'ice cream'],
+        answers: { 10: ['Vanilla', 'Chocolate', 'Strawberry', 'Mint Chocolate Chip'], 15: ['Cookies and Cream', 'Rocky Road', 'Butter Pecan', 'Coffee'], 30: ['Pistachio', 'Salted Caramel', 'Moose Tracks', 'Neapolitan'], 60: ['Spumoni', 'Stracciatella', 'Rum Raisin', 'Black Sesame'], 85: ['Hokey Pokey', 'Tiger Tail', 'Ube'], 100: ['Akutaq', 'Kulfi', 'Dondurma'] } },
+      { id: 'wrd_cookie', sector: 'Words & Letters', prompt: 'Name a Cookie or Biscuit', webKeywords: ['cookie', 'biscuit'],
+        answers: { 10: ['Chocolate Chip Cookie', 'Oreo', 'Sugar Cookie'], 15: ['Snickerdoodle', 'Gingerbread', 'Shortbread'], 30: ['Macaron', 'Biscotti', 'Peanut Butter Cookie'], 60: ['Stroopwafel', 'Jaffa Cake', 'Digestive'], 85: ['Pignoli', 'Lebkuchen', 'Speculoos'], 100: ['Kourabiedes', 'Alfajores', 'Pfeffernüsse'] } },
+      { id: 'wrd_sauce', sector: 'Words & Letters', prompt: 'Name a Sauce or Condiment', webKeywords: ['sauce', 'condiment'],
+        answers: { 10: ['Ketchup', 'Mayonnaise', 'Mustard', 'BBQ Sauce'], 15: ['Sriracha', 'Ranch', 'Hot Sauce', 'Soy Sauce'], 30: ['Hollandaise', 'Chimichurri', 'Tzatziki', 'Aioli'], 60: ['Romesco', 'Béarnaise', 'Salsa Verde', 'Harissa'], 85: ['XO Sauce', 'Nam Jim', 'Mole Negro'], 100: ['Garum', 'Mostarda', 'Colatura'] } },
+      { id: 'wrd_shoe', sector: 'Words & Letters', prompt: 'Name a Type of Shoe or Footwear', webKeywords: ['shoe', 'footwear', 'type of shoe'],
+        answers: { 10: ['Sneaker', 'Boot', 'Sandal', 'High Heel'], 15: ['Loafer', 'Oxford', 'Flip-Flop', 'Moccasin'], 30: ['Stiletto', 'Espadrille', 'Brogue', 'Clog'], 60: ['Galoshes', 'Wingtip', 'Mary Jane', 'Saddle Shoe'], 85: ['Geta', 'Babouche', 'Jutti'], 100: ['Chopine', 'Pattens', 'Poulaine'] } },
+      { id: 'wrd_fabric', sector: 'Words & Letters', prompt: 'Name a Fabric or Textile', webKeywords: ['fabric', 'textile', 'cloth'],
+        answers: { 10: ['Cotton', 'Silk', 'Wool', 'Denim'], 15: ['Linen', 'Velvet', 'Leather', 'Polyester'], 30: ['Tweed', 'Satin', 'Chiffon', 'Corduroy'], 60: ['Seersucker', 'Brocade', 'Organza', 'Flannel'], 85: ['Georgette', 'Damask', 'Moire'], 100: ['Balbriggan', 'Grenadine', 'Sharkskin'] } },
+      { id: 'wrd_furniture', sector: 'Words & Letters', prompt: 'Name a Piece of Furniture', webKeywords: ['furniture', 'piece of furniture'],
+        answers: { 10: ['Chair', 'Table', 'Sofa', 'Bed'], 15: ['Desk', 'Bookshelf', 'Dresser', 'Ottoman'], 30: ['Armoire', 'Chaise Longue', 'Vanity', 'Hutch'], 60: ['Secretary Desk', 'Etagere', 'Settee', 'Daybed'], 85: ['Bergère', 'Fauteuil', 'Tuffet'], 100: ['Canterbury', 'Whatnot', 'Davenport'] } },
+      { id: 'wrd_tool', sector: 'Words & Letters', prompt: 'Name a Hand Tool', webKeywords: ['hand tool', 'tool'],
+        answers: { 10: ['Hammer', 'Screwdriver', 'Wrench', 'Pliers'], 15: ['Saw', 'Drill', 'Level', 'Tape Measure'], 30: ['Chisel', 'Awl', 'Mallet', 'Square'], 60: ['Spokeshave', 'Adze', 'Drawknife', 'Gimlet'], 85: ['Froe', 'Bradawl', 'Coping Saw'], 100: ['Burnisher', 'Riffler', 'Cat\'s Paw'] } },
+      { id: 'wrd_car_part', sector: 'Words & Letters', prompt: 'Name a Part of a Car', webKeywords: ['car part', 'automotive part', 'auto part'],
+        answers: { 10: ['Engine', 'Tire', 'Steering Wheel', 'Brake'], 15: ['Alternator', 'Radiator', 'Muffler', 'Transmission'], 30: ['Carburetor', 'Differential', 'Camshaft', 'Fuel Injector'], 60: ['Tie Rod', 'Sway Bar', 'Control Arm', 'Flywheel'], 85: ['Pitman Arm', 'Drag Link', 'Torque Converter'], 100: ['Idler Arm', 'Bendix', 'Kingpin'] } },
+      { id: 'wrd_hairstyle', sector: 'Words & Letters', prompt: 'Name a Hairstyle', webKeywords: ['hairstyle', 'haircut'],
+        answers: { 10: ['Mullet', 'Mohawk', 'Bob', 'Ponytail'], 15: ['Pixie Cut', 'Bun', 'Braids', 'Afro'], 30: ['Pompadour', 'Beehive', 'French Braid', 'Undercut'], 60: ['Finger Waves', 'Victory Rolls', 'Pageboy', 'Chignon'], 85: ['Eton Crop', 'Ducktail', 'Kiss Curl'], 100: ['Fontange', 'Cadogan', 'Macaroni'] } },
+      { id: 'wrd_yoga', sector: 'Words & Letters', prompt: 'Name a Yoga Pose', webKeywords: ['yoga pose', 'asana'],
+        answers: { 10: ['Downward Dog', 'Warrior', 'Tree Pose', 'Child\'s Pose'], 15: ['Cobra', 'Bridge', 'Plank', 'Lotus'], 30: ['Crow Pose', 'Pigeon', 'Triangle', 'Chair Pose'], 60: ['Garudasana', 'Navasana', 'Hanumanasana'], 85: ['Eka Pada Koundinyasana', 'Astavakrasana', 'Pincha Mayurasana'], 100: ['Yoganidrasana', 'Kukkutasana', 'Gandha Bherundasana'] } },
+      { id: 'wrd_knot', sector: 'Words & Letters', prompt: 'Name a Type of Knot', webKeywords: ['knot', 'type of knot', 'bend', 'hitch'],
+        answers: { 10: ['Square Knot', 'Bowline', 'Slip Knot'], 15: ['Figure Eight', 'Clove Hitch', 'Sheet Bend'], 30: ['Fisherman\'s Knot', 'Prusik', 'Carrick Bend'], 60: ['Alpine Butterfly', 'Zeppelin Bend', 'Monkey\'s Fist'], 85: ['Turk\'s Head', 'Constrictor Knot', 'Stevedore Knot'], 100: ['Jug Sling', 'Icicle Hitch', 'Lapp Knot'] } },
+      { id: 'wrd_onomatopoeia', sector: 'Words & Letters', prompt: 'Type an Onomatopoeia Word', webKeywords: ['onomatopoeia', 'sound word'],
+        answers: { 10: ['Bang', 'Boom', 'Splash', 'Meow'], 15: ['Sizzle', 'Thud', 'Buzz', 'Hiss'], 30: ['Kerplunk', 'Wham', 'Clang', 'Murmur'], 60: ['Tsk', 'Pitter-Patter', 'Rat-a-Tat', 'Bowwow'], 85: ['Tintinnabulation', 'Susurrus', 'Borborygmus'], 100: ['Susurration', 'Stridor', 'Crepitus'] } },
+      { id: 'wrd_greek_letter', sector: 'Words & Letters', prompt: 'Name a Greek Letter', webKeywords: ['greek letter', 'greek alphabet'],
+        answers: { 10: ['Alpha', 'Beta', 'Omega', 'Delta'], 15: ['Gamma', 'Pi', 'Sigma', 'Theta'], 30: ['Lambda', 'Kappa', 'Zeta', 'Phi'], 60: ['Upsilon', 'Xi', 'Psi', 'Tau'], 85: ['Iota', 'Nu', 'Rho'], 100: ['Digamma', 'San', 'Koppa'] } },
+      { id: 'wrd_berry', sector: 'Words & Letters', prompt: 'Name a Berry', webKeywords: ['berry', 'berries'],
+        answers: { 10: ['Strawberry', 'Blueberry', 'Raspberry', 'Blackberry'], 15: ['Cranberry', 'Boysenberry', 'Huckleberry', 'Gooseberry'], 30: ['Cloudberry', 'Lingonberry', 'Mulberry', 'Elderberry'], 60: ['Chokeberry', 'Salmonberry', 'Olallieberry', 'Marionberry'], 85: ['Wineberry', 'Saskatoon Berry', 'Sea Buckthorn'], 100: ['Bunchberry', 'Snowberry', 'Checkerberry'] } },
+      { id: 'wrd_apple', sector: 'Words & Letters', prompt: 'Name an Apple Variety', webKeywords: ['apple variety', 'apple cultivar'],
+        answers: { 10: ['Granny Smith', 'Fuji', 'Gala', 'Red Delicious'], 15: ['Honeycrisp', 'Golden Delicious', 'Pink Lady', 'Braeburn'], 30: ['McIntosh', 'Cortland', 'Empire', 'Jazz'], 60: ['Arkansas Black', 'Winesap', 'Northern Spy', 'Rome'], 85: ['Ashmead\'s Kernel', 'Esopus Spitzenburg', 'Newtown Pippin'], 100: ['Knobbed Russet', 'Pitmaston Pineapple', 'Black Oxford'] } },
+      { id: 'wrd_chili', sector: 'Words & Letters', prompt: 'Name a Chili Pepper', webKeywords: ['chili pepper', 'hot pepper', 'chile'],
+        answers: { 10: ['Jalapeño', 'Habanero', 'Cayenne', 'Serrano'], 15: ['Ghost Pepper', 'Carolina Reaper', 'Thai Chili', 'Chipotle'], 30: ['Poblano', 'Anaheim', 'Pequin', 'Tabasco'], 60: ['Aji Amarillo', 'Chiltepin', 'Pepper X', 'Shishito'], 85: ['Aji Charapita', 'Datil', 'Piri Piri'], 100: ['Pimenta de Neyde', 'Fushimi Togarashi', 'Biquinho'] } },
+      { id: 'wrd_weapon_medieval', sector: 'Words & Letters', prompt: 'Name a Medieval Weapon', webKeywords: ['medieval weapon', 'medieval arms'],
+        answers: { 10: ['Sword', 'Bow and Arrow', 'Spear', 'Axe'], 15: ['Mace', 'Crossbow', 'Longsword', 'Dagger'], 30: ['Halberd', 'Flail', 'War Hammer', 'Lance'], 60: ['Morning Star', 'Glaive', 'Billhook', 'Arbalest'], 85: ['Bec de Corbin', 'Lucerne Hammer', 'Ahlspiess'], 100: ['Voulge', 'Military Fork', 'Brandistock'] } },
+      { id: 'wrd_boat', sector: 'Words & Letters', prompt: 'Name a Type of Boat or Ship', webKeywords: ['boat', 'ship', 'vessel', 'watercraft'],
+        answers: { 10: ['Sailboat', 'Ferry', 'Canoe', 'Yacht'], 15: ['Kayak', 'Speedboat', 'Tugboat', 'Houseboat'], 30: ['Schooner', 'Catamaran', 'Gondola', 'Junk'], 60: ['Brigantine', 'Dhow', 'Trimaran', 'Frigate'], 85: ['Carrack', 'Galleass', 'Xebec'], 100: ['Felucca', 'Balinger', 'Cog'] } }
+];
+
+    (function applyContentPack3() {
+      const packNorm = (str) => String(str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/['’`]/g, '')
+        .replace(/[^a-z0-9\s-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      for (const cat of NEW_CATEGORIES_3) {
+        if (CATEGORIES.some(c => c.id === cat.id)) continue;
+        const seen = new Set();
+        for (const tier of Object.keys(cat.answers)) {
+          cat.answers[tier] = cat.answers[tier].filter(a => {
+            const key = packNorm(a);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        }
+        CATEGORIES.push(cat);
+      }
+    })();
+
     /* =========================================================================
        4. MULTI-SOURCE LIVE INTERNET GALACTIC ARCHIVES JUDGE
           (Wikipedia Categories & Extracts + Wikidata Entities + Free Dictionary)
@@ -3559,6 +4090,7 @@
       roomCode: '',
       myName: 'STAR-KRILL',
       rivalName: 'RIVAL-KRILL',
+      rivalCos: '',
       rivalDepth: 0,
       rivalRound: 0,
       rivalFinished: false,
@@ -3975,7 +4507,7 @@
         // response that can tear down a join that already succeeded:
         // it must never happen, whatever state we're in.
         if (gid && this._guestGid && gid === this._guestGid) {
-          this._publishNow({ type: 'HELLO', name: this.myName });
+          this._publishNow({ type: 'HELLO', name: this.myName, cos: this._myCos() });
           return;
         }
         const inGame = Game.mode === 'online' && (Game.state === 'playing' || Game.state === 'summary');
@@ -4008,7 +4540,7 @@
                 ? '🔗 LAUNCH CHAIN REACTION!'
                 : '🚀 LAUNCH ONLINE MATCH!';
         startBtn.style.display = 'inline-flex';
-        this._rawSend({ type: 'HELLO', name: this.myName });
+        this._rawSend({ type: 'HELLO', name: this.myName, cos: this._myCos() });
         this._flushQueue();
         this._handleData(msg);
         // Party-dealt duel: there is no lobby LAUNCH tap — the party
@@ -4168,7 +4700,12 @@
         if (this._joinAttemptNo > 1) {
           this.setStatus(`STILL LOOKING FOR ROOM "${this._joinCode}" — THE HOST MAY STILL BE STARTING UP... (TRY ${this._joinAttemptNo})`, '#38bdf8');
         }
-        this._publishNow({ type: 'HELLO', name: this.myName });
+        this._publishNow({ type: 'HELLO', name: this.myName, cos: this._myCos() });
+      },
+
+      // My equipped look as one compact string, riding every HELLO.
+      _myCos() {
+        try { return AvatarKit.encode(Game.save); } catch (_) { return ''; }
       },
 
       _failJoin() {
@@ -4243,6 +4780,7 @@
           return;
         } else if (data.type === 'HELLO') {
           this.rivalName = String(data.name || 'RIVAL-KRILL').slice(0, 14);
+          if (data.cos) this.rivalCos = String(data.cos).slice(0, 48);
           if (this.isHost) {
             this.setStatus(`✅ ${this.rivalName} JOINED! CLICK LAUNCH!`, '#34d399');
           } else {
@@ -4395,6 +4933,7 @@
         // reset, instead of leaving a dead "READY TO LAUNCH!" state
         // whose button silently does nothing.
         this.rivalName = 'RIVAL-KRILL';
+        this.rivalCos = '';
         if (this.isHost) {
           this._guestGid = '';
           document.getElementById('onlineStartMatchBtn').style.display = 'none';
@@ -4644,6 +5183,7 @@
         this._joinPhase = 'idle';
         this._busyRefused = false;
         this._roomOpen = false;
+        this.rivalCos = '';
         this.partyLinked = false;
         this._partyCode = '';
         this._partyDuelType = '';
@@ -4956,7 +5496,7 @@
         this.roomCode = OnlineNet.generateCode();
         this._sessionId = Math.random().toString(36).slice(2, 12);
         this._hostSid = '';
-        this.roster = [{ pid: this.myPid, name: this.myName }];
+        this.roster = [{ pid: this.myPid, name: this.myName, cos: this.myCos() }];
         this._lastRxByPid = { [this.myPid]: Date.now() };
         this._applyTeamsIfNeeded();
 
@@ -5053,9 +5593,14 @@
         });
       },
 
+      // My equipped look as one compact string, for HELLO/roster use.
+      myCos() {
+        try { return AvatarKit.encode(Game.save); } catch (_) { return ''; }
+      },
+
       _knock() {
         if (this._joinPhase !== 'joining' || this.connected) return;
-        this._publishNow({ type: 'HELLO', pid: this.myPid, name: this.myName });
+        this._publishNow({ type: 'HELLO', pid: this.myPid, name: this.myName, cos: this.myCos() });
       },
 
       _failJoin() {
@@ -5105,9 +5650,13 @@
             return;
           }
           if (pid && !this.roster.some(p => p.pid === pid)) {
-            this.roster.push({ pid, name: String(msg.name || 'GUEST-KRILL').slice(0, 14) });
+            this.roster.push({ pid, name: String(msg.name || 'GUEST-KRILL').slice(0, 14), cos: String(msg.cos || '').slice(0, 48) });
             this._applyTeamsIfNeeded();
             SoundFX.playCoinWinner();
+          } else if (pid && msg.cos) {
+            // A re-knock from a known pilot may carry a fresher outfit.
+            const known = this.roster.find(p => p.pid === pid);
+            if (known) known.cos = String(msg.cos).slice(0, 48);
           }
           this._broadcastRoster();
           this._renderRoster();
@@ -5370,7 +5919,7 @@
           if (p.pid === hostPid) tags.push('👑 HOST');
           if (p.pid === this.myPid) tags.push('(YOU)');
           if (teamsMode && p.team) tags.push(p.team === 'AZURE' ? '🔵 AZURE' : '🔴 CRIMSON');
-          return `<div style="font-size:18px; color:#e2e8f0;">🚀 ${p.name} <span style="color:#94a3b8; font-size:15px;">${tags.join(' ')}</span></div>`;
+          return `<div style="font-size:18px; color:#e2e8f0;">${AvatarKit.img(p.cos)} ${p.name} <span style="color:#94a3b8; font-size:15px;">${tags.join(' ')}</span></div>`;
         }).join('') || '<div style="font-size:17px; color:#94a3b8;">No pilots yet…</div>';
 
         const launchBtn = document.getElementById('partyLaunchBtn');
@@ -5454,7 +6003,7 @@
       },
 
       _startMatchAsHost(gameType) {
-        const players = this.roster.map(p => ({ pid: p.pid, name: p.name, team: p.team || null }));
+        const players = this.roster.map(p => ({ pid: p.pid, name: p.name, team: p.team || null, cos: p.cos || '' }));
         const count = gameType === 'knockout' ? 12 : 10;
         const prompts = Game.pickPromptsEndless(count, Game.selectedSector);
         this.inMatch = true;
@@ -5901,17 +6450,29 @@
 
         if (this.emoteTimer > 0) this.emoteTimer -= dt;
 
-        // Ambient thruster bubble/spark particles
+        // Ambient thruster particles — color/style from the TRAIL slot
         if (Math.random() < 0.35) {
+          let color = '#38bdf8';
+          let size = 4;
+          let vy = -35 - Math.random() * 45;
+          try {
+            const tid = (typeof Game !== 'undefined' && Game.save) ? (Game.save.equippedTrail || 'flame') : 'flame';
+            if (tid === 'flame') color = Math.random() < 0.5 ? '#f97316' : '#fbbf24';
+            else if (tid === 'ice') color = Math.random() < 0.5 ? '#a5f3fc' : '#ffffff';
+            else if (tid === 'sparkle') color = Math.random() < 0.5 ? '#fde68a' : '#ffffff';
+            else if (tid === 'shadow') color = Math.random() < 0.5 ? '#8b5cf6' : '#4c1d95';
+            else if (tid === 'rainbow') color = `hsl(${Math.floor((this.time * 170 + Math.random() * 50) % 360)}, 95%, 65%)`;
+            else if (tid === 'bubbles') { color = 'rgba(186,230,253,0.85)'; size = 5; vy = -22 - Math.random() * 26; }
+          } catch (_) {}
           this.particles.push({
             x: this.width * 0.14 + (Math.random() - 0.5) * 10,
             y: this.height * 0.45 - 18,
             vx: (Math.random() - 0.5) * 24,
-            vy: -35 - Math.random() * 45,
-            size: 4,
+            vy,
+            size,
             life: 0.65,
             maxLife: 0.65,
-            color: '#38bdf8'
+            color
           });
         }
 
@@ -5924,59 +6485,305 @@
         }
       },
 
+      // Legacy entry point (fleet bots): a plain look from raw colors.
       drawPixelKrill(ctx, x, y, skin, scale = 3, isRival = false, label = '') {
+        this.drawCharacter(ctx, x, y, {
+          body: skin.body, accent: skin.accent, visor: skin.visor || '#38bdf8',
+          hatId: 'none', suitId: 'plain', petId: 'none', trailId: 'flame',
+          trail: COSMETICS.trails[0]
+        }, scale, isRival, label);
+      },
+
+      /* The one true character render: color paint, suit pattern,
+         hat, and a thruster flame styled by the equipped trail. The
+         locker preview, the mini-avatars and the in-game hero/rival
+         all draw through here, so what you equip is what flies. */
+      drawCharacter(ctx, x, y, look, scale = 3, isRival = false, label = '') {
+        const s = scale;
         ctx.save();
         ctx.translate(Math.round(x), Math.round(y));
 
-        // Thruster flame
-        const flameH = (Math.sin(this.time * 26) > 0 ? 3 : 2) * scale;
-        ctx.fillStyle = '#f97316';
-        ctx.fillRect(-2 * scale, -7 * scale - flameH, 4 * scale, flameH);
-        ctx.fillStyle = '#fef08a';
-        ctx.fillRect(-1 * scale, -7 * scale - flameH * 0.6, 2 * scale, flameH * 0.6);
+        // Thruster flame (style from the TRAIL slot)
+        const flameH = (Math.sin(this.time * 26) > 0 ? 3 : 2) * s;
+        if (look.trailId === 'bubbles') {
+          ctx.fillStyle = 'rgba(186, 230, 253, 0.75)';
+          ctx.beginPath(); ctx.arc(0, -8 * s - flameH * 0.5, 1.7 * s, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(-1.6 * s, -7.4 * s - flameH * 0.3, 1.1 * s, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(1.7 * s, -7.6 * s - flameH * 0.4, 0.9 * s, 0, Math.PI * 2); ctx.fill();
+        } else {
+          let outer = look.trail ? look.trail.outer : '#f97316';
+          let inner = look.trail ? look.trail.inner : '#fef08a';
+          if (look.trailId === 'rainbow') {
+            outer = `hsl(${Math.floor((this.time * 160) % 360)}, 95%, 60%)`;
+            inner = '#ffffff';
+          }
+          ctx.fillStyle = outer;
+          ctx.fillRect(-2 * s, -7 * s - flameH, 4 * s, flameH);
+          ctx.fillStyle = inner;
+          ctx.fillRect(-1 * s, -7 * s - flameH * 0.6, 2 * s, flameH * 0.6);
+          if (look.trailId === 'sparkle') {
+            ctx.fillStyle = '#ffffff';
+            const tw = Math.sin(this.time * 9) > 0;
+            ctx.fillRect((tw ? -3.4 : 2.6) * s, -8.6 * s, 0.9 * s, 0.9 * s);
+            ctx.fillRect((tw ? 2.8 : -3.2) * s, -6.4 * s, 0.9 * s, 0.9 * s);
+          }
+        }
 
-        // Segmented Krill Body
-        ctx.fillStyle = skin.body;
-        ctx.fillRect(-4 * scale, -5 * scale, 8 * scale, 9 * scale);
-        ctx.fillStyle = skin.accent;
-        ctx.fillRect(-5 * scale, -2 * scale, 10 * scale, 2 * scale);
-        ctx.fillRect(-4 * scale, 1 * scale, 8 * scale, 2 * scale);
+        // Segmented Krill Body (COLOR slot paint)
+        ctx.fillStyle = look.body;
+        ctx.fillRect(-4 * s, -5 * s, 8 * s, 9 * s);
+        ctx.fillStyle = look.accent;
+        ctx.fillRect(-5 * s, -2 * s, 10 * s, 2 * s);
+        ctx.fillRect(-4 * s, 1 * s, 8 * s, 2 * s);
+
+        // SKIN slot: hull pattern / suit overlay
+        this._drawSuitPattern(ctx, look, s);
 
         // Tail fins
-        ctx.fillStyle = skin.accent;
-        ctx.fillRect(-6 * scale, -7 * scale, 3 * scale, 2 * scale);
-        ctx.fillRect(3 * scale, -7 * scale, 3 * scale, 2 * scale);
+        ctx.fillStyle = look.accent;
+        ctx.fillRect(-6 * s, -7 * s, 3 * s, 2 * s);
+        ctx.fillRect(3 * s, -7 * s, 3 * s, 2 * s);
 
         // Tiny legs
         const legShift = Math.sin(this.time * 12) > 0 ? 1 : 0;
-        ctx.fillStyle = skin.accent;
-        ctx.fillRect((-6 - legShift) * scale, 0, 2 * scale, scale);
-        ctx.fillRect((4 + legShift) * scale, 0, 2 * scale, scale);
-        ctx.fillRect((-6 + legShift) * scale, 3 * scale, 2 * scale, scale);
-        ctx.fillRect((4 - legShift) * scale, 3 * scale, 2 * scale, scale);
+        ctx.fillStyle = look.accent;
+        ctx.fillRect((-6 - legShift) * s, 0, 2 * s, s);
+        ctx.fillRect((4 + legShift) * s, 0, 2 * s, s);
+        ctx.fillRect((-6 + legShift) * s, 3 * s, 2 * s, s);
+        ctx.fillRect((4 - legShift) * s, 3 * s, 2 * s, s);
 
         // Astronaut Glass Helmet & Visor
         ctx.fillStyle = 'rgba(224, 242, 254, 0.35)';
-        ctx.fillRect(-5 * scale, 3 * scale, 10 * scale, 7 * scale);
-        ctx.fillStyle = skin.visor;
-        ctx.fillRect(-3 * scale, 5 * scale, 6 * scale, 3 * scale);
+        ctx.fillRect(-5 * s, 3 * s, 10 * s, 7 * s);
+        ctx.fillStyle = look.visor;
+        ctx.fillRect(-3 * s, 5 * s, 6 * s, 3 * s);
         // Visor shine
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-2 * scale, 5 * scale, 2 * scale, scale);
+        ctx.fillRect(-2 * s, 5 * s, 2 * s, s);
 
-        // Antennae
-        ctx.fillStyle = skin.body;
-        ctx.fillRect(-3 * scale, 10 * scale, scale, 3 * scale);
-        ctx.fillRect(2 * scale, 10 * scale, scale, 3 * scale);
+        // Antennae only when no hat covers the helmet tip
+        if (!look.hatId || look.hatId === 'none') {
+          ctx.fillStyle = look.body;
+          ctx.fillRect(-3 * s, 10 * s, s, 3 * s);
+          ctx.fillRect(2 * s, 10 * s, s, 3 * s);
+        }
+
+        // HAT slot
+        if (look.hatId && look.hatId !== 'none') this._drawHat(ctx, look.hatId, s);
 
         if (label) {
           ctx.font = 'bold 12px "Press Start 2P", monospace';
           ctx.fillStyle = isRival ? '#34d399' : '#fde68a';
           ctx.textAlign = 'center';
-          ctx.fillText(label, 0, -11 * scale);
+          ctx.fillText(label, 0, -11 * s);
         }
 
         ctx.restore();
+      },
+
+      _drawSuitPattern(ctx, look, s) {
+        const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x * s, y * s, w * s, h * s); };
+        switch (look.suitId) {
+          case 'stripes':
+            R(-0.6, -5, 1.2, 9, 'rgba(255,255,255,0.35)');
+            R(-4, -4.3, 8, 0.9, look.accent);
+            R(-4, 3.1, 8, 0.9, look.accent);
+            break;
+          case 'stars': {
+            const dots = [[-3, -4.2], [1, -3.4], [-1.4, -1], [2.6, -0.4], [-3, 1.8], [2, 3.2], [0.2, -4.4], [-2.2, 3.3]];
+            dots.forEach((d, i) => R(d[0], d[1], 0.9, 0.9, i % 2 ? '#ffffff' : '#fef08a'));
+            R(-2.6, -2.8, 1.5, 1.5, '#fef9c3');
+            break;
+          }
+          case 'camo':
+            R(-4, -5, 3.4, 2.2, 'rgba(0,0,0,0.22)');
+            R(0.6, -2.6, 3.4, 2.4, 'rgba(0,0,0,0.22)');
+            R(-2.6, 0.8, 3, 2.2, 'rgba(0,0,0,0.22)');
+            R(1.8, 2.6, 2.2, 1.4, 'rgba(0,0,0,0.22)');
+            R(-1, -4.4, 2.4, 1.6, 'rgba(255,255,255,0.15)');
+            R(2.2, -0.6, 1.8, 1.6, 'rgba(255,255,255,0.15)');
+            R(-3.6, 2.8, 2, 1.2, 'rgba(255,255,255,0.15)');
+            break;
+          case 'astro':
+            R(-2, -4.6, 4, 7.6, '#f8fafc');
+            R(-2, -4.6, 4, 0.9, '#f97316');
+            R(-2, 2.2, 4, 0.8, '#f97316');
+            R(-0.5, -1, 1, 1, '#f97316');
+            break;
+          case 'cyber':
+            R(-4, -3.4, 5, 0.45, '#22d3ee');
+            R(-1, 0.2, 5, 0.45, '#22d3ee');
+            R(1.6, -3.4, 0.45, 3.6, '#22d3ee');
+            R(-2.6, 0.2, 0.45, 3.4, '#22d3ee');
+            R(1.35, -3.65, 0.9, 0.9, '#22d3ee');
+            R(-2.85, -0.05, 0.9, 0.9, '#22d3ee');
+            R(-3.6, -3.65, 0.9, 0.9, '#f43f5e');
+            break;
+          case 'tux':
+            R(-4, -5, 2.6, 9, '#111827');
+            R(1.4, -5, 2.6, 9, '#111827');
+            R(-1.4, -5, 2.8, 9, '#f8fafc');
+            R(-0.35, -2, 0.7, 0.7, '#111827');
+            R(-0.35, 0.4, 0.7, 0.7, '#111827');
+            R(-1.5, 2.6, 1.1, 0.9, '#dc2626');
+            R(0.4, 2.6, 1.1, 0.9, '#dc2626');
+            break;
+          case 'void':
+            R(-4, -0.6, 8, 4.6, 'rgba(46,16,101,0.55)');
+            R(-4, -5, 8, 0.8, 'rgba(192,132,252,0.5)');
+            R(-2.6, -3.4, 0.9, 0.9, '#c084fc');
+            R(1.8, -1.6, 0.9, 0.9, '#c084fc');
+            R(-0.8, 2.4, 0.9, 0.9, '#c084fc');
+            break;
+          case 'gold':
+            R(-4, -5, 8, 2.6, 'rgba(254,240,138,0.45)');
+            R(-4, 1.8, 8, 1, 'rgba(254,240,138,0.25)');
+            R(-2.8, -4, 0.8, 0.8, '#ffffff');
+            R(2.4, -1.2, 0.8, 0.8, '#ffffff');
+            R(0.4, 3, 0.8, 0.8, '#ffffff');
+            R(-0.5, -3, 1, 1, '#ef4444');
+            break;
+          default:
+            break; // plain: the paint speaks for itself
+        }
+      },
+
+      _drawHat(ctx, hatId, s) {
+        const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x * s, y * s, w * s, h * s); };
+        switch (hatId) {
+          case 'party':
+            R(-3, 9.2, 6, 1.3, '#f472b6');
+            R(-2.1, 10.5, 4.2, 1.3, '#38bdf8');
+            R(-1.2, 11.8, 2.4, 1.3, '#facc15');
+            R(-1, 13.1, 2, 1.8, '#ffffff');
+            break;
+          case 'sprout':
+            R(-0.45, 9.6, 0.9, 2.6, '#16a34a');
+            R(-3.1, 11.6, 3, 1.2, '#4ade80');
+            R(0.1, 12.3, 3, 1.2, '#22c55e');
+            break;
+          case 'captain':
+            R(-5.2, 8.8, 10.4, 1.2, '#1e3a8a');
+            R(-4.2, 10, 8.4, 2.8, '#f8fafc');
+            R(-4.2, 10, 8.4, 1, '#1e3a8a');
+            R(-0.5, 12.8, 1, 1, '#fbbf24');
+            break;
+          case 'cowboy':
+            R(-6.6, 9, 13.2, 1.1, '#b45309');
+            R(-3.1, 10.1, 6.2, 2.8, '#d97706');
+            R(-3.1, 10.1, 6.2, 1, '#78350f');
+            R(-1, 12.9, 2, 0.7, '#b45309');
+            break;
+          case 'halo': {
+            const fy = Math.sin(this.time * 2.2) * 0.4;
+            R(-3.8, 12.2 + fy, 7.6, 2.9, 'rgba(253,224,71,0.18)');
+            R(-3.4, 12.6 + fy, 6.8, 0.8, '#fde047');
+            R(-3.4, 14 + fy, 6.8, 0.8, '#facc15');
+            R(-3.4, 13.4 + fy, 0.8, 0.7, '#fde047');
+            R(2.6, 13.4 + fy, 0.8, 0.7, '#fde047');
+            break;
+          }
+          case 'horns':
+            R(-5.4, 7.6, 1.7, 2.6, '#dc2626');
+            R(-5, 10.2, 1.3, 1.9, '#ef4444');
+            R(3.7, 7.6, 1.7, 2.6, '#dc2626');
+            R(3.7, 10.2, 1.3, 1.9, '#ef4444');
+            break;
+          case 'crown':
+            R(-4.2, 9.4, 8.4, 1.9, '#f59e0b');
+            R(-4.2, 10.9, 8.4, 0.5, '#d97706');
+            R(-3.6, 11.3, 1.5, 1.9, '#fbbf24');
+            R(-0.75, 11.3, 1.5, 2.4, '#fbbf24');
+            R(2.1, 11.3, 1.5, 1.9, '#fbbf24');
+            R(-0.6, 9.9, 1.2, 1.1, '#ef4444');
+            break;
+          default:
+            break;
+        }
+      },
+
+      /* PET slot: a little pixel companion drawn in the same style.
+         (The old drone buddies were emoji text on the canvas — pets
+         are real pixel art now.) */
+      drawPet(ctx, x, y, petId, scale = 2) {
+        const p = scale;
+        const R = (cx, cy, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(cx), Math.round(cy), Math.round(w), Math.round(h)); };
+        ctx.save();
+        ctx.translate(Math.round(x), Math.round(y));
+        switch (petId) {
+          case 'babykrill':
+            this.drawCharacter(ctx, 0, 0, AvatarKit.resolve({ color: 'pink', hat: 'none', suit: 'plain', pet: 'none', trail: 'flame' }), p * 0.62);
+            break;
+          case 'ufo':
+            R(-2 * p, -1.6 * p, 4 * p, 1.8 * p, 'rgba(186,230,253,0.85)');
+            R(-4.5 * p, 0, 9 * p, 1.8 * p, '#94a3b8');
+            R(-4.5 * p, 1.6 * p, 9 * p, 0.8 * p, '#64748b');
+            R(-3.2 * p, 0.5 * p, 1 * p, 1 * p, '#facc15');
+            R(-0.5 * p, 0.5 * p, 1 * p, 1 * p, '#f472b6');
+            R(2.2 * p, 0.5 * p, 1 * p, 1 * p, '#22d3ee');
+            R(-1.5 * p, 2.6 * p, 3 * p, 2.4 * p, 'rgba(253,224,71,0.16)');
+            break;
+          case 'star':
+            R(-1.5 * p, -1.5 * p, 3 * p, 3 * p, '#fbbf24');
+            R(-0.7 * p, -3.2 * p, 1.4 * p, 1.8 * p, '#fbbf24');
+            R(-3.2 * p, -0.7 * p, 1.8 * p, 1.4 * p, '#fbbf24');
+            R(1.4 * p, -0.7 * p, 1.8 * p, 1.4 * p, '#fbbf24');
+            R(-2.9 * p, 1.2 * p, 1.7 * p, 1.7 * p, '#f59e0b');
+            R(1.2 * p, 1.2 * p, 1.7 * p, 1.7 * p, '#f59e0b');
+            R(-0.9 * p, -0.5 * p, 0.55 * p, 0.8 * p, '#78350f');
+            R(0.4 * p, -0.5 * p, 0.55 * p, 0.8 * p, '#78350f');
+            R(-0.6 * p, 0.6 * p, 1.2 * p, 0.5 * p, '#78350f');
+            break;
+          case 'rocket': {
+            R(-1.5 * p, -3 * p, 3 * p, 6 * p, '#f1f5f9');
+            R(-1.5 * p, -4.6 * p, 3 * p, 1.6 * p, '#ef4444');
+            R(-0.5 * p, -5.3 * p, 1 * p, 0.8 * p, '#ef4444');
+            R(-0.7 * p, -1.6 * p, 1.4 * p, 1.4 * p, '#38bdf8');
+            R(-2.9 * p, 1.4 * p, 1.4 * p, 2.1 * p, '#ef4444');
+            R(1.5 * p, 1.4 * p, 1.4 * p, 2.1 * p, '#ef4444');
+            const fh = (Math.sin(this.time * 24) > 0 ? 1.6 : 1.1) * p;
+            R(-0.9 * p, 3 * p, 1.8 * p, fh, '#f97316');
+            R(-0.45 * p, 3 * p, 0.9 * p, fh * 0.6, '#fef08a');
+            break;
+          }
+          case 'squid': {
+            R(-2.5 * p, -2.6 * p, 5 * p, 3 * p, '#c084fc');
+            R(-2.5 * p, -0.2 * p, 5 * p, 1 * p, '#a855f7');
+            R(-1.5 * p, -1.5 * p, 0.8 * p, 0.8 * p, '#ffffff');
+            R(0.7 * p, -1.5 * p, 0.8 * p, 0.8 * p, '#ffffff');
+            for (let i = 0; i < 4; i++) {
+              const wob = Math.sin(this.time * 3 + i * 1.4) * 0.35 * p;
+              R((-2.2 + i * 1.35) * p + wob, 0.8 * p, 0.9 * p, 2.3 * p, '#a855f7');
+            }
+            break;
+          }
+          default:
+            break;
+        }
+        ctx.restore();
+      },
+
+      /* Snapshot of the character render as a data URL, for the
+         <img> mini-avatars next to pilot names all over the UI.
+         Cached per cosmetic string; '' when canvas is unavailable
+         (headless stubs), so callers can always embed it safely. */
+      avatarURL(cosStr) {
+        try {
+          const key = String(cosStr || '');
+          this._avatarCache = this._avatarCache || {};
+          if (this._avatarCache[key]) return this._avatarCache[key];
+          const look = AvatarKit.decode(key);
+          const cv = document.createElement('canvas');
+          cv.width = 132; cv.height = 112;
+          const c = cv.getContext('2d');
+          if (!c || typeof cv.toDataURL !== 'function') return '';
+          c.imageSmoothingEnabled = false;
+          this.drawCharacter(c, 50, 52, look, 2.5);
+          if (look.petId !== 'none') this.drawPet(c, 104, 42, look.petId, 1.5);
+          const url = cv.toDataURL();
+          if (url) this._avatarCache[key] = url;
+          return url || '';
+        } catch (_) { return ''; }
       },
 
       render() {
@@ -6080,34 +6887,42 @@
           }
         }
 
-        // 6. Rival Krill (in Ranked 1v1 Duel OR Online Multiplayer)
+        // 6. Rival Krill (in Ranked 1v1 Duel OR Online Multiplayer).
+        // Online rivals fly the exact look their HELLO transmitted;
+        // the AI duel rival keeps its classic emerald scheme.
         if ((Game.mode === 'duel' || Game.mode === 'online') && Game.state === 'playing') {
           const rivalLY = Game.mode === 'online' ? OnlineNet.rivalDepth : Game.rivalDepth;
           const rivalTag = Game.mode === 'online' ? OnlineNet.rivalName : 'RIVAL';
           const diffY = (rivalLY - ly) * 0.35;
           const ry = Math.max(70, Math.min(h - 70, h * 0.45 + diffY + Math.cos(this.time * 3.5) * 6));
-          this.drawPixelKrill(
-            ctx,
-            w * 0.86,
-            ry,
-            { body: '#34d399', accent: '#059669', visor: '#fde68a' },
-            2.6,
-            true,
-            rivalTag
-          );
+          const rivalCos = Game.mode === 'online' ? (OnlineNet.rivalCos || '') : '';
+          if (rivalCos) {
+            const rivalLook = AvatarKit.decode(rivalCos);
+            this.drawCharacter(ctx, w * 0.86, ry, rivalLook, 2.6, true, rivalTag);
+            if (rivalLook.petId !== 'none') {
+              this.drawPet(ctx, w * 0.86 - 42, ry - 20 + Math.cos(this.time * 4) * 5, rivalLook.petId, 1.7);
+            }
+          } else {
+            this.drawPixelKrill(
+              ctx,
+              w * 0.86,
+              ry,
+              { body: '#34d399', accent: '#059669', visor: '#fde68a' },
+              2.6,
+              true,
+              rivalTag
+            );
+          }
         }
 
-        // 7. Player's Hero Space-Krill + Drone Buddy + Emote
-        const skin = COSMETICS.skins.find(s => s.id === Game.save.equippedSkin) || COSMETICS.skins[0];
+        // 7. Player's Hero Space-Krill (full equipped look) + Pet + Emote
+        const look = AvatarKit.lookFromSave(Game.save);
         const krillX = w * 0.14;
         const krillY = h * 0.45 + Math.sin(this.time * 3.2) * 7;
-        this.drawPixelKrill(ctx, krillX, krillY, skin, 3.2);
+        this.drawCharacter(ctx, krillX, krillY, look, 3.2);
 
-        const drone = COSMETICS.drones.find(d => d.id === Game.save.equippedDrone);
-        if (drone && drone.id !== 'none') {
-          ctx.font = '22px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(drone.icon, krillX + 34, krillY - 18 + Math.cos(this.time * 4) * 5);
+        if (look.petId !== 'none') {
+          this.drawPet(ctx, krillX + 42, krillY - 22 + Math.cos(this.time * 4) * 5, look.petId, 1.9);
         }
 
         if (this.emoteTimer > 0 && this.emoteText) {
@@ -6370,6 +7185,10 @@
           (save.unlockedSkins || []).length > 1 ||
           (save.unlockedDrones || []).length > 1 ||
           (save.unlockedEmotes || []).length > 1 ||
+          (save.unlockedHats || []).length > 3 ||
+          (save.unlockedSuits || []).length > 2 ||
+          (save.unlockedPets || []).length > 2 ||
+          (save.unlockedTrails || []).length > 2 ||
           !!save.lastDailyDate;
       },
 
@@ -6719,7 +7538,7 @@
           await db.runTransaction(async (tx) => {
             const snap = await tx.get(ref);
             if (snap.exists && snap.data() && snap.data().uid !== uid) { taken = true; return; }
-            tx.set(ref, { uid, pilotName: display, lastSeen: firebase.firestore.FieldValue.serverTimestamp() });
+            tx.set(ref, { uid, pilotName: display, lastSeen: firebase.firestore.FieldValue.serverTimestamp(), cos: this._myCos() });
           });
           return taken ? 'taken' : 'ok';
         } catch (_) { return 'error'; }
@@ -6735,13 +7554,25 @@
         } catch (_) {}
       },
 
+      // My equipped look for the public directory (friends render it
+      // as a mini-avatar next to my name).
+      _myCos() {
+        try { return (typeof Game !== 'undefined' && Game.save) ? AvatarKit.encode(Game.save) : ''; } catch (_) { return ''; }
+      },
+
+      // Called whenever the pilot equips something new, so friends
+      // see the fresh outfit without waiting for the heartbeat.
+      publishCos() {
+        this._touchPresence();
+      },
+
       _touchPresence() {
         const db = this.db, me = this.me;
         const cleaned = this.myCleaned();
         if (!db || !me || !cleaned) return;
         try {
           db.collection('usernames').doc(cleaned)
-            .update({ lastSeen: firebase.firestore.FieldValue.serverTimestamp() })
+            .update({ lastSeen: firebase.firestore.FieldValue.serverTimestamp(), cos: this._myCos() })
             .catch(() => { this.claimName(cleaned, this.myName()); });
         } catch (_) {}
       },
@@ -6770,7 +7601,7 @@
             this._presenceUnsubs[cleaned] = db.collection('usernames').doc(cleaned).onSnapshot(snap => {
               if (snap.exists) {
                 const d = snap.data() || {};
-                this.presence[cleaned] = { uid: d.uid, pilotName: d.pilotName, lastSeenMs: this._tsMs(d.lastSeen) };
+                this.presence[cleaned] = { uid: d.uid, pilotName: d.pilotName, lastSeenMs: this._tsMs(d.lastSeen), cos: d.cos || '' };
               } else {
                 delete this.presence[cleaned];
               }
@@ -7202,7 +8033,7 @@
       // Persistent Save Data (built by defaultSave(), one per account)
       save: null,
 
-      lockerTab: 'skins',
+      lockerTab: 'colors',
 
       defaultStats() {
         const modeEntry = () => ({ games: 0, wins: 0, best: 0 });
@@ -7250,6 +8081,16 @@
           equippedSkin: 'coral',
           equippedDrone: 'none',
           equippedEmote: '🦐',
+          unlockedColors: COSMETICS.colors.map(c => c.id),
+          unlockedHats: ['none', 'party', 'sprout'],
+          unlockedSuits: ['plain', 'stripes'],
+          unlockedPets: ['none', 'babykrill'],
+          unlockedTrails: ['flame', 'bubbles'],
+          equippedColor: 'coral',
+          equippedHat: 'none',
+          equippedSuit: 'plain',
+          equippedPet: 'none',
+          equippedTrail: 'flame',
           seenPrompts: [],
           stats: this.defaultStats()
         };
@@ -7269,6 +8110,31 @@
         }
         for (const k of ['equippedSkin', 'equippedDrone', 'equippedEmote']) {
           if (typeof parsed[k] === 'string') base[k] = parsed[k];
+        }
+        for (const k of ['unlockedColors', 'unlockedHats', 'unlockedSuits', 'unlockedPets', 'unlockedTrails']) {
+          if (Array.isArray(parsed[k])) base[k] = parsed[k].filter(x => typeof x === 'string');
+        }
+        for (const k of ['equippedColor', 'equippedHat', 'equippedSuit', 'equippedPet', 'equippedTrail']) {
+          if (typeof parsed[k] === 'string') base[k] = parsed[k];
+        }
+        // One-time legacy migration: a save written before the five
+        // customization slots existed carries only skins/drones. Map
+        // everything the pilot owned (and wore) onto the new slots —
+        // colors are all free, and every mapped suit/pet is granted.
+        const hasNewSlots = typeof parsed.equippedColor === 'string' ||
+          Array.isArray(parsed.unlockedHats) || Array.isArray(parsed.unlockedSuits) ||
+          Array.isArray(parsed.unlockedPets) || Array.isArray(parsed.unlockedTrails);
+        if (!hasNewSlots) {
+          const grant = (key, id) => { if (id && !base[key].includes(id)) base[key].push(id); };
+          for (const skinId of base.unlockedSkins) {
+            const m = LEGACY_SKIN_MAP[skinId];
+            if (m) grant('unlockedSuits', m[1]);
+          }
+          const eqSkin = LEGACY_SKIN_MAP[base.equippedSkin];
+          if (eqSkin) { base.equippedColor = eqSkin[0]; base.equippedSuit = eqSkin[1]; }
+          for (const droneId of base.unlockedDrones) grant('unlockedPets', LEGACY_DRONE_MAP[droneId]);
+          const eqPet = LEGACY_DRONE_MAP[base.equippedDrone];
+          if (eqPet) base.equippedPet = eqPet;
         }
         if (Array.isArray(parsed.seenPrompts)) {
           base.seenPrompts = parsed.seenPrompts.filter(x => typeof x === 'string').slice(-150);
@@ -7431,6 +8297,19 @@
         document.getElementById('hudTokensText').textContent = this.save.tokens.toLocaleString();
         document.getElementById('hudStreakText').textContent = `${this.save.streak}d`;
         document.getElementById('emoteTriggerBtn').textContent = `${this.save.equippedEmote} EMOTE`;
+        // The header pilot chip wears the equipped look everywhere.
+        try {
+          const av = document.getElementById('hudAvatar');
+          if (av) {
+            const cos = AvatarKit.encode(this.save);
+            if (av.dataset.cos !== cos) {
+              av.dataset.cos = cos;
+              av.src = PixelCanvas.avatarURL(cos);
+            }
+          }
+          const pt = document.getElementById('hudPilotText');
+          if (pt) pt.textContent = Accounts.displayName();
+        } catch (_) {}
       },
 
       updateZoneHud(ly) {
@@ -7796,15 +8675,17 @@
         const mpBar = document.getElementById('multiplayerLiveBar');
         if (!race || !mpBar) return;
         mpBar.style.display = 'flex';
+        const myAv = AvatarKit.img(AvatarKit.encode(Game.save), 'width:28px; height:25px;');
+        const rvAv = AvatarKit.img(OnlineNet.rivalCos, 'width:28px; height:25px;');
         if (race.type === 'moonrace') {
-          mpBar.innerHTML = `<span style="color:#38bdf8;">🚀 YOU: <strong>${race.myKm.toLocaleString()} KM</strong></span>` +
-            `<span style="color:#34d399;">🛸 ${OnlineNet.rivalName}: <strong>${race.rivalKm.toLocaleString()} KM</strong></span>`;
+          mpBar.innerHTML = `<span style="color:#38bdf8;">${myAv} YOU: <strong>${race.myKm.toLocaleString()} KM</strong></span>` +
+            `<span style="color:#34d399;">${rvAv} ${OnlineNet.rivalName}: <strong>${race.rivalKm.toLocaleString()} KM</strong></span>`;
         } else if (race.type === 'lastship') {
-          mpBar.innerHTML = `<span style="color:#38bdf8;">🚀 YOU: <strong>${race.myScore} PTS</strong>${race.myResult ? ' ✅ LOCKED' : ''}</span>` +
-            `<span style="color:#34d399;">🛸 ${OnlineNet.rivalName}: <strong>${race.rivalScore} PTS</strong>${race.rivalResult ? ' ✅ LOCKED' : ''}</span>`;
+          mpBar.innerHTML = `<span style="color:#38bdf8;">${myAv} YOU: <strong>${race.myScore} PTS</strong>${race.myResult ? ' ✅ LOCKED' : ''}</span>` +
+            `<span style="color:#34d399;">${rvAv} ${OnlineNet.rivalName}: <strong>${race.rivalScore} PTS</strong>${race.rivalResult ? ' ✅ LOCKED' : ''}</span>`;
         } else {
-          mpBar.innerHTML = `<span style="color:#38bdf8;">🚀 HULL ${'❤️'.repeat(Math.max(0, race.myHull))} • <strong>${race.myScore} PTS</strong></span>` +
-            `<span style="color:#34d399;">🛸 ${OnlineNet.rivalName} HULL ${'❤️'.repeat(Math.max(0, race.rivalHull))} • <strong>${race.rivalScore} PTS</strong></span>`;
+          mpBar.innerHTML = `<span style="color:#38bdf8;">${myAv} HULL ${'❤️'.repeat(Math.max(0, race.myHull))} • <strong>${race.myScore} PTS</strong></span>` +
+            `<span style="color:#34d399;">${rvAv} ${OnlineNet.rivalName} HULL ${'❤️'.repeat(Math.max(0, race.rivalHull))} • <strong>${race.rivalScore} PTS</strong></span>`;
         }
       },
 
@@ -8328,7 +9209,7 @@
           round: -1,
           roundsTotal: promptObjs.length,
           players: players.map(p => ({
-            pid: p.pid, name: p.name, team: p.team || null,
+            pid: p.pid, name: p.name, team: p.team || null, cos: p.cos || '',
             ly: 0, pts: 0, time: 0, hull: 3, eliminated: false, inactive: false
           })),
           myPid: PartyNet.myPid,
@@ -8440,8 +9321,8 @@
         }
         const sorted = PartyRules.standings(party.players);
         const leader = sorted[0];
-        let html = `<span style="color:#38bdf8;">🚀 YOU: <strong>${me ? me.ly.toLocaleString() : 0} LY</strong>${party.type === 'knockout' && me ? ` • ${'❤️'.repeat(Math.max(0, me.hull))}${me.eliminated ? ' 💀 OUT' : ''}` : ''}</span>`;
-        html += `<span style="color:#fbbf24;">👑 ${leader && leader.pid !== party.myPid ? leader.name : 'YOU'}: <strong>${leader ? leader.ly.toLocaleString() : 0} LY</strong></span>`;
+        let html = `<span style="color:#38bdf8;">${AvatarKit.img(me ? me.cos : '', 'width:28px; height:25px;')} YOU: <strong>${me ? me.ly.toLocaleString() : 0} LY</strong>${party.type === 'knockout' && me ? ` • ${'❤️'.repeat(Math.max(0, me.hull))}${me.eliminated ? ' 💀 OUT' : ''}` : ''}</span>`;
+        html += `<span style="color:#fbbf24;">👑 ${leader ? AvatarKit.img(leader.cos, 'width:28px; height:25px;') : ''} ${leader && leader.pid !== party.myPid ? leader.name : 'YOU'}: <strong>${leader ? leader.ly.toLocaleString() : 0} LY</strong></span>`;
         html += `<span style="color:#94a3b8;">👥 ${party.players.length} PILOTS</span>`;
         mpBar.innerHTML = html;
       },
@@ -8626,7 +9507,7 @@
           const hull = party.type === 'knockout' ? ` ${'❤️'.repeat(Math.max(0, t.hull || 0))}` : '';
           const teamTag = party.type === 'teams' && p ? (p.team === 'AZURE' ? ' 🔵' : ' 🔴') : '';
           const tier = TIERS[e.pts] || TIERS[0];
-          return `${tier.emoji} <strong>${p ? p.name : '???'}${e.pid === party.myPid ? ' (YOU)' : ''}</strong>${teamTag}: ${String(e.answer).toUpperCase()} (+${e.ly} LY) — TOTAL ${t.ly != null ? t.ly.toLocaleString() : 0} LY${hull}${dead}`;
+          return `${AvatarKit.img(p ? p.cos : '')} ${tier.emoji} <strong>${p ? p.name : '???'}${e.pid === party.myPid ? ' (YOU)' : ''}</strong>${teamTag}: ${String(e.answer).toUpperCase()} (+${e.ly} LY) — TOTAL ${t.ly != null ? t.ly.toLocaleString() : 0} LY${hull}${dead}`;
         }).join('<br>');
 
         const hintEl = document.getElementById('revealRarityHint');
@@ -8717,7 +9598,7 @@
           const teamTag = party.type === 'teams' ? (p.team === 'AZURE' ? ' 🔵' : ' 🔴') : '';
           const dead = p.eliminated ? ' 💀 OUT' : p.inactive ? ' 📴' : '';
           const hull = party.type === 'knockout' ? ` • ${'❤️'.repeat(Math.max(0, p.hull))}` : '';
-          return `<div style="font-size:18px; color:${p.pid === party.myPid ? '#38bdf8' : '#cbd5e1'};">${i + 1}. ${p.name}${p.pid === party.myPid ? ' (YOU)' : ''}${teamTag} — <strong>${p.ly.toLocaleString()} LY</strong> (${p.pts} pts, ${p.time.toFixed(1)}s)${hull}${dead}</div>`;
+          return `<div style="font-size:18px; color:${p.pid === party.myPid ? '#38bdf8' : '#cbd5e1'};">${i + 1}. ${AvatarKit.img(p.cos)} ${p.name}${p.pid === party.myPid ? ' (YOU)' : ''}${teamTag} — <strong>${p.ly.toLocaleString()} LY</strong> (${p.pts} pts, ${p.time.toFixed(1)}s)${hull}${dead}</div>`;
         }).join('');
         mpBox.innerHTML = `<div class="font-pixel" style="font-size:12px; color:${iWon ? '#34d399' : isDraw ? '#fbbf24' : '#f87171'};">${iWon ? '🏆 VICTORY!' : isDraw ? '🤝 DRAW!' : 'FINAL STANDINGS'}</div>
           <div style="font-size:19px; color:#fde68a; margin-top:4px;">${winnerLine}</div>
@@ -8729,7 +9610,7 @@
             const p = this.partyPlayer(e.pid);
             const tier = TIERS[e.pts] || TIERS[0];
             return `<div style="display:flex; justify-content:space-between; font-size:17px;">
-              <span style="color:${e.pid === party.myPid ? '#38bdf8' : '#cbd5e1'};">${tier.emoji} ${p ? p.name : '???'}: <strong>${String(e.answer).toUpperCase()}</strong></span>
+              <span style="color:${e.pid === party.myPid ? '#38bdf8' : '#cbd5e1'};">${AvatarKit.img(p ? p.cos : '', 'width:26px; height:23px;')} ${tier.emoji} ${p ? p.name : '???'}: <strong>${String(e.answer).toUpperCase()}</strong></span>
               <span style="color:#fbbf24;">+${e.ly} LY</span>
             </div>`;
           }).join('');
@@ -9597,7 +10478,7 @@
         const rivalStatus = OnlineNet.rivalFinished
           ? `DONE (${OnlineNet.rivalDepth} LY)`
           : `P${Math.min(7, OnlineNet.rivalRound + 1)}/7 (${OnlineNet.rivalDepth} LY)`;
-        mpBar.innerHTML = `<span style="color:#38bdf8;">YOU: <strong>${this.depthLY} LY</strong></span><span style="color:#34d399;">${OnlineNet.rivalName}: <strong>${rivalStatus}</strong></span>`;
+        mpBar.innerHTML = `<span style="color:#38bdf8;">${AvatarKit.img(AvatarKit.encode(this.save), 'width:28px; height:25px;')} YOU: <strong>${this.depthLY} LY</strong></span><span style="color:#34d399;">${AvatarKit.img(OnlineNet.rivalCos, 'width:28px; height:25px;')} ${OnlineNet.rivalName}: <strong>${rivalStatus}</strong></span>`;
       },
 
       onOnlineRivalUpdate() {
@@ -10096,8 +10977,8 @@
 
         mpBox.innerHTML = `<div class="font-pixel" style="font-size:12px; color:#fde68a;">🏆 ${winnerName} WINS ONLINE DUEL!${OnlineNet.rivalForfeit ? ' (BY FORFEIT — RIVAL DISCONNECTED)' : ''}</div>
           <div style="font-size:19px; color:#cbd5e1; margin-top:4px;">
-            ${OnlineNet.myName}: <strong>${this.depthLY.toLocaleString()} LY</strong> (${this.totalElapsedSec.toFixed(1)}s) &nbsp;vs&nbsp;
-            ${OnlineNet.rivalName}: <strong>${OnlineNet.rivalDepth.toLocaleString()} LY</strong> (${OnlineNet.rivalTime.toFixed(1)}s)
+            ${AvatarKit.img(AvatarKit.encode(this.save))} ${OnlineNet.myName}: <strong>${this.depthLY.toLocaleString()} LY</strong> (${this.totalElapsedSec.toFixed(1)}s) &nbsp;vs&nbsp;
+            ${AvatarKit.img(OnlineNet.rivalCos)} ${OnlineNet.rivalName}: <strong>${OnlineNet.rivalDepth.toLocaleString()} LY</strong> (${OnlineNet.rivalTime.toFixed(1)}s)
           </div>`;
 
         breakdown.innerHTML = this.runLog.map((item, idx) => {
@@ -10431,6 +11312,53 @@
         this.hideAllModals();
         document.getElementById('lockerModal').style.display = 'flex';
         this.renderLocker();
+        // Live preview: keep redrawing while the locker is open so the
+        // flame flicker, halo bob and pet waves animate. The timer
+        // kills itself the moment the modal closes.
+        if (!this._lockerTimer) {
+          this._lockerTimer = setInterval(() => {
+            const m = document.getElementById('lockerModal');
+            if (!m || m.style.display !== 'flex') {
+              clearInterval(this._lockerTimer);
+              this._lockerTimer = null;
+              return;
+            }
+            this.renderLockerPreview();
+          }, 80);
+        }
+      },
+
+      // The big stage at the top of the locker: the exact character
+      // render the game flies, pet included, over a little starfield.
+      renderLockerPreview() {
+        const cv = document.getElementById('lockerPreview');
+        if (!cv || typeof cv.getContext !== 'function') return;
+        const ctx = cv.getContext('2d');
+        if (!ctx) return;
+        const w = cv.width, h = cv.height;
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.65)';
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(226, 232, 240, 0.5)';
+        const t = PixelCanvas.time || 0;
+        for (let i = 0; i < 26; i++) {
+          const sx = (i * 53 + 17) % w;
+          const sy = (i * 37 + 11) % h;
+          const sz = (i % 3 === 0) ? 3 : 2;
+          ctx.globalAlpha = 0.25 + 0.35 * Math.abs(Math.sin(t * 1.4 + i));
+          ctx.fillRect(sx, sy, sz, sz);
+        }
+        ctx.globalAlpha = 1;
+        const look = AvatarKit.lookFromSave(this.save);
+        const bobY = Math.sin(t * 3.2) * 4;
+        PixelCanvas.drawCharacter(ctx, w * 0.42, h * 0.47 + bobY, look, 3.6);
+        if (look.petId !== 'none') {
+          PixelCanvas.drawPet(ctx, w * 0.42 + 62, h * 0.47 - 30 + Math.cos(t * 4) * 4, look.petId, 2.1);
+        }
+        const info = document.getElementById('lockerPreviewInfo');
+        if (info) {
+          info.innerHTML = `FLYING AS <strong style="color:#f8fafc;">${this.escHtml(Accounts.displayName())}</strong> • 🪙 <strong style="color:#fbbf24;">${this.save.tokens.toLocaleString()}</strong> STAR TOKENS`;
+        }
       },
 
       openHelp() {
@@ -10698,9 +11626,11 @@
             ? `<div class="font-pixel" style="font-size:9px; color:#94a3b8; text-align:center;">⭐ YOUR CREW:</div>` +
               Social.friends.map(f => {
                 const online = Social.isOnline(f);
+                const pres = Social.presence[Accounts.cleanUsername(f.name)];
+                const fcos = pres ? (pres.cos || '') : '';
                 return `
                 <div class="breakdown-row">
-                  <span>${online ? '🟢' : '⚪'} ${this.escHtml(f.name)} <span style="color:${online ? '#34d399' : '#64748b'}; font-size:14px;">${online ? 'ONLINE' : 'OFFLINE'}</span></span>
+                  <span>${AvatarKit.img(fcos)} ${online ? '🟢' : '⚪'} ${this.escHtml(f.name)} <span style="color:${online ? '#34d399' : '#64748b'}; font-size:14px;">${online ? 'ONLINE' : 'OFFLINE'}</span></span>
                   <span style="display:flex; gap:6px;">
                     <button class="pixel-btn pixel-btn-gold" style="padding:5px 9px; font-size:9px;" onclick="Game.doInviteFriend('${f.uid}')">🎉 INVITE TO PARTY</button>
                     <button class="pixel-btn" style="padding:5px 9px; font-size:9px;" onclick="Game.doRemoveFriend('${f.uid}')">✖ REMOVE</button>
@@ -10840,60 +11770,95 @@
 
       switchLockerTab(tab) {
         this.lockerTab = tab;
-        document.getElementById('tabSkins').classList.toggle('active', tab === 'skins');
-        document.getElementById('tabDrones').classList.toggle('active', tab === 'drones');
-        document.getElementById('tabEmotes').classList.toggle('active', tab === 'emotes');
+        const tabs = { colors: 'tabColors', hats: 'tabHats', suits: 'tabSuits', pets: 'tabPets', trails: 'tabTrails', emotes: 'tabEmotes' };
+        for (const [key, elId] of Object.entries(tabs)) {
+          const el = document.getElementById(elId);
+          if (el) el.classList.toggle('active', tab === key);
+        }
         this.renderLocker();
       },
 
       renderLocker() {
+        this.renderLockerPreview();
         const grid = document.getElementById('lockerGrid');
+        if (!grid) return;
         const tab = this.lockerTab;
-        const items = COSMETICS[tab];
+        const items = COSMETICS[tab] || [];
+        const slotDef = AVATAR_SLOTS[tab];
+        if (!slotDef) { grid.innerHTML = ''; return; }
+        const currentLook = AvatarKit.lookFromSave(this.save);
 
         grid.innerHTML = items.map(item => {
-          const unlockedKey = tab === 'skins' ? 'unlockedSkins' : tab === 'drones' ? 'unlockedDrones' : 'unlockedEmotes';
-          const equippedKey = tab === 'skins' ? 'equippedSkin' : tab === 'drones' ? 'equippedDrone' : 'equippedEmote';
-          const isUnlocked = this.save[unlockedKey].includes(item.id);
-          const isEquipped = this.save[equippedKey] === item.id;
+          const isUnlocked = (this.save[slotDef.unlocked] || []).includes(item.id);
+          const isEquipped = this.save[slotDef.equipped] === item.id;
 
-          const preview = tab === 'skins'
-            ? `<div style="width:32px; height:32px; border-radius:4px; background:${item.body}; border:3px solid ${item.visor};"></div>`
-            : `<div style="font-size:28px;">${tab === 'drones' ? item.icon : item.id}</div>`;
+          const preview = tab === 'emotes'
+            ? `<div style="font-size:28px;">${item.id}</div>`
+            : `<canvas class="locker-preview" data-slot="${tab}" data-id="${item.id}" width="120" height="92"></canvas>`;
+
+          const priceLine = isUnlocked
+            ? `<div style="font-size:14px; color:#34d399;">OWNED</div>`
+            : item.cost > 0
+              ? `<div style="font-size:14px; color:#fbbf24;">🪙 ${item.cost} TOKENS</div>`
+              : `<div style="font-size:14px; color:#34d399;">FREE</div>`;
 
           const actionBtn = isEquipped
             ? `<button class="pixel-btn pixel-btn-emerald" style="font-size:9px; padding:6px 10px;" disabled>EQUIPPED</button>`
             : isUnlocked
               ? `<button class="pixel-btn pixel-btn-cyan" style="font-size:9px; padding:6px 10px;" onclick="Game.equipCosmetic('${tab}', '${item.id}')">EQUIP</button>`
-              : `<button class="pixel-btn pixel-btn-gold" style="font-size:9px; padding:6px 10px;" onclick="Game.buyCosmetic('${tab}', '${item.id}', ${item.cost})">🪙 ${item.cost}</button>`;
+              : `<button class="pixel-btn pixel-btn-gold" style="font-size:9px; padding:6px 10px;" onclick="Game.buyCosmetic('${tab}', '${item.id}', ${item.cost})">🪙 BUY — ${item.cost}</button>`;
 
-          return `<div class="locker-item ${isEquipped ? 'equipped' : ''}">
+          return `<div class="locker-item ${isEquipped ? 'equipped' : ''} ${isUnlocked ? '' : 'locked'}" data-item="${item.id}">
             ${preview}
-            <div class="font-pixel" style="font-size:9px; line-height:1.4;">${item.name}</div>
+            <div class="font-pixel" style="font-size:9px; line-height:1.4;">${item.name}${isUnlocked ? '' : ' 🔒'}</div>
+            ${priceLine}
             ${actionBtn}
           </div>`;
         }).join('');
+
+        // Paint each card's preview with the real character render:
+        // the pilot's current look with this card's slot swapped in.
+        if (tab !== 'emotes' && typeof grid.querySelectorAll === 'function') {
+          grid.querySelectorAll('canvas.locker-preview').forEach(cv => {
+            try {
+              const ctx = cv.getContext('2d');
+              if (!ctx) return;
+              ctx.imageSmoothingEnabled = false;
+              const look = AvatarKit.lookWith(currentLook, cv.dataset.slot, cv.dataset.id);
+              PixelCanvas.drawCharacter(ctx, 52, 44, look, 1.9);
+              if (look.petId !== 'none') {
+                PixelCanvas.drawPet(ctx, 96, 30, look.petId, 1.35);
+              }
+            } catch (_) {}
+          });
+        }
       },
 
       buyCosmetic(tab, id, cost) {
+        const slotDef = AVATAR_SLOTS[tab];
+        if (!slotDef) return;
         if (this.save.tokens < cost) {
           SoundFX.playInvalidBuzz();
-          this.showToast('NOT ENOUGH STAR TOKENS!');
+          this.showToast(`NOT ENOUGH STAR TOKENS — YOU HAVE 🪙 ${this.save.tokens}! EVERY FLIGHT PAYS 15+ TOKENS, WINNERS BANK MORE!`);
           return;
         }
-        const unlockedKey = tab === 'skins' ? 'unlockedSkins' : tab === 'drones' ? 'unlockedDrones' : 'unlockedEmotes';
         this.save.tokens -= cost;
-        this.save[unlockedKey].push(id);
-        this.equipCosmetic(tab, id);
+        if (!this.save[slotDef.unlocked].includes(id)) this.save[slotDef.unlocked].push(id);
         SoundFX.playCoinWinner();
+        this.equipCosmetic(tab, id);
+        const item = (COSMETICS[tab] || []).find(i => i.id === id);
+        this.showToast(`🎉 ${item ? item.name.toUpperCase() : 'COSMETIC'} UNLOCKED & EQUIPPED!`);
       },
 
       equipCosmetic(tab, id) {
-        const equippedKey = tab === 'skins' ? 'equippedSkin' : tab === 'drones' ? 'equippedDrone' : 'equippedEmote';
-        this.save[equippedKey] = id;
+        const slotDef = AVATAR_SLOTS[tab];
+        if (!slotDef) return;
+        this.save[slotDef.equipped] = id;
         this.persistSave();
         this.updateTopHud();
         this.renderLocker();
+        // Friends see the new look on the presence directory.
+        try { if (typeof Social !== 'undefined' && Social.publishCos) Social.publishCos(); } catch (_) {}
       }
     };
 
