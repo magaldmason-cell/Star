@@ -2881,6 +2881,12 @@
       webEnabled: true,
       cache: new Map(),
 
+      // Set whenever evaluate() rejects an answer through one of the
+      // exploit guards below, so the submit paths can show WHY the
+      // answer died instead of a generic "UNRECOGNIZED".
+      lastRejectNote: '',
+      ECHO_REJECT_NOTE: "🚫 THAT'S JUST THE PROMPT — NAME AN ACTUAL ONE!",
+
       checkLocal(category, rawInput) {
         const norm = normalizeText(rawInput);
         if (!norm || norm.length < 2) return null;
@@ -2939,6 +2945,116 @@
         }
 
         return null;
+      },
+
+      // Prompt-echo guard: an answer whose every content token already
+      // appears in the prompt is parroting the question, not answering
+      // it — "comet" for NAME A COMET, "William Shakespeare" for NAME A
+      // PLAY BY WILLIAM SHAKESPEARE, "planet" for NAME A PLANET.
+      // Token comparison is variant-tolerant (singular/plural and
+      // hyphenation forms), so "comets" can't slip past either, while
+      // a real answer that merely SHARES one word with the prompt
+      // ("Halley's Comet", "Tomato Soup") always passes: only a FULL
+      // echo — every token accounted for by the prompt — is rejected.
+      // Exact/variant membership in the category's curated lists. A
+      // listed answer is a vetted instance by definition — even when
+      // its name coincides with the prompt's own words (the character
+      // "Harry Potter" for NAME A HARRY POTTER CHARACTER, the film
+      // "The Marvels" for NAME AN MCU MOVIE) — so the echo guard
+      // exempts it. Unlisted echoes get no such pass.
+      isListedAnswer(category, rawInput) {
+        const norm = normalizeText(rawInput);
+        if (!norm) return false;
+        const inputVariants = getVariants(norm);
+        for (const pts of [100, 85, 60, 30, 15, 10]) {
+          const list = category.answers[pts] || [];
+          for (const item of list) {
+            const itemVariants = getVariants(normalizeText(item));
+            for (const iv of inputVariants) {
+              if (itemVariants.has(iv)) return true;
+            }
+          }
+        }
+        return false;
+      },
+
+      isPromptEcho(category, rawInput) {
+        const norm = normalizeText(rawInput);
+        if (!norm) return false;
+        // 'a' is deliberately NOT a function word here: it doubles as a
+        // letter suffix in real names ("Vitamin A"), and normalizeText
+        // already strips a leading article from the raw answer.
+        const FUNCTION_WORDS = new Set(['an', 'the', 'and', 'or', 'of', 'by', 'with', 'in', 'on', 'at', 'to', 'for', 'that', 'from', 'than', 'other', 'any', 'one']);
+        const ansTokens = norm.split(' ').filter(t => t && !FUNCTION_WORDS.has(t));
+        if (!ansTokens.length) return false;
+        // Compare against the prompt's CONTENT: drop the "Name a ..." /
+        // "Type a ..." frame so its scaffolding tokens (and the stray
+        // article in particular) can't complete a false echo.
+        const ptoks = normalizeText(category.prompt).split(' ').filter(Boolean);
+        if (ptoks[0] === 'name' || ptoks[0] === 'type') ptoks.shift();
+        if (ptoks[0] === 'a' || ptoks[0] === 'an' || ptoks[0] === 'the') ptoks.shift();
+        const promptForms = new Set();
+        for (const t of ptoks) {
+          for (const v of getVariants(t)) promptForms.add(v);
+        }
+        return ansTokens.every(t => {
+          if (promptForms.has(t)) return true;
+          for (const v of getVariants(t)) if (promptForms.has(v)) return true;
+          return false;
+        });
+      },
+
+      // The generic class an answer must be an INSTANCE of, as a set of
+      // normalized label forms: derived from the prompt's head noun
+      // phrase ("comet" from NAME A NAMED COMET, "play" from NAME A
+      // PLAY BY WILLIAM SHAKESPEARE, "cloud" from NAME A TYPE OF CLOUD)
+      // plus the category's web keywords, which are class descriptors
+      // by design ("comet", "periodic comet", "natural satellite"...).
+      classLabelForms(category) {
+        const forms = new Set();
+        const addPhrase = (phrase, withTokens) => {
+          const n = normalizeText(phrase);
+          if (!n) return;
+          for (const v of getVariants(n)) forms.add(v);
+          if (withTokens) {
+            for (const tok of n.split(' ')) {
+              if (tok) for (const v of getVariants(tok)) forms.add(v);
+            }
+          }
+        };
+        const STOP = new Set(['by', 'of', 'in', 'on', 'from', 'with', 'that', 'starting', 'starts', 'containing', 'without', 'or', 'other', 'than', 'played', 'at', 'to', 'for', 'ending', 'ends']);
+        const FILLER = new Set(['type', 'kind', 'species', 'variety', 'style', 'branch', 'field', 'form', 'group']);
+        const ptoks = normalizeText(category.prompt).split(' ').filter(Boolean);
+        let i = 0;
+        if (ptoks[i] === 'name' || ptoks[i] === 'type') i++;
+        if (ptoks[i] === 'a' || ptoks[i] === 'an' || ptoks[i] === 'the') i++;
+        const head = [];
+        while (i < ptoks.length) {
+          const t = ptoks[i];
+          if (STOP.has(t)) {
+            // "...TYPE OF CLOUD": a filler-only head keeps going past "of"
+            if (t === 'of' && head.length && head.every(h => FILLER.has(h))) { head.push(t); i++; continue; }
+            break;
+          }
+          head.push(t); i++;
+        }
+        if (head.length) addPhrase(head.join(' '), true);
+        for (const kw of (category.webKeywords || [])) addPhrase(kw, false);
+        return forms;
+      },
+
+      // Class-identity guard for the web judge: true when a resolved
+      // web entity IS the category's generic class — its label is the
+      // class label itself (the "Comet" article, the "William
+      // Shakespeare" author page for the play category) — rather than
+      // a named instance of that class.
+      isClassEntity(category, label, classForms) {
+        const n = normalizeText(label);
+        if (!n) return false;
+        const forms = classForms || this.classLabelForms(category);
+        if (forms.has(n)) return true;
+        for (const v of getVariants(n)) if (forms.has(v)) return true;
+        return false;
       },
 
       isTitleMatch(candidateTitle, normInput, aliases = []) {
@@ -3086,6 +3202,15 @@
       },
 
       async evaluate(category, rawInput) {
+        this.lastRejectNote = '';
+        // Exploit guard (runs before EVERY judging path — local lists,
+        // fuzzy matching, custom validators and the Web AI Judge alike):
+        // an answer that just parrots the prompt is not an answer.
+        // Curated list entries are exempt (see isListedAnswer).
+        if (this.isPromptEcho(category, rawInput) && !this.isListedAnswer(category, rawInput)) {
+          this.lastRejectNote = this.ECHO_REJECT_NOTE;
+          return null;
+        }
         const localHit = this.checkLocal(category, rawInput);
         if (localHit) return localHit;
 
@@ -3107,6 +3232,7 @@
         try {
           const keywords = this.buildKeywordSet(category);
           const excludes = (category.webExclude || []).map(x => x.toLowerCase());
+          const classForms = this.classLabelForms(category);
 
           const tasks = [
             this.queryWikipediaRich(rawInput),
@@ -3157,6 +3283,14 @@
 
             const aliases = matchingWd && matchingWd.aliases ? matchingWd.aliases : [];
             if (!this.isTitleMatch(page.title, norm, aliases)) continue;
+
+            // Class-identity guard: the article that IS the category's
+            // generic class (the "Comet" article itself, the author's
+            // page for a "work by" prompt) is not a named instance of
+            // it — its class verification trivially passes and its
+            // obscurity score is meaningless, so skip the candidate.
+            if (this.isClassEntity(category, page.title, classForms) ||
+                (matchingWd && this.isClassEntity(category, matchingWd.label, classForms))) continue;
 
             const catNames = (page.categories || []).map(c => c.title.replace(/^Category:/i, '').toLowerCase());
             const extractLower = String(page.extract || '').toLowerCase();
@@ -3217,6 +3351,9 @@
 
           for (const item of wdItems) {
             if (!this.isTitleMatch(item.label, norm, item.aliases || [])) continue;
+            // Class-identity guard, same as the article loop above:
+            // the bare class entity itself is never a valid answer.
+            if (this.isClassEntity(category, item.label, classForms)) continue;
             const desc = String(item.description || '').toLowerCase();
             if (excludes.some(ex => desc.includes(ex))) continue;
 
@@ -6418,7 +6555,7 @@
         if (!match) {
           SoundFX.playInvalidBuzz();
           fb.style.color = '#f87171';
-          fb.textContent = `"${raw.toUpperCase()}" UNRECOGNIZED — TRY AGAIN!`;
+          fb.textContent = AnswerJudge.lastRejectNote || `"${raw.toUpperCase()}" UNRECOGNIZED — TRY AGAIN!`;
           inputEl.classList.remove('shake');
           void inputEl.offsetWidth;
           inputEl.classList.add('shake');
@@ -6485,7 +6622,7 @@
         if (!match) {
           SoundFX.playInvalidBuzz();
           fb.style.color = '#f87171';
-          fb.textContent = `"${raw.toUpperCase()}" UNRECOGNIZED — TRY AGAIN!`;
+          fb.textContent = AnswerJudge.lastRejectNote || `"${raw.toUpperCase()}" UNRECOGNIZED — TRY AGAIN!`;
           inputEl.classList.remove('shake');
           void inputEl.offsetWidth;
           inputEl.classList.add('shake');
@@ -6526,7 +6663,9 @@
           race.myTimeTotal += race.thinkElapsed;
           SoundFX.playInvalidBuzz();
           fb.style.color = '#f87171';
-          fb.textContent = `☄️ METEOR HIT! "${raw.toUpperCase()}" UNRECOGNIZED — HULL ${race.myHull}/3`;
+          fb.textContent = AnswerJudge.lastRejectNote
+            ? `☄️ METEOR HIT! ${AnswerJudge.lastRejectNote} — HULL ${race.myHull}/3`
+            : `☄️ METEOR HIT! "${raw.toUpperCase()}" UNRECOGNIZED — HULL ${race.myHull}/3`;
           inputEl.classList.remove('shake');
           void inputEl.offsetWidth;
           inputEl.classList.add('shake');
@@ -6989,7 +7128,7 @@
         if (!match) {
           SoundFX.playInvalidBuzz();
           fb.style.color = '#f87171';
-          fb.textContent = `"${raw.toUpperCase()}" UNRECOGNIZED — TRY AGAIN!`;
+          fb.textContent = AnswerJudge.lastRejectNote || `"${raw.toUpperCase()}" UNRECOGNIZED — TRY AGAIN!`;
           inputEl.classList.remove('shake');
           void inputEl.offsetWidth;
           inputEl.classList.add('shake');
@@ -7552,7 +7691,7 @@
         if (!cd || cd.over) return;
         if (!match) {
           this.chainHostApplyResult(role, {
-            accepted: false, note: `"${String(raw).toUpperCase()}" UNRECOGNIZED`,
+            accepted: false, note: AnswerJudge.lastRejectNote || `"${String(raw).toUpperCase()}" UNRECOGNIZED`,
             answer: `${String(raw).toUpperCase()} (MISS)`, pts: 0, ly: 0
           });
           return;
@@ -8167,12 +8306,14 @@
 
         if (!match) {
           if (this.mode === 'onelife') {
-            this.onelifeDie(`"${raw.toUpperCase()}" UNRECOGNIZED`);
+            this.onelifeDie(AnswerJudge.lastRejectNote
+              ? AnswerJudge.lastRejectNote.replace(/!$/, '')
+              : `"${raw.toUpperCase()}" UNRECOGNIZED`);
             return;
           }
           SoundFX.playInvalidBuzz();
           fb.style.color = '#f87171';
-          fb.textContent = `"${raw.toUpperCase()}" UNRECOGNIZED — TRY AGAIN!`;
+          fb.textContent = AnswerJudge.lastRejectNote || `"${raw.toUpperCase()}" UNRECOGNIZED — TRY AGAIN!`;
           if (this.mode === 'lightspeed' && this.blitz && this.blitz.combo > 0) {
             this.blitz.combo = 0;
             this.refreshBlitzBar();
