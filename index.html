@@ -910,11 +910,21 @@
 
           <div>
             <div class="font-pixel" style="font-size:9px; color:#94a3b8; margin-bottom:6px; text-align:center;">🎯 PARTY GAME (HOST CHOOSES)</div>
+            <div class="font-pixel" style="font-size:9px; color:#c084fc; margin-bottom:4px; text-align:left;">🎉 PARTY 2+</div>
             <div class="sector-bar" id="partyGameTypeBar">
-              <button class="sector-chip active" data-pgametype="party" onclick="PartyNet.setPartyGameType('party')">⭐ STAR PARTY</button>
-              <button class="sector-chip" data-pgametype="knockout" onclick="PartyNet.setPartyGameType('knockout')">💀 KNOCKOUT</button>
-              <button class="sector-chip" data-pgametype="teams" onclick="PartyNet.setPartyGameType('teams')">👥 TEAM CLASH</button>
+              <button class="sector-chip active" data-pgametype="party" onclick="PartyNet.setPartyMode('party')">⭐ STAR PARTY</button>
+              <button class="sector-chip" data-pgametype="knockout" onclick="PartyNet.setPartyMode('knockout')">💀 KNOCKOUT</button>
+              <button class="sector-chip" data-pgametype="teams" onclick="PartyNet.setPartyMode('teams')">👥 TEAM CLASH</button>
             </div>
+            <div class="font-pixel" style="font-size:9px; color:#38bdf8; margin:8px 0 4px; text-align:left;">⚔️ 2 PLAYER</div>
+            <div class="sector-bar" id="partyDuelTypeBar">
+              <button class="sector-chip" data-pdueltype="duel" onclick="PartyNet.setPartyMode('duel')">⚔️ CLASSIC DUEL</button>
+              <button class="sector-chip" data-pdueltype="moonrace" onclick="PartyNet.setPartyMode('moonrace')">🌕 MOON RACE</button>
+              <button class="sector-chip" data-pdueltype="lastship" onclick="PartyNet.setPartyMode('lastship')">💀 LAST SHIP</button>
+              <button class="sector-chip" data-pdueltype="meteor" onclick="PartyNet.setPartyMode('meteor')">☄️ METEOR STORM</button>
+              <button class="sector-chip" data-pdueltype="chain" onclick="PartyNet.setPartyMode('chain')">🔗 CHAIN REACTION</button>
+            </div>
+            <div id="partyDuelGateNote" class="font-pixel" style="display:none; font-size:8px; color:#fbbf24; text-align:center; margin-top:4px;">⚠️ 2-PLAYER MODES NEED EXACTLY 2 PILOTS IN THE ROOM</div>
             <div id="partyGameTypeDesc" style="font-size:17px; color:#94a3b8; text-align:center; margin-top:6px; line-height:1.3;">
               ⭐ Star Party — 2 to UNLIMITED pilots, 10 rounds, everyone answers the same prompt at once. Rarest answers bank the most LY!
             </div>
@@ -1110,6 +1120,11 @@
         <!-- Multiplayer Standings Box -->
         <div id="summaryMultiplayerBox" style="display:none; background:rgba(15,23,42,0.92); border:2px solid #38bdf8; border-radius:6px; padding:10px; text-align:center;"></div>
 
+        <!-- Host-is-picking notice (guests) + next-mode pickers (hosts) -->
+        <div id="summaryPickingMsg" class="font-pixel" style="display:none; font-size:11px; color:#fbbf24; text-align:center;">🎮 HOST IS PICKING THE NEXT MODE…</div>
+        <div id="partyPickerBox" style="display:none; background:rgba(4,8,20,0.92); border:2px solid #c084fc; border-radius:6px; padding:10px;"></div>
+        <div id="duelPickerBox" style="display:none; background:rgba(4,8,20,0.92); border:2px solid #34d399; border-radius:6px; padding:10px;"></div>
+
         <!-- Emoji Grid & Token Reward -->
         <div style="display:flex; justify-content:space-around; align-items:center; flex-wrap:wrap; gap:10px; background:rgba(4,8,20,0.85); border:2px solid #334155; border-radius:6px; padding:10px;">
           <div id="summaryEmojiGrid" style="font-size:26px; letter-spacing:4px;">🟦🟨🟩🟪💎⬛</div>
@@ -1123,6 +1138,7 @@
         <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
           <button class="pixel-btn pixel-btn-cyan" onclick="Game.shareResult()">📋 SHARE GRID</button>
           <button id="playAgainBtn" class="pixel-btn pixel-btn-gold" onclick="Game.replayCurrentMode()">🔄 PLAY AGAIN</button>
+          <button id="backToPartyBtn" class="pixel-btn pixel-btn-emerald" style="display:none;" onclick="Game.backToParty()">🏠 BACK TO PARTY</button>
           <button class="pixel-btn" onclick="Game.abortToMenu()">🏠 MAIN MENU</button>
         </div>
       </section>
@@ -3562,10 +3578,12 @@
                          rival having left (their BYE usually says so
                          sooner — see _onRivalGone).
          rematch:        PLAY AGAIN on an online results screen sends
-                         a REMATCH_OFFER instead of dropping the party:
-                         the connection stays up, and the host deals a
-                         fresh match of the same type (_lastGameType)
-                         the moment both sides have offered. */
+                         a REMATCH_OFFER (the guest's "I'm in") instead
+                         of dropping the party: the connection stays up,
+                         and the host PICKS the next mode in a picker —
+                         the pick deals a fresh match of that type.
+                         Party-dealt duels (partyLinked) skip rematch
+                         entirely: BACK TO PARTY is their exit. */
       _sendQueue: [],
       _joinPhase: 'idle',
       _joinCode: '',
@@ -3588,6 +3606,34 @@
       _rematchRival: false,
       _lastGameType: '',
       _partyGone: false,
+      // Party-linked duels: this 1v1 room was dealt from inside a
+      // PartyNet party (see PartyNet._launchDuelFromParty). The party
+      // stays connected as the session home on its own client; when
+      // the duel ends, BACK TO PARTY — not a rematch — is the way out.
+      partyLinked: false,
+      _partyCode: '',
+      _partyDuelType: '',
+      // Play-again picker state: the host picks the NEXT mode instead
+      // of blindly relaunching the last one. The guest's REMATCH_OFFER
+      // is their "I'm in" signal; PICKING tells them the host is
+      // choosing.
+      _hostPicking: false,
+      _rivalPicking: false,
+
+      // The five 2-player modes this transport runs, and the display
+      // labels for every online mode (party modes included — the
+      // summary pickers render both groups from this one table).
+      DUEL_TYPES: ['duel', 'moonrace', 'lastship', 'meteor', 'chain'],
+      MODE_LABELS: {
+        duel: '⚔️ CLASSIC DUEL',
+        moonrace: '🌕 MOON RACE',
+        lastship: '💀 LAST SHIP',
+        meteor: '☄️ METEOR STORM',
+        chain: '🔗 CHAIN REACTION',
+        party: '⭐ STAR PARTY',
+        knockout: '💀 KNOCKOUT',
+        teams: '👥 TEAM CLASH'
+      },
 
       // Public MQTT brokers (secure websockets). The primary is tried
       // first; if it errors or closes before the first connect lands,
@@ -3808,27 +3854,42 @@
         else this._onGuestMessage(msg);
       },
 
-      hostRoom() {
+      // opts.party: this room is a duel dealt from inside a PartyNet
+      // party — the party keeps its own client and stays connected as
+      // the session home, the code/mode/name come from the party, and
+      // the 1v1 lobby chrome stays hidden (the party lobby is the
+      // screen the players are actually looking at).
+      hostRoom(opts = {}) {
         this.disconnect();
-        PartyNet.disconnect();
+        if (!opts.party) PartyNet.disconnect();
         if (typeof mqtt === 'undefined') {
           this.setStatus('⚠️ MULTIPLAYER LIBRARY FAILED TO LOAD — CHECK YOUR CONNECTION AND RELOAD THE PAGE.', '#f87171');
           return;
         }
 
-        const rawName = (document.getElementById('onlineCallsignInput').value || '').trim().toUpperCase();
+        const rawName = opts.party
+          ? PartyNet.myName
+          : (document.getElementById('onlineCallsignInput').value || '').trim().toUpperCase();
         this.myName = rawName || 'HOST-KRILL';
         this.isHost = true;
-        this.roomCode = this.generateCode();
+        this.roomCode = opts.code || this.generateCode();
         this._sessionId = Math.random().toString(36).slice(2, 12);
         this._guestGid = '';
+        if (opts.party) {
+          this.partyLinked = true;
+          this._partyCode = PartyNet.roomCode;
+          this._partyDuelType = opts.gameType || 'duel';
+          this.lobbyGameType = this._partyDuelType;
+        }
 
-        const box = document.getElementById('onlineRoomStatusBox');
-        const codeWrap = document.getElementById('onlineCodeWrapper');
-        box.style.display = 'flex';
-        codeWrap.style.display = 'flex';
-        document.getElementById('hostedRoomCodeText').textContent = this.roomCode;
-        document.getElementById('onlineStartMatchBtn').style.display = 'none';
+        if (!opts.party) {
+          const box = document.getElementById('onlineRoomStatusBox');
+          const codeWrap = document.getElementById('onlineCodeWrapper');
+          box.style.display = 'flex';
+          codeWrap.style.display = 'flex';
+          document.getElementById('hostedRoomCodeText').textContent = this.roomCode;
+          document.getElementById('onlineStartMatchBtn').style.display = 'none';
+        }
         this.setStatus('OPENING ORBITAL BEACON...', '#38bdf8');
 
         this._armJoinTimeout();
@@ -3930,9 +3991,23 @@
         this._rawSend({ type: 'HELLO', name: this.myName });
         this._flushQueue();
         this._handleData(msg);
+        // Party-dealt duel: there is no lobby LAUNCH tap — the party
+        // host already picked this mode, so the knock connecting IS
+        // the launch signal. Deal the chosen mode once the welcome
+        // has had a beat to land.
+        if (this.partyLinked) {
+          const type = this._partyDuelType || 'duel';
+          setTimeout(() => {
+            if (this.connected && this.partyLinked && Game.state !== 'playing') {
+              this._launchAsHost(type);
+            }
+          }, 400);
+        }
       },
 
-      joinRoom() {
+      // opts.party: see hostRoom — the duel code arrives over the
+      // party channel (PARTY_DUEL_LAUNCH), the party stays connected.
+      joinRoom(opts = {}) {
         // Idempotent: the join fires itself the moment the 6th digit
         // is typed, and a JOIN ROOM tap a moment later is the SAME
         // join arriving twice. Restarting here would disconnect,
@@ -3943,28 +4018,38 @@
         // no second broker client.
         if (this._joinPhase === 'joining' || this.connected) return;
         this.disconnect();
-        PartyNet.disconnect();
+        if (!opts.party) PartyNet.disconnect();
         if (typeof mqtt === 'undefined') {
           this.setStatus('⚠️ MULTIPLAYER LIBRARY FAILED TO LOAD — CHECK YOUR CONNECTION AND RELOAD THE PAGE.', '#f87171');
           return;
         }
 
-        const code = (document.getElementById('joinCodeInput').value || '').replace(/\D/g, '');
+        const code = (opts.code || (document.getElementById('joinCodeInput').value || '')).replace(/\D/g, '');
         if (code.length !== 6) {
           Game.showToast('ENTER THE 6-DIGIT ROOM CODE!');
           return;
         }
 
-        const rawName = (document.getElementById('onlineCallsignInput').value || '').trim().toUpperCase();
+        const rawName = opts.party
+          ? PartyNet.myName
+          : (document.getElementById('onlineCallsignInput').value || '').trim().toUpperCase();
         this.myName = rawName || 'GUEST-KRILL';
         this.isHost = false;
         this.roomCode = code;
+        if (opts.party) {
+          this.partyLinked = true;
+          this._partyCode = PartyNet.roomCode;
+          this._partyDuelType = opts.gameType || 'duel';
+          this.lobbyGameType = this._partyDuelType;
+        }
 
-        const box = document.getElementById('onlineRoomStatusBox');
-        const codeWrap = document.getElementById('onlineCodeWrapper');
-        box.style.display = 'flex';
-        codeWrap.style.display = 'none';
-        document.getElementById('onlineStartMatchBtn').style.display = 'none';
+        if (!opts.party) {
+          const box = document.getElementById('onlineRoomStatusBox');
+          const codeWrap = document.getElementById('onlineCodeWrapper');
+          box.style.display = 'flex';
+          codeWrap.style.display = 'none';
+          document.getElementById('onlineStartMatchBtn').style.display = 'none';
+        }
 
         // Forgiving join: the classic failure is knocking before the
         // host's room exists — the host may still be opening it, or a
@@ -4176,6 +4261,17 @@
             Game.showToast('RIVAL WANTS A REMATCH!');
           }
           this._maybeLaunchRematch();
+        } else if (data.type === 'PICKING') {
+          // The host is choosing the next mode (play-again picker).
+          // Guests just note it — their offer already said they're in.
+          this._rivalPicking = true;
+          if (Game.mode === 'online' && Game.state === 'summary' && !this.isHost) {
+            Game.showToast('🎮 HOST IS PICKING THE NEXT MODE…');
+          }
+          this._refreshRematchUi();
+        } else if (data.type === 'PICKING_CANCEL') {
+          this._rivalPicking = false;
+          this._refreshRematchUi();
         } else if (data.type === 'START_CHAIN') {
           const cat = CATEGORIES.find(c => c.id === data.promptId);
           if (cat) {
@@ -4342,16 +4438,20 @@
       },
 
       // --- Rematch handshake ----------------------------------------
-      // PLAY AGAIN on an online results screen is an OFFER, not a
-      // local restart: the party (broker client, room, heartbeat)
-      // never closes, and the host deals a fresh match of the same
-      // type the moment both sides have offered. Either side can
+      // PLAY AGAIN on an online results screen is never a local
+      // restart: the party (broker client, room, heartbeat) never
+      // closes. The guest's tap is an OFFER ("I'm in"); the host's
+      // tap opens the next-mode picker and the host's pick deals a
+      // fresh match of the CHOSEN type for both. Either side can
       // still walk away at any time — leaving sends the usual BYE,
       // which clears the offers on the other side (see _onRivalGone).
       _resetRematch() {
         this._rematchMine = false;
         this._rematchRival = false;
         this._partyGone = false;
+        this._hostPicking = false;
+        this._rivalPicking = false;
+        if (typeof Game !== 'undefined' && Game.hideSummaryPickers) Game.hideSummaryPickers();
         this._refreshRematchUi();
       },
 
@@ -4360,43 +4460,81 @@
       // modes never call this, so their button keeps its stock label.
       _refreshRematchUi() {
         const btn = document.getElementById('playAgainBtn');
-        if (!btn) return;
-        if (this._partyGone) {
-          btn.textContent = '🚪 RIVAL LEFT';
-        } else if (this._rematchMine && !this._rematchRival) {
-          btn.textContent = '⏳ REMATCH SENT — WAITING FOR RIVAL…';
-        } else if (this._rematchRival && !this._rematchMine) {
-          btn.textContent = '🔄 RIVAL WANTS A REMATCH — TAP TO ACCEPT!';
-        } else {
-          btn.textContent = '🔄 PLAY AGAIN';
+        if (btn) {
+          if (this._partyGone) {
+            btn.textContent = '🚪 RIVAL LEFT';
+          } else if (this.isHost && this._hostPicking) {
+            btn.textContent = '🎮 PICKING… CHOOSE BELOW!';
+          } else if (this.isHost && this._rematchRival) {
+            btn.textContent = '🎮 RIVAL WANTS A REMATCH — TAP TO PICK THE MODE!';
+          } else if (this.isHost) {
+            btn.textContent = '🎮 PLAY AGAIN — PICK THE NEXT MODE';
+          } else if (this._rematchMine && this._rivalPicking) {
+            btn.textContent = '🎮 HOST IS PICKING THE NEXT MODE…';
+          } else if (this._rematchMine && !this._rematchRival) {
+            btn.textContent = '⏳ REMATCH SENT — WAITING FOR RIVAL…';
+          } else if (this._rematchRival && !this._rematchMine) {
+            btn.textContent = '🔄 RIVAL WANTS A REMATCH — TAP TO ACCEPT!';
+          } else {
+            btn.textContent = '🔄 PLAY AGAIN';
+          }
         }
+        if (typeof Game !== 'undefined' && Game.refreshSummaryExtras) Game.refreshSummaryExtras();
       },
 
       // Called by Game.replayCurrentMode for online matches. Returns
-      // true when a live party took the tap (offer sent or already
-      // standing); false when there is no party to rematch with, so
-      // the caller falls back to reopening the lobby.
+      // true when a live party took the tap; false when there is no
+      // party to rematch with, so the caller falls back to reopening
+      // the lobby. The GUEST's tap is the classic offer ("I'm in").
+      // The HOST's tap no longer relaunches the old mode — it opens
+      // the next-mode picker, and the pick itself deals the match.
       requestRematch() {
         if (!this.connected || Game.mode !== 'online' || Game.state !== 'summary') return false;
+        if (this.partyLinked) return true; // party duels exit via BACK TO PARTY
+        if (this.isHost) {
+          this.openDuelPicker();
+          return true;
+        }
         if (!this._rematchMine) {
           this._rematchMine = true;
           this.send({ type: 'REMATCH_OFFER' });
         }
         this._refreshRematchUi();
-        this._maybeLaunchRematch();
         return true;
       },
 
-      // Host-authoritative launch: the host deals the rematch the
-      // moment both offers are in AND the host is itself on the
-      // results screen (a player can only offer from their own
-      // results screen, so both-in-summary is guaranteed). The guest
-      // never self-launches — it relaunches on START_* as always.
-      _maybeLaunchRematch() {
+      // Both offers no longer auto-launch: the host picks the next
+      // mode in the picker (hostPickDuelMode) and the pick deals it.
+      // Kept as a no-op so the offer handlers' call sites stay valid.
+      _maybeLaunchRematch() {},
+
+      /* --- Play-again picker (host) --------------------------------
+         The host's PLAY AGAIN opens the mode picker on the results
+         screen; the guest is told (PICKING) and their earlier offer
+         stands as their "I'm in". Picking a mode deals it for both
+         via the normal _launchAsHost path. */
+      openDuelPicker() {
         if (!this.isHost || !this.connected) return;
-        if (!this._rematchMine || !this._rematchRival) return;
-        if (Game.mode !== 'online' || Game.state !== 'summary') return;
-        this._launchAsHost(this._lastGameType || 'duel');
+        this._hostPicking = true;
+        this.send({ type: 'PICKING' });
+        Game.showDuelPicker();
+        this._refreshRematchUi();
+      },
+
+      cancelDuelPicker() {
+        if (!this.isHost) return;
+        this._hostPicking = false;
+        this.send({ type: 'PICKING_CANCEL' });
+        Game.hideSummaryPickers();
+        this._refreshRematchUi();
+      },
+
+      hostPickDuelMode(type) {
+        if (!this.isHost || !this.connected) return;
+        if (!this.DUEL_TYPES.includes(type)) return;
+        this._hostPicking = false;
+        Game.hideSummaryPickers();
+        this._launchAsHost(type);
       },
 
       sendProgress(depth, round, log, finished, totalTime) {
@@ -4486,6 +4624,9 @@
         this._joinPhase = 'idle';
         this._busyRefused = false;
         this._roomOpen = false;
+        this.partyLinked = false;
+        this._partyCode = '';
+        this._partyDuelType = '';
         this._resetRematch();
         this._clearJoinTimeout();
         this._clearKnockTimer();
@@ -4635,6 +4776,17 @@
       _rematchOffers: {},
       _partyGone: false,
       _lastPartyType: '',
+      // Duel-in-party state: with exactly 2 pilots the host can deal
+      // one of the 2-player modes. The duel itself runs on OnlineNet
+      // (its own client — this party connection stays up as the
+      // session home), launched via PARTY_DUEL_LAUNCH and exited via
+      // BACK TO PARTY. _hostPicking: at the party summary the host is
+      // choosing the next mode in the picker (guests see the notice).
+      _duelActive: false,
+      _duelCode: '',
+      _duelType: '',
+      _hostPicking: false,
+      PARTY_TYPES: ['party', 'knockout', 'teams'],
       ROUND_WINDOW_SEC: 25,
       ROUND_GRACE_MS: 15000,
       BROKERS: OnlineNet.BROKERS,
@@ -4662,23 +4814,52 @@
         }
       },
 
-      setPartyGameType(type) {
+      // One selection model for BOTH mode groups in the party lobby:
+      // the PARTY 2+ modes (this room's own transport) and, at exactly
+      // 2 pilots, the 2 PLAYER duel modes (dealt over OnlineNet — see
+      // _launchDuelFromParty). lobbyGameType holds either kind.
+      setPartyMode(type) {
         this.lobbyGameType = type;
         document.querySelectorAll('#partyGameTypeBar .sector-chip').forEach(btn => {
           btn.classList.toggle('active', btn.dataset.pgametype === type);
         });
+        document.querySelectorAll('#partyDuelTypeBar .sector-chip').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.pdueltype === type);
+        });
         const desc = document.getElementById('partyGameTypeDesc');
-        if (desc) desc.textContent = this.PARTY_DESCS[type] || '';
+        if (desc) {
+          desc.textContent = this.PARTY_DESCS[type] || OnlineNet.GAME_TYPE_DESCS[type] || '';
+        }
         const shuffleBtn = document.getElementById('partyShuffleBtn');
         if (shuffleBtn) {
           shuffleBtn.style.display = this.isHost && this._roomOpen && type === 'teams' ? 'inline-flex' : 'none';
         }
+        this._renderModeGate();
         if (this.isHost && this._roomOpen && !this.inMatch) {
           this._applyTeamsIfNeeded();
           this._broadcastRoster();
           this._renderRoster();
         }
         SoundFX.playTone(520, 0.06, 'square', 0.04);
+      },
+
+      // Kept for existing callers (menu cards, Social invites).
+      setPartyGameType(type) {
+        this.setPartyMode(type);
+      },
+
+      // The 2 PLAYER group is only real at exactly 2 pilots: disable
+      // its chips (and say why) at any other roster size. Called from
+      // _renderRoster, so every roster change re-evaluates the gate.
+      _renderModeGate() {
+        const exactly2 = this.roster.length === 2;
+        document.querySelectorAll('#partyDuelTypeBar .sector-chip').forEach(btn => {
+          btn.disabled = !exactly2;
+          btn.style.opacity = exactly2 ? '1' : '0.45';
+          btn.style.pointerEvents = exactly2 ? '' : 'none';
+        });
+        const note = document.getElementById('partyDuelGateNote');
+        if (note) note.style.display = exactly2 ? 'none' : 'block';
       },
 
       getPartyInviteLink() {
@@ -4927,6 +5108,13 @@
           }
           return;
         }
+        if (msg.type === 'PARTY_RETURN') {
+          // A duellist went home to the party lobby ahead of us.
+          if (this._duelActive && Game.mode === 'online') {
+            Game.showToast('🎉 YOUR RIVAL IS BACK IN THE PARTY LOBBY!');
+          }
+          return;
+        }
         if (msg.type === 'RESULT') {
           this._collectResult(msg);
           return;
@@ -4945,7 +5133,7 @@
       },
 
       _broadcastRoster() {
-        this._broadcast({ type: 'ROSTER', players: this.roster });
+        this._broadcast({ type: 'ROSTER', players: this.roster, gameType: this.lobbyGameType });
       },
 
       _applyTeamsIfNeeded() {
@@ -4977,6 +5165,11 @@
 
         if (msg.type === 'ROSTER') {
           this.roster = Array.isArray(msg.players) ? msg.players : this.roster;
+          // Mirror the host's mode selection so the guest's lobby
+          // shows the same list state (chips + label) as the host's.
+          if (msg.gameType && msg.gameType !== this.lobbyGameType) {
+            this.setPartyMode(msg.gameType);
+          }
           if (this._joinPhase === 'joining' && this.roster.some(p => p.pid === this.myPid)) {
             this._joinPhase = 'joined';
             this.connected = true;
@@ -5005,6 +5198,41 @@
         }
         if (msg.type === 'PING') return; // presence already noted
         if (!this.connected && msg.type !== 'PARTY_START') return;
+
+        if (msg.type === 'PARTY_DUEL_LAUNCH') {
+          // The host dealt a 2-player mode from inside this party:
+          // join the duel room it names (the code rides the message —
+          // nothing to type) while THIS party connection stays up as
+          // the session home. A stale duel session is dropped first.
+          if (msg.guestPid && msg.guestPid !== this.myPid) return;
+          this.inMatch = true;
+          this._duelActive = true;
+          this._duelCode = msg.duelCode;
+          this._duelType = msg.gameType;
+          this._hostPicking = false;
+          Game.hideSummaryPickers();
+          if (OnlineNet.client) OnlineNet.disconnect();
+          OnlineNet.joinRoom({ party: true, code: msg.duelCode, gameType: msg.gameType });
+          this.setStatus(`⚔️ DUEL LINK INCOMING — ${OnlineNet.MODE_LABELS[msg.gameType] || msg.gameType}…`, '#38bdf8');
+          return;
+        }
+        if (msg.type === 'PARTY_PICKING') {
+          // At the party summary, the host is choosing the next mode.
+          this._hostPicking = true;
+          Game.onHostPickingParty();
+          return;
+        }
+        if (msg.type === 'PARTY_PICKING_CANCEL') {
+          this._hostPicking = false;
+          Game.onHostPickingParty();
+          return;
+        }
+        if (msg.type === 'PARTY_RETURN') {
+          // The host went back to the party lobby from a party duel's
+          // results screen — follow them home.
+          Game.onPartyReturnSignal();
+          return;
+        }
 
         if (msg.type === 'PARTY_START') {
           if (this._joinPhase === 'joining') {
@@ -5105,6 +5333,7 @@
         this._channelOpen = false;
         this._stopPresence();
         this._partyGone = true;
+        this._hostPicking = false;
         this.setStatus('⚠️ THE HOST LEFT — THIS PARTY IS OVER. OPEN A FRESH ROOM TO PLAY AGAIN!', '#f87171');
         if (Game.mode === 'party') Game.onPartyHostGone();
         this._refreshPartyRematchUi();
@@ -5127,17 +5356,26 @@
         const launchBtn = document.getElementById('partyLaunchBtn');
         if (launchBtn) {
           if (this.isHost && this._roomOpen && !this.inMatch) {
+            const isDuel = OnlineNet.DUEL_TYPES.includes(this.lobbyGameType);
             const min = this.lobbyGameType === 'teams' ? 4 : 2;
             launchBtn.style.display = 'inline-flex';
-            launchBtn.disabled = this.roster.length < min;
-            launchBtn.style.opacity = this.roster.length < min ? '0.55' : '1';
-            launchBtn.textContent = this.roster.length < min
-              ? `⏳ NEED ${min - this.roster.length} MORE PILOT${min - this.roster.length === 1 ? '' : 'S'} (${this.roster.length}/${min})`
-              : this.lobbyGameType === 'knockout'
-                ? `💀 LAUNCH KNOCKOUT (${this.roster.length} PILOTS)!`
-                : this.lobbyGameType === 'teams'
-                  ? `👥 LAUNCH TEAM CLASH (${this.roster.length} PILOTS)!`
-                  : `⭐ LAUNCH STAR PARTY (${this.roster.length} PILOTS)!`;
+            if (isDuel && this.roster.length > 2) {
+              launchBtn.disabled = true;
+              launchBtn.style.opacity = '0.55';
+              launchBtn.textContent = `🚫 ${OnlineNet.MODE_LABELS[this.lobbyGameType]} NEEDS EXACTLY 2 PILOTS (${this.roster.length} IN ROOM)`;
+            } else {
+              launchBtn.disabled = this.roster.length < min;
+              launchBtn.style.opacity = this.roster.length < min ? '0.55' : '1';
+              launchBtn.textContent = this.roster.length < min
+                ? `⏳ NEED ${min - this.roster.length} MORE PILOT${min - this.roster.length === 1 ? '' : 'S'} (${this.roster.length}/${min})`
+                : isDuel
+                  ? `${OnlineNet.MODE_LABELS[this.lobbyGameType]} — LAUNCH DUEL!`
+                  : this.lobbyGameType === 'knockout'
+                    ? `💀 LAUNCH KNOCKOUT (${this.roster.length} PILOTS)!`
+                    : this.lobbyGameType === 'teams'
+                      ? `👥 LAUNCH TEAM CLASH (${this.roster.length} PILOTS)!`
+                      : `⭐ LAUNCH STAR PARTY (${this.roster.length} PILOTS)!`;
+            }
             const shuffleBtn = document.getElementById('partyShuffleBtn');
             if (shuffleBtn) {
               shuffleBtn.style.display = this.lobbyGameType === 'teams' ? 'inline-flex' : 'none';
@@ -5146,12 +5384,17 @@
             launchBtn.style.display = 'none';
           }
         }
+        this._renderModeGate();
       },
 
       /* ---------------- Match running (host authority) ---------------- */
       hostLaunchParty() {
         if (!this.isHost || !this._roomOpen || this.inMatch) return;
         const type = this.lobbyGameType;
+        if (OnlineNet.DUEL_TYPES.includes(type)) {
+          this._launchDuelFromParty(type);
+          return;
+        }
         const min = type === 'teams' ? 4 : 2;
         if (this.roster.length < min) {
           this.setStatus(`⏳ ${type === 'teams' ? 'TEAM CLASH NEEDS AT LEAST 4 PILOTS (2V2)' : 'NEED AT LEAST 2 PILOTS TO LAUNCH'} — ${this.roster.length} IN THE ROOM.`, '#fbbf24');
@@ -5160,6 +5403,34 @@
         this._lastPartyType = type;
         this._resetPartyRematch();
         this._startMatchAsHost(type);
+      },
+
+      /* ---------------- Duel handoff (exactly 2 pilots) ----------------
+         The party stays the session home: this connection (and the
+         roster, and presence) never closes. The host deals a fresh
+         OnlineNet room and hands the guest its code over the party
+         channel — no typing — and the OnlineNet host auto-launches
+         the chosen mode the moment the guest's knock connects. The
+         duel's exit is BACK TO PARTY on both sides (Game.backToParty),
+         which lands everyone back in this lobby. */
+      _launchDuelFromParty(type) {
+        if (!this.isHost || !this._roomOpen || this.inMatch) return;
+        if (this.roster.length !== 2) {
+          this.setStatus(`🚫 ${OnlineNet.MODE_LABELS[type] || 'DUEL MODES'} NEED EXACTLY 2 PILOTS — ${this.roster.length} IN THE ROOM.`, '#fbbf24');
+          return;
+        }
+        const guest = this.roster.find(p => p.pid !== this.myPid);
+        if (!guest) return;
+        const duelCode = OnlineNet.generateCode();
+        this.inMatch = true;
+        this._duelActive = true;
+        this._duelCode = duelCode;
+        this._duelType = type;
+        this._resetPartyRematch();
+        this._broadcast({ type: 'PARTY_DUEL_LAUNCH', duelCode, gameType: type, guestPid: guest.pid });
+        OnlineNet.hostRoom({ party: true, code: duelCode, gameType: type });
+        this.setStatus(`⚔️ DUEL LINK OPENING — ${OnlineNet.MODE_LABELS[type] || type}…`, '#38bdf8');
+        this._renderRoster();
       },
 
       _startMatchAsHost(gameType) {
@@ -5334,39 +5605,51 @@
         }
       },
 
-      /* ---------------- Party rematch ----------------
-         Same shape as the 1v1 handshake: PLAY AGAIN at the party
-         summary is an offer, never a local restart. A guest's tap
-         sends REMATCH_OFFER to the host; the host's own tap is the
-         accept — it relaunches a fresh match of the same type for
-         everyone still present. */
+      /* ---------------- Party rematch = pick the next mode ----------------
+         PLAY AGAIN at the party summary is never a blind relaunch of
+         the same mode. A guest's tap sends REMATCH_OFFER — their
+         "I'm in" signal, exactly as before. The HOST's tap opens the
+         next-mode picker on the summary screen (PARTY_PICKING tells
+         the guests) and the host's pick deals it for everyone still
+         present: a party mode launches here on PartyNet, a duel mode
+         (roster of exactly 2) goes through the PARTY_DUEL_LAUNCH
+         handoff. Picking the mode just played is one extra tap. */
       _resetPartyRematch() {
         this._rematchMine = false;
         this._rematchOffers = {};
         this._partyGone = false;
+        this._hostPicking = false;
         this._refreshPartyRematchUi();
       },
 
       _refreshPartyRematchUi() {
-        if (Game.mode !== 'party') return;
-        const btn = document.getElementById('playAgainBtn');
-        if (!btn) return;
-        if (this._partyGone) {
-          btn.textContent = '🚪 HOST LEFT';
-        } else if (!this.isHost && this._rematchMine) {
-          btn.textContent = '⏳ REMATCH SENT — WAITING FOR HOST…';
-        } else if (this.isHost && Object.keys(this._rematchOffers).length) {
-          btn.textContent = '🔄 REMATCH WANTED — TAP TO RELAUNCH!';
-        } else {
-          btn.textContent = '🔄 PLAY AGAIN';
+        if (Game.mode === 'party') {
+          const btn = document.getElementById('playAgainBtn');
+          if (btn) {
+            if (this._partyGone) {
+              btn.textContent = '🚪 HOST LEFT';
+            } else if (!this.isHost && this._rematchMine) {
+              btn.textContent = '⏳ REMATCH SENT — WAITING FOR HOST…';
+            } else if (this.isHost && this._hostPicking) {
+              btn.textContent = '🎮 PICKING… CHOOSE BELOW!';
+            } else if (this.isHost && Object.keys(this._rematchOffers).length) {
+              btn.textContent = '🎮 REMATCH WANTED — TAP TO PICK THE NEXT MODE!';
+            } else if (this.isHost) {
+              btn.textContent = '🎮 PLAY AGAIN — PICK THE NEXT MODE';
+            } else {
+              btn.textContent = '🔄 PLAY AGAIN';
+            }
+          }
+          if (this._hostPicking) Game.renderPartyPicker();
         }
+        if (typeof Game !== 'undefined' && Game.refreshSummaryExtras) Game.refreshSummaryExtras();
       },
 
       requestPartyRematch() {
         if (!this.connected || Game.mode !== 'party' || Game.state !== 'summary') return false;
         if (this._partyGone) return false;
         if (this.isHost) {
-          this.hostRelaunchParty();
+          this.openPartyPicker();
           return true;
         }
         if (!this._rematchMine) {
@@ -5377,18 +5660,62 @@
         return true;
       },
 
-      hostRelaunchParty() {
+      openPartyPicker() {
+        if (!this.isHost || !this.connected || this._partyGone) return;
+        this._hostPicking = true;
+        this._broadcast({ type: 'PARTY_PICKING' });
+        Game.showPartyPicker();
+        this._refreshPartyRematchUi();
+      },
+
+      cancelPartyPicker() {
+        if (!this.isHost) return;
+        this._hostPicking = false;
+        this._broadcast({ type: 'PARTY_PICKING_CANCEL' });
+        Game.hideSummaryPickers();
+        this._refreshPartyRematchUi();
+      },
+
+      // The host's pick deals the next match for the whole party.
+      // Players who left (BYE) are already off the roster; players
+      // gone silent are pruned by the same presence rule the old
+      // same-mode relaunch used.
+      hostPickNextMode(type) {
         if (!this.isHost || !this.connected) return;
+        this._hostPicking = false;
+        Game.hideSummaryPickers();
         const now = Date.now();
         this.roster = this.roster.filter(p =>
           p.pid === this.myPid || (now - (this._lastRxByPid[p.pid] || 0) < 65000));
         if (this.roster.length < 2) {
-          Game.showToast('THE PARTY HAS LEFT — NO ONE TO REMATCH WITH!');
+          Game.showToast('THE PARTY HAS LEFT — NO ONE TO PLAY WITH!');
+          this._broadcastRoster();
+          this._renderRoster();
           return;
         }
+        this.setPartyMode(type);
+        if (OnlineNet.DUEL_TYPES.includes(type)) {
+          if (this.roster.length !== 2) {
+            Game.showToast('🚫 2-PLAYER MODES NEED EXACTLY 2 PILOTS!');
+            return;
+          }
+          this._launchDuelFromParty(type);
+          return;
+        }
+        if (type === 'teams' && this.roster.length < 4) {
+          Game.showToast('👥 TEAM CLASH NEEDS AT LEAST 4 PILOTS (2V2)!');
+          return;
+        }
+        this._lastPartyType = type;
         this._applyTeamsIfNeeded();
         this._resetPartyRematch();
-        this._startMatchAsHost(this._lastPartyType || 'party');
+        this._startMatchAsHost(type);
+      },
+
+      // Same-mode relaunch, kept for compatibility: now just a pick
+      // of the mode the party was already playing.
+      hostRelaunchParty() {
+        this.hostPickNextMode(this._lastPartyType || 'party');
       },
 
       disconnect() {
@@ -5411,6 +5738,10 @@
         this._rematchMine = false;
         this._rematchOffers = {};
         this._partyGone = false;
+        this._duelActive = false;
+        this._duelCode = '';
+        this._duelType = '';
+        this._hostPicking = false;
         this._clearKnockTimer();
         this._clearDeadlineTimer();
         if (this._joinTimer) {
@@ -7107,6 +7438,12 @@
           const el = document.getElementById(id);
           if (el) el.style.display = 'none';
         });
+        // Summary furniture starts clean whenever the stage changes:
+        // no stale next-mode pickers, no stale BACK TO PARTY button.
+        // (Every summary path sets state='summary' before calling
+        // this, so refreshSummaryExtras sees the right context.)
+        this.hideSummaryPickers();
+        this.refreshSummaryExtras();
       },
 
       returnToMenu() {
@@ -7131,7 +7468,13 @@
           this.chainDuel.active = false;
         }
         this.chainDuel = null;
-        if (this.mode === 'online') OnlineNet.disconnect();
+        if (this.mode === 'online') {
+          // A party-dealt duel's MAIN MENU leaves the party too —
+          // the party was only being kept as the duel's way home.
+          const linked = OnlineNet.partyLinked;
+          OnlineNet.disconnect();
+          if (linked) PartyNet.disconnect();
+        }
         if (this.mode === 'party') PartyNet.disconnect();
         this.returnToMenu();
       },
@@ -9803,11 +10146,17 @@
           return;
         }
         if (this.mode === 'online') {
-          // PLAY AGAIN in a party means REMATCH: the connection stays
-          // up and OnlineNet runs the two-sided offer handshake. It
-          // returns false only when the party is already gone (the
-          // rival left), and then the old behaviour — back to the
-          // lobby alone — takes over.
+          // A party-dealt duel never rematches in place: its way out
+          // is BACK TO PARTY, where the host picks the next mode.
+          if (OnlineNet.partyLinked) {
+            this.backToParty();
+            return;
+          }
+          // PLAY AGAIN in a 1v1: the guest's tap is the rematch offer;
+          // the host's tap opens the next-mode picker (see OnlineNet).
+          // requestRematch returns false only when the party is
+          // already gone (the rival left), and then the old behaviour
+          // — back to the lobby alone — takes over.
           if (!OnlineNet.requestRematch()) {
             this.openOnlineLobby(this.raceType || undefined);
           }
@@ -9816,6 +10165,157 @@
         } else {
           this.startMode(this.mode);
         }
+      },
+
+      /* --- Next-mode pickers + party-duel exits ---------------------
+         PLAY AGAIN at a multiplayer summary no longer blindly
+         relaunches the mode that just ended: the host PICKS the next
+         one. Party summaries get the two-group picker (PARTY 2+ /
+         2 PLAYER, gated by the live roster); 1v1 summaries get the
+         duel picker. Party-dealt duels replace PLAY AGAIN with
+         BACK TO PARTY entirely. */
+      hideSummaryPickers() {
+        for (const id of ['partyPickerBox', 'duelPickerBox', 'summaryPickingMsg']) {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        }
+      },
+
+      // Summary action-row state for party-dealt duels: BACK TO PARTY
+      // replaces PLAY AGAIN (the mode choice lives back in the party).
+      refreshSummaryExtras() {
+        const linked = this.mode === 'online' && typeof OnlineNet !== 'undefined' && OnlineNet.partyLinked;
+        const backBtn = document.getElementById('backToPartyBtn');
+        if (backBtn) backBtn.style.display = linked && this.state === 'summary' ? 'inline-flex' : 'none';
+        const againBtn = document.getElementById('playAgainBtn');
+        if (againBtn && linked) againBtn.style.display = 'none';
+        else if (againBtn && againBtn.style.display === 'none') againBtn.style.display = '';
+      },
+
+      showDuelPicker() {
+        this.renderDuelPicker();
+        const box = document.getElementById('duelPickerBox');
+        if (box) box.style.display = 'block';
+      },
+
+      renderDuelPicker() {
+        const box = document.getElementById('duelPickerBox');
+        if (!box) return;
+        const chips = OnlineNet.DUEL_TYPES.map(t =>
+          `<button class="sector-chip" data-picktype="${t}" onclick="OnlineNet.hostPickDuelMode('${t}')">${OnlineNet.MODE_LABELS[t]}</button>`).join('');
+        box.innerHTML = `
+          <div class="font-pixel" style="font-size:10px; color:#34d399; text-align:center; margin-bottom:6px;">🎮 PICK THE NEXT MODE</div>
+          <div class="font-pixel" style="font-size:9px; color:#38bdf8; margin-bottom:4px; text-align:left;">⚔️ 2 PLAYER</div>
+          <div class="sector-bar">${chips}</div>
+          <div style="text-align:center; margin-top:8px;">
+            <button class="pixel-btn" style="padding:5px 10px; font-size:9px;" onclick="OnlineNet.cancelDuelPicker()">✕ NOT NOW</button>
+          </div>`;
+      },
+
+      showPartyPicker() {
+        this.renderPartyPicker();
+        const box = document.getElementById('partyPickerBox');
+        if (box) box.style.display = 'block';
+      },
+
+      renderPartyPicker() {
+        const box = document.getElementById('partyPickerBox');
+        if (!box || typeof PartyNet === 'undefined' || !PartyNet.isHost) return;
+        const n = PartyNet.roster.length;
+        const inCount = Object.keys(PartyNet._rematchOffers).length;
+        const chip = (t, enabled) =>
+          `<button class="sector-chip" data-picktype="${t}" ${enabled ? `onclick="PartyNet.hostPickNextMode('${t}')"` : 'disabled style="opacity:0.45; pointer-events:none;"'}>${OnlineNet.MODE_LABELS[t]}</button>`;
+        box.innerHTML = `
+          <div class="font-pixel" style="font-size:10px; color:#c084fc; text-align:center; margin-bottom:6px;">🎮 PICK THE NEXT MODE</div>
+          <div class="font-pixel" style="font-size:9px; color:#c084fc; margin-bottom:4px; text-align:left;">🎉 PARTY 2+</div>
+          <div class="sector-bar">
+            ${chip('party', n >= 2)}
+            ${chip('knockout', n >= 2)}
+            ${chip('teams', n >= 4)}
+          </div>
+          ${n < 4 ? '<div class="font-pixel" style="font-size:8px; color:#fbbf24; margin-top:4px;">👥 TEAM CLASH NEEDS 4+ PILOTS</div>' : ''}
+          <div class="font-pixel" style="font-size:9px; color:#38bdf8; margin:8px 0 4px; text-align:left;">⚔️ 2 PLAYER</div>
+          <div class="sector-bar">
+            ${OnlineNet.DUEL_TYPES.map(t => chip(t, n === 2)).join('')}
+          </div>
+          ${n !== 2 ? '<div class="font-pixel" style="font-size:8px; color:#fbbf24; margin-top:4px;">⚠️ 2-PLAYER MODES NEED EXACTLY 2 PILOTS IN THE ROOM</div>' : ''}
+          <div class="font-pixel" style="font-size:9px; color:#94a3b8; text-align:center; margin-top:8px;">${inCount ? `✅ ${inCount} PILOT${inCount === 1 ? '' : 'S'} ALREADY IN — YOUR PICK LAUNCHES FOR EVERYONE HERE` : 'YOUR PICK LAUNCHES FOR EVERYONE STILL IN THE PARTY'}</div>
+          <div style="text-align:center; margin-top:8px;">
+            <button class="pixel-btn" style="padding:5px 10px; font-size:9px;" onclick="PartyNet.cancelPartyPicker()">✕ NOT NOW</button>
+          </div>`;
+      },
+
+      // Guest side of the party picker: the host is choosing — the
+      // notice shows on the guest's summary until the pick lands.
+      onHostPickingParty() {
+        const picking = typeof PartyNet !== 'undefined' && PartyNet._hostPicking;
+        const msg = document.getElementById('summaryPickingMsg');
+        if (msg) {
+          msg.style.display = picking && this.mode === 'party' && this.state === 'summary' ? 'block' : 'none';
+        }
+        if (picking && this.mode === 'party' && this.state === 'summary') {
+          this.showToast('🎮 HOST IS PICKING THE NEXT MODE…');
+        }
+      },
+
+      // The party host returned to the lobby from a duel's results
+      // screen: if we're still sitting on ours, follow them home.
+      onPartyReturnSignal() {
+        if (typeof OnlineNet !== 'undefined' && OnlineNet.partyLinked && this.mode === 'online' && this.state === 'summary') {
+          this.showToast('🎉 HOST IS BACK IN THE PARTY — RETURNING TO THE LOBBY…');
+          this.backToParty();
+        }
+      },
+
+      showPartyLobby() {
+        this.hideAllModals();
+        document.getElementById('onlineLobbyModal').style.display = 'flex';
+        document.getElementById('onlineRoomStatusBox').style.display = 'none';
+        document.getElementById('partyRoomBox').style.display = 'flex';
+        PartyNet._renderRoster();
+      },
+
+      // Exit a party-dealt duel back to the party lobby — the session
+      // home. The PartyNet connection never closed, so the roster is
+      // exactly as it was; the duel room is torn down, and the other
+      // duellist hears about it (PARTY_RETURN) so a host's exit pulls
+      // the guest home too. If the rival already left mid-duel, the
+      // remaining player still lands here, alone in the lobby.
+      backToParty() {
+        if (typeof PartyNet === 'undefined' ||
+            (!PartyNet._duelActive && !(typeof OnlineNet !== 'undefined' && OnlineNet.partyLinked))) {
+          this.openOnlineLobby();
+          return;
+        }
+        if (this.race) { this.race.active = false; this.race = null; this.raceType = null; }
+        if (this.chainDuel) {
+          if (this.chainDuel.hostTimer) clearTimeout(this.chainDuel.hostTimer);
+          this.chainDuel.active = false;
+          this.chainDuel = null;
+        }
+        const wasHost = PartyNet.isHost;
+        if (wasHost) PartyNet._broadcast({ type: 'PARTY_RETURN' });
+        else PartyNet._sendToHost({ type: 'PARTY_RETURN', pid: PartyNet.myPid });
+        OnlineNet.disconnect();
+        PartyNet.inMatch = false;
+        PartyNet._duelActive = false;
+        PartyNet._duelCode = '';
+        PartyNet._duelType = '';
+        PartyNet._hostPicking = false;
+        this.mode = 'party';
+        this.state = 'menu';
+        this.depthLY = 0;
+        PixelCanvas.targetDepth = 0;
+        this.updateTopHud();
+        this.updateZoneHud(0);
+        this.showPartyLobby();
+        if (wasHost) {
+          PartyNet.setStatus('🎉 BACK IN THE PARTY LOBBY — PICK THE NEXT GAME!', '#34d399');
+        } else if (!PartyNet._partyGone) {
+          PartyNet.setStatus('🎉 BACK IN THE PARTY LOBBY — WAITING FOR THE HOST TO LAUNCH…', '#34d399');
+        }
+        if (wasHost) PartyNet._broadcastRoster();
+        PartyNet._renderRoster();
       },
 
       async copyTextToClipboard(text, toastMessage = 'COPIED TO CLIPBOARD!') {
