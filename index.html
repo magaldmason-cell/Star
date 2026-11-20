@@ -688,7 +688,149 @@
       text-align: center; line-height: 2; border: 3px solid #f87171;
       background: #0f172a; padding: 26px 34px; border-radius: 8px; max-width: 92vw;
     }
+  
+  /* ================================================================
+     ARCADE HUB + MINI-GAMES - ADD-ON STYLES (added 2026-11-20)
+     New section only; no existing rules modified.
+     ================================================================ */
+/* ---------- Hub overlay ---------- */
+    #arcadeHub {
+      position: fixed; inset: 0; z-index: 90;
+      display: none; flex-direction: column; align-items: center;
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      background: radial-gradient(ellipse at 50% 30%, rgba(14, 24, 54, 0.92) 0%, rgba(3, 6, 18, 0.97) 70%);
+      padding: 26px 14px 40px;
+    }
+    #arcadeHub.open { display: flex; }
+    .arcade-title {
+      font-family: 'Press Start 2P', monospace; color: #fbbf24;
+      font-size: clamp(19px, 5.4vw, 34px); text-align: center; line-height: 1.5;
+      text-shadow: 0 0 22px rgba(251, 191, 36, 0.45), 3px 3px 0 #7c2d12;
+      margin: 8px 0 4px;
+    }
+    .arcade-subtitle {
+      font-family: 'VT323', monospace; color: #94a3b8; font-size: clamp(16px, 4vw, 21px);
+      text-align: center; margin-bottom: 22px; letter-spacing: 1px;
+    }
+    .arcade-grid {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px; width: 100%; max-width: 560px;
+    }
+    @media (min-width: 640px) { .arcade-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .arcade-tile {
+      background: var(--panel-bg); border: 3px solid #475569; border-radius: 10px;
+      box-shadow: 0 0 0 3px #030712, 0 10px 24px rgba(0,0,0,0.7), inset 0 2px 0 rgba(255,255,255,0.08);
+      padding: 20px 8px 14px; text-align: center; cursor: pointer; color: #f8fafc;
+      font-family: inherit; transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .arcade-tile:active { transform: scale(0.95); }
+    .arcade-tile .tile-icon { font-size: 46px; line-height: 1.15; display: block; filter: drop-shadow(0 0 10px rgba(56,189,248,0.35)); }
+    .arcade-tile .tile-name {
+      font-family: 'Press Start 2P', monospace; font-size: 10px; line-height: 1.7;
+      display: block; margin-top: 10px; min-height: 34px;
+    }
+    .arcade-tile .tile-best {
+      font-family: 'VT323', monospace; font-size: 16px; color: #fbbf24;
+      display: block; margin-top: 2px; min-height: 20px;
+    }
+    .arcade-tile.tile-star { border-color: #fbbf24; grid-column: span 2; }
+    @media (min-width: 640px) { .arcade-tile.tile-star { grid-column: span 3; } }
+    .arcade-tile.tile-star .tile-icon { font-size: 56px; }
+    .arcade-tile.tile-star .tile-name { font-size: 13px; }
+    .arcade-tile.tile-striker { border-color: #38bdf8; }
+    .arcade-tile.tile-drift { border-color: #f472b6; }
+    .arcade-tile.tile-blaster { border-color: #c084fc; }
+    .arcade-tile.tile-memory { border-color: #34d399; }
+    .arcade-tile.tile-snake { border-color: #a3e635; }
+    .arcade-foot {
+      font-family: 'VT323', monospace; color: #64748b; font-size: 16px;
+      margin-top: 24px; text-align: center; letter-spacing: 1px;
+    }
+
+    /* ---------- Mini-game screens ---------- */
+    .arcade-screen {
+      position: fixed; inset: 0; z-index: 95;
+      display: none; flex-direction: column; align-items: center;
+      background: radial-gradient(ellipse at 50% 20%, rgba(10, 18, 44, 0.96) 0%, rgba(2, 5, 16, 0.99) 75%);
+      padding: 10px 10px 14px; overflow: hidden;
+    }
+    .arcade-screen.open { display: flex; }
+    .arcade-topbar {
+      width: 100%; max-width: 720px; display: flex; align-items: center; gap: 10px;
+      margin-bottom: 8px; flex: 0 0 auto;
+    }
+    .arcade-back-btn {
+      font-family: 'Press Start 2P', monospace; font-size: 10px; cursor: pointer;
+      background: linear-gradient(180deg, #1e293b, #0f172a); color: #f8fafc;
+      border: 3px solid #64748b; border-radius: 5px; padding: 9px 11px; line-height: 1.3;
+    }
+    .arcade-back-btn:active { transform: scale(0.95); }
+    .arcade-game-title {
+      font-family: 'Press Start 2P', monospace; font-size: clamp(11px, 3.4vw, 16px);
+      color: #f8fafc; line-height: 1.5; text-align: left; flex: 1;
+    }
+    .arcade-hud {
+      width: 100%; max-width: 720px; display: flex; gap: 8px; flex-wrap: wrap;
+      justify-content: center; margin-bottom: 8px; flex: 0 0 auto;
+    }
+    .arcade-hud .hud-pill { font-size: 19px; }
+    .arcade-stage {
+      position: relative; flex: 1 1 auto; width: 100%; max-width: 720px;
+      display: flex; align-items: center; justify-content: center; min-height: 0;
+    }
+    .arcade-canvas {
+      display: block; border: 3px solid #334155; border-radius: 8px;
+      background: #020617; box-shadow: 0 0 0 3px #030712, 0 0 34px rgba(56,189,248,0.14);
+      touch-action: none;
+    }
+    .arcade-overlay-card {
+      position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+      background: rgba(2, 6, 23, 0.78); border-radius: 8px; z-index: 5; padding: 12px;
+    }
+    .arcade-overlay-card.show { display: flex; }
+    .arcade-card-inner {
+      background: var(--panel-bg); border: 3px solid #fbbf24; border-radius: 8px;
+      padding: 22px 20px; text-align: center; max-width: 92%; color: #f8fafc;
+      box-shadow: 0 0 0 3px #030712, 0 14px 34px rgba(0,0,0,0.8);
+    }
+    .arcade-card-inner h2 {
+      font-family: 'Press Start 2P', monospace; font-size: clamp(14px, 4vw, 20px);
+      line-height: 1.6; color: #fbbf24; margin-bottom: 10px;
+    }
+    .arcade-card-inner p { font-family: 'VT323', monospace; font-size: 20px; color: #cbd5e1; line-height: 1.45; margin-bottom: 14px; }
+    .arcade-hint {
+      font-family: 'VT323', monospace; color: #94a3b8; font-size: 17px;
+      text-align: center; margin-top: 8px; flex: 0 0 auto; letter-spacing: 0.5px; max-width: 720px;
+    }
+
+    /* ---------- Memory Match ---------- */
+    .memory-wrap { width: 100%; max-width: 520px; margin: 0 auto; }
+    .memory-diff-bar { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .memory-grid { display: grid; gap: 8px; width: 100%; }
+    .memory-card { perspective: 600px; cursor: pointer; aspect-ratio: 1 / 1; }
+    .memory-card-inner {
+      position: relative; width: 100%; height: 100%;
+      transform-style: preserve-3d; transition: transform 0.38s ease;
+    }
+    .memory-card.flipped .memory-card-inner { transform: rotateY(180deg); }
+    .memory-face {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+      border: 3px solid #334155; font-size: clamp(22px, 7vw, 40px); line-height: 1;
+    }
+    .memory-face.front {
+      background: linear-gradient(160deg, #1e3a5f, #0f172a); color: #38bdf8;
+      font-family: 'Press Start 2P', monospace; font-size: clamp(13px, 4vw, 22px);
+      box-shadow: inset 0 2px 0 rgba(255,255,255,0.1);
+    }
+    .memory-face.back { background: linear-gradient(160deg, #134e4a, #052e2b); border-color: #34d399; transform: rotateY(180deg); }
+    .memory-card.matched { cursor: default; }
+    .memory-card.matched .memory-face.back {
+      border-color: #fbbf24; background: linear-gradient(160deg, #713f12, #451a03);
+      box-shadow: 0 0 14px rgba(251,191,36,0.45);
+    }
   </style>
+
 </head>
 <body>
   <!-- Animated Pixel-Art Deep Space Canvas -->
@@ -771,6 +913,10 @@
           <p class="game-subtitle">
             Reverse-Popularity Space Trivia • Type the <span style="color:#fbbf24;">RAREST</span> valid answer to plunge deeper into the cosmos!
           </p>
+        </div>
+
+        <div style="text-align:center; margin:2px 0 6px;">
+          <button class="pixel-btn" style="border-color:#fbbf24; color:#fde68a; padding:9px 16px; font-size:10px;" onclick="Arcade.showHub()">🕹️ ARCADE — MORE GAMES</button>
         </div>
 
         <!-- Sector Filter -->
@@ -1551,6 +1697,184 @@
         🦐 EMOTE
       </button>
     </footer>
+  </div>
+
+  
+  <!-- ================================================================
+       ARCADE HUB + MINI-GAMES — ADD-ON MARKUP (added 2026-11-20)
+       New section only. The hub is a fixed overlay shown on load;
+       the existing game boots untouched underneath it.
+       ================================================================ -->
+  <div id="arcadeHub">
+    <div class="arcade-title">🕹️ THE ARCADE</div>
+    <div class="arcade-subtitle">— pick your game, pilot —</div>
+    <div class="arcade-grid">
+      <button class="arcade-tile tile-star" onclick="Arcade.enterStar()">
+        <span class="tile-icon">⭐</span>
+        <span class="tile-name">1 IN A STAR-KRILLION</span>
+        <span class="tile-best">THE MAIN EVENT · SPACE TRIVIA</span>
+      </button>
+      <button class="arcade-tile tile-striker" onclick="Arcade.open('striker')">
+        <span class="tile-icon">🚀</span>
+        <span class="tile-name">VOID STRIKER</span>
+        <span class="tile-best" id="best-striker"></span>
+      </button>
+      <button class="arcade-tile tile-drift" onclick="Arcade.open('drift')">
+        <span class="tile-icon">🏎️</span>
+        <span class="tile-name">NEON DRIFT 3D</span>
+        <span class="tile-best" id="best-drift"></span>
+      </button>
+      <button class="arcade-tile tile-blaster" onclick="Arcade.open('blaster')">
+        <span class="tile-icon">🎯</span>
+        <span class="tile-name">VOID BLASTER 3D</span>
+        <span class="tile-best" id="best-blaster"></span>
+      </button>
+      <button class="arcade-tile tile-memory" onclick="Arcade.open('memory')">
+        <span class="tile-icon">🧩</span>
+        <span class="tile-name">MEMORY MATCH</span>
+        <span class="tile-best" id="best-memory"></span>
+      </button>
+      <button class="arcade-tile tile-snake" onclick="Arcade.open('snake')">
+        <span class="tile-icon">🐍</span>
+        <span class="tile-name">SNAKE</span>
+        <span class="tile-best" id="best-snake"></span>
+      </button>
+    </div>
+    <div class="arcade-foot">all mini-games are solo · best scores save on this device</div>
+  </div>
+
+  <!-- 🚀 VOID STRIKER -->
+  <div id="screen-striker" class="arcade-screen">
+    <div class="arcade-topbar">
+      <button class="arcade-back-btn" onclick="Arcade.close()">🏠 HUB</button>
+      <div class="arcade-game-title" style="color:#7dd3fc;">🚀 VOID STRIKER</div>
+    </div>
+    <div class="arcade-hud">
+      <div class="hud-pill"><span>⭐</span><span id="strikerScore">0</span></div>
+      <div class="hud-pill"><span>❤️</span><span id="strikerLives">3</span></div>
+      <div class="hud-pill"><span>🌊</span><span>WAVE </span><span id="strikerWave">1</span></div>
+      <div class="hud-pill"><span>🏆</span><span id="strikerBest">0</span></div>
+    </div>
+    <div class="arcade-stage">
+      <canvas id="strikerCanvas" class="arcade-canvas" width="420" height="560"></canvas>
+      <div class="arcade-overlay-card" id="strikerOverlay">
+        <div class="arcade-card-inner">
+          <h2 id="strikerOverlayTitle">🚀 VOID STRIKER</h2>
+          <p id="strikerOverlayText">Blast the void swarm. Drag or use arrow keys / WASD to fly — your cannon fires on its own.</p>
+          <button class="pixel-btn pixel-btn-emerald" onclick="StrikerGame.start()">▶ LAUNCH</button>
+        </div>
+      </div>
+    </div>
+    <div class="arcade-hint">drag · WASD · arrow keys — auto-fire is always on</div>
+  </div>
+
+  <!-- 🏎️ NEON DRIFT 3D -->
+  <div id="screen-drift" class="arcade-screen">
+    <div class="arcade-topbar">
+      <button class="arcade-back-btn" onclick="Arcade.close()">🏠 HUB</button>
+      <div class="arcade-game-title" style="color:#f9a8d4;">🏎️ NEON DRIFT 3D</div>
+    </div>
+    <div class="arcade-hud">
+      <div class="hud-pill"><span>⭐</span><span id="driftScore">0</span></div>
+      <div class="hud-pill"><span>🛣️</span><span id="driftDist">0</span><span>m</span></div>
+      <div class="hud-pill"><span>💨</span><span id="driftSpeed">0</span><span> km/h</span></div>
+      <div class="hud-pill"><span>🏆</span><span id="driftBest">0</span></div>
+    </div>
+    <div class="arcade-stage">
+      <canvas id="driftCanvas" class="arcade-canvas" width="480" height="560"></canvas>
+      <div class="arcade-overlay-card" id="driftOverlay">
+        <div class="arcade-card-inner">
+          <h2 id="driftOverlayTitle">🏎️ NEON DRIFT 3D</h2>
+          <p id="driftOverlayText">Weave through night traffic on the neon highway. Near misses pay bonus points — trading paint ends the run.</p>
+          <button class="pixel-btn pixel-btn-emerald" onclick="DriftGame.start()">▶ START ENGINE</button>
+        </div>
+      </div>
+    </div>
+    <div class="arcade-hint">hold left / right side of the road, drag, or ◀ ▶ keys · ▲ boost · ▼ brake</div>
+  </div>
+
+  <!-- 🎯 VOID BLASTER 3D -->
+  <div id="screen-blaster" class="arcade-screen">
+    <div class="arcade-topbar">
+      <button class="arcade-back-btn" onclick="Arcade.close()">🏠 HUB</button>
+      <div class="arcade-game-title" style="color:#d8b4fe;">🎯 VOID BLASTER 3D</div>
+    </div>
+    <div class="arcade-hud">
+      <div class="hud-pill"><span>⭐</span><span id="blasterScore">0</span></div>
+      <div class="hud-pill"><span>❤️</span><span id="blasterLives">3</span></div>
+      <div class="hud-pill"><span>🌊</span><span>WAVE </span><span id="blasterWave">1</span></div>
+      <div class="hud-pill"><span>🏆</span><span id="blasterBest">0</span></div>
+    </div>
+    <div class="arcade-stage">
+      <div id="blasterStage" style="position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+        <div id="blasterFallback" style="display:none; text-align:center; max-width:420px; padding:22px; border:3px solid #f87171; border-radius:8px; background:rgba(15,23,42,0.92);">
+          <div style="font-family:'Press Start 2P',monospace; font-size:13px; color:#fca5a5; line-height:1.7; margin-bottom:10px;">⚠️ 3D FAILED TO LOAD</div>
+          <p style="font-family:'VT323',monospace; font-size:19px; color:#cbd5e1; line-height:1.45;">The 3D engine could not be reached — check your connection, head back to the hub, and try again.</p>
+        </div>
+      </div>
+      <div class="arcade-overlay-card" id="blasterOverlay">
+        <div class="arcade-card-inner">
+          <h2 id="blasterOverlayTitle">🎯 VOID BLASTER 3D</h2>
+          <p id="blasterOverlayText">Hostile cubes are breaching the void. Tap or click them to blast them before they reach you. Drag to look around.</p>
+          <button class="pixel-btn pixel-btn-emerald" id="blasterStartBtn" onclick="BlasterGame.start()">▶ ENGAGE</button>
+        </div>
+      </div>
+    </div>
+    <div class="arcade-hint">tap / click targets to shoot · drag to look around</div>
+  </div>
+
+  <!-- 🧩 MEMORY MATCH -->
+  <div id="screen-memory" class="arcade-screen">
+    <div class="arcade-topbar">
+      <button class="arcade-back-btn" onclick="Arcade.close()">🏠 HUB</button>
+      <div class="arcade-game-title" style="color:#6ee7b7;">🧩 MEMORY MATCH</div>
+    </div>
+    <div class="arcade-hud">
+      <div class="hud-pill"><span>🎯</span><span id="memoryMoves">0</span><span> moves</span></div>
+      <div class="hud-pill"><span>⏱️</span><span id="memoryTime">0:00</span></div>
+      <div class="hud-pill"><span>💞</span><span id="memoryPairs">0/0</span></div>
+      <div class="hud-pill"><span>🏆</span><span id="memoryBest">—</span></div>
+    </div>
+    <div class="arcade-stage" style="align-items:flex-start; overflow-y:auto;">
+      <div class="memory-wrap">
+        <div class="memory-diff-bar">
+          <button class="pixel-btn" id="memDiffEasy" style="padding:7px 10px; font-size:9px;" onclick="MemoryGame.start('easy')">4×3 EASY</button>
+          <button class="pixel-btn" id="memDiffMed" style="padding:7px 10px; font-size:9px;" onclick="MemoryGame.start('medium')">4×4 MEDIUM</button>
+          <button class="pixel-btn" id="memDiffHard" style="padding:7px 10px; font-size:9px;" onclick="MemoryGame.start('hard')">6×5 HARD</button>
+        </div>
+        <div class="memory-grid" id="memoryGrid"></div>
+        <div id="memoryWin" style="display:none; text-align:center; margin-top:16px;">
+          <div style="font-family:'Press Start 2P',monospace; color:#fbbf24; font-size:15px; line-height:1.7;">🎉 BOARD CLEARED!</div>
+          <p id="memoryWinText" style="font-family:'VT323',monospace; font-size:20px; color:#cbd5e1; margin:8px 0 12px;"></p>
+          <button class="pixel-btn pixel-btn-emerald" onclick="MemoryGame.start(MemoryGame.difficulty)">↻ PLAY AGAIN</button>
+        </div>
+      </div>
+    </div>
+    <div class="arcade-hint">tap two cards — find every matching pair</div>
+  </div>
+
+  <!-- 🐍 SNAKE -->
+  <div id="screen-snake" class="arcade-screen">
+    <div class="arcade-topbar">
+      <button class="arcade-back-btn" onclick="Arcade.close()">🏠 HUB</button>
+      <div class="arcade-game-title" style="color:#bef264;">🐍 SNAKE</div>
+    </div>
+    <div class="arcade-hud">
+      <div class="hud-pill"><span>⭐</span><span id="snakeScore">0</span></div>
+      <div class="hud-pill"><span>🍎</span><span id="snakeLen">3</span></div>
+      <div class="hud-pill"><span>🏆</span><span id="snakeBest">0</span></div>
+    </div>
+    <div class="arcade-stage">
+      <canvas id="snakeCanvas" class="arcade-canvas" width="480" height="480"></canvas>
+      <div class="arcade-overlay-card" id="snakeOverlay">
+        <div class="arcade-card-inner">
+          <h2 id="snakeOverlayTitle">🐍 SNAKE</h2>
+          <p id="snakeOverlayText">Eat the apples, grow long, and do not kiss the walls — or yourself.</p>
+          <button class="pixel-btn pixel-btn-emerald" onclick="SnakeGame.start()">▶ SLITHER</button>
+        </div>
+      </div>
+    </div>
+    <div class="arcade-hint">swipe or arrow keys / WASD to steer</div>
   </div>
 
   <script>
@@ -13125,5 +13449,1468 @@
       Game.init();
     });
   </script>
+
+  <!-- ================================================================
+       ARCADE HUB + MINI-GAMES — ADD-ON LOGIC (added 2026-11-20)
+       New section only. Nothing here touches the existing game's
+       save, accounts, Firestore, Social, or Admin systems. Mini-game
+       bests live in their own localStorage key: star_arcade_scores_v1
+       ================================================================ -->
+  <script>
+  'use strict';
+
+  /* ================= ARCADE CORE ================= */
+  const Arcade = {
+    current: null, // 'striker' | 'drift' | 'blaster' | 'memory' | 'snake' | null
+    keys: {},
+    SCORES_KEY: 'star_arcade_scores_v1',
+    scores: {},
+
+    loadScores() {
+      try { this.scores = JSON.parse(localStorage.getItem(this.SCORES_KEY) || '{}') || {}; }
+      catch (_) { this.scores = {}; }
+    },
+    saveScore(game, value) {
+      if (typeof value !== 'number' || !isFinite(value)) return;
+      if (!this.scores[game] || value > this.scores[game]) {
+        this.scores[game] = value;
+        try { localStorage.setItem(this.SCORES_KEY, JSON.stringify(this.scores)); } catch (_) {}
+      }
+      this.refreshBests();
+    },
+    refreshBests() {
+      const map = { striker: 'best-striker', drift: 'best-drift', blaster: 'best-blaster', snake: 'best-snake' };
+      for (const g in map) {
+        const el = document.getElementById(map[g]);
+        if (el) el.textContent = this.scores[g] ? '🏆 BEST ' + this.scores[g].toLocaleString() : '';
+      }
+      const mb = document.getElementById('best-memory');
+      if (mb) {
+        const m = this.scores.memoryBest;
+        mb.textContent = m ? '🏆 BEST ' + m.moves + ' MOVES' : '';
+      }
+    },
+
+    games: {}, // name -> {onOpen, stop}
+    register(name, obj) { this.games[name] = obj; },
+
+    showHub() {
+      document.getElementById('arcadeHub').classList.add('open');
+      this.refreshBests();
+    },
+    hideHub() { document.getElementById('arcadeHub').classList.remove('open'); },
+
+    enterStar() { this.close(); this.hideHub(); },
+
+    open(name) {
+      this.close();
+      this.hideHub();
+      const scr = document.getElementById('screen-' + name);
+      if (!scr) return;
+      scr.classList.add('open');
+      this.current = name;
+      const g = this.games[name];
+      if (g && g.onOpen) { try { g.onOpen(); } catch (e) { console.error('Arcade open failed:', name, e); } }
+    },
+
+    close() {
+      if (this.current && this.games[this.current] && this.games[this.current].stop) {
+        try { this.games[this.current].stop(); } catch (_) {}
+      }
+      this.current = null;
+      document.querySelectorAll('.arcade-screen').forEach(s => s.classList.remove('open'));
+      if (!document.getElementById('arcadeHub').classList.contains('open')) this.showHub();
+    },
+
+    /* Size a canvas to its stage while keeping logical coordinates.
+       After calling, draw with ctx.setTransform(cv._sx,0,0,cv._sy,0,0)
+       and use logical W/H everywhere. */
+    fit(canvas, logicalW, logicalH) {
+      const stage = canvas.parentElement;
+      const availW = Math.max(120, stage.clientWidth - 4);
+      const availH = Math.max(120, stage.clientHeight - 4);
+      const scale = Math.min(availW / logicalW, availH / logicalH);
+      const cssW = Math.floor(logicalW * scale), cssH = Math.floor(logicalH * scale);
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = cssH + 'px';
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      canvas._lw = logicalW; canvas._lh = logicalH;
+      canvas._sx = canvas.width / logicalW;
+      canvas._sy = canvas.height / logicalH;
+    },
+
+    /* Map a pointer event to logical canvas coordinates. */
+    toLogical(canvas, e) {
+      const r = canvas.getBoundingClientRect();
+      return {
+        x: (e.clientX - r.left) / r.width * (canvas._lw || canvas.width),
+        y: (e.clientY - r.top) / r.height * (canvas._lh || canvas.height)
+      };
+    }
+  };
+
+  window.addEventListener('keydown', (e) => {
+    Arcade.keys[e.code] = true;
+    if (Arcade.current && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+  });
+  window.addEventListener('keyup', (e) => { Arcade.keys[e.code] = false; });
+  window.addEventListener('blur', () => { Arcade.keys = {}; });
+  window.addEventListener('resize', () => {
+    if (Arcade.current && Arcade.games[Arcade.current] && Arcade.games[Arcade.current].onResize) {
+      try { Arcade.games[Arcade.current].onResize(); } catch (_) {}
+    }
+  });
+
+  /* ================= 🚀 VOID STRIKER ================= */
+  const StrikerGame = {
+    W: 420, H: 560,
+    cv: null, ctx: null, raf: 0, running: false, last: 0,
+    ship: null, bullets: [], enemies: [], ebullets: [], parts: [], stars: [],
+    score: 0, lives: 3, wave: 1, kills: 0, waveKills: 0, waveTarget: 0,
+    spawnT: 0, fireT: 0, waveBannerT: 0, shake: 0, pointer: null,
+
+    init() {
+      this.cv = document.getElementById('strikerCanvas');
+      this.ctx = this.cv.getContext('2d');
+      for (let i = 0; i < 90; i++) this.stars.push({ x: Math.random() * this.W, y: Math.random() * this.H, s: Math.random() * 1.8 + 0.4, v: Math.random() * 26 + 8 });
+      const cv = this.cv;
+      const setP = (e) => { this.pointer = Arcade.toLogical(cv, e); };
+      cv.addEventListener('pointerdown', (e) => { e.preventDefault(); setP(e); });
+      cv.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'touch') setP(e); });
+      cv.addEventListener('pointerup', () => { this.pointer = null; });
+      cv.addEventListener('pointercancel', () => { this.pointer = null; });
+      cv.addEventListener('pointerleave', () => { this.pointer = null; });
+    },
+
+    onOpen() {
+      if (!this.cv) this.init();
+      Arcade.fit(this.cv, this.W, this.H);
+      this.reset(false);
+      this.showOverlay('🚀 VOID STRIKER', 'Blast the void swarm. Drag or use arrow keys / WASD to fly — your cannon fires on its own.', '▶ LAUNCH');
+      this.drawFrame(0);
+    },
+    onResize() { if (this.cv) { Arcade.fit(this.cv, this.W, this.H); if (!this.running) this.drawFrame(0); } },
+    stop() { this.running = false; cancelAnimationFrame(this.raf); if (this.score > 0) Arcade.saveScore('striker', this.score); },
+
+    reset(startNow) {
+      this.ship = { x: this.W / 2, y: this.H - 84, vx: 0, tilt: 0, invuln: 0, flame: 0 };
+      this.bullets = []; this.enemies = []; this.ebullets = []; this.parts = [];
+      this.score = 0; this.lives = 3; this.wave = 1; this.kills = 0;
+      this.waveKills = 0; this.waveTarget = 8; this.spawnT = 0.4; this.fireT = 0; this.waveBannerT = 1.6; this.shake = 0;
+      this.updateHud();
+    },
+
+    start() {
+      document.getElementById('strikerOverlay').classList.remove('show');
+      this.reset(true);
+      this.running = true;
+      this.last = performance.now();
+      cancelAnimationFrame(this.raf);
+      this.raf = requestAnimationFrame((t) => this.loop(t));
+    },
+
+    showOverlay(title, text, btn) {
+      document.getElementById('strikerOverlayTitle').textContent = title;
+      document.getElementById('strikerOverlayText').textContent = text;
+      document.querySelector('#strikerOverlay .pixel-btn').textContent = btn;
+      document.getElementById('strikerOverlay').classList.add('show');
+    },
+
+    updateHud() {
+      document.getElementById('strikerScore').textContent = this.score.toLocaleString();
+      document.getElementById('strikerLives').textContent = Math.max(0, this.lives);
+      document.getElementById('strikerWave').textContent = this.wave;
+      document.getElementById('strikerBest').textContent = (Arcade.scores.striker || 0).toLocaleString();
+    },
+
+    loop(t) {
+      if (!this.running) return;
+      const dt = Math.min(0.033, (t - this.last) / 1000 || 0.016);
+      this.last = t;
+      this.step(dt);
+      this.drawFrame(dt);
+      this.raf = requestAnimationFrame((tt) => this.loop(tt));
+    },
+
+    spawnEnemy() {
+      const r = Math.random();
+      const gunnerOk = this.wave >= 3;
+      let type = 'drone';
+      if (gunnerOk && r > 0.82) type = 'gunner';
+      else if (r > 0.52) type = 'weaver';
+      const x = 30 + Math.random() * (this.W - 60);
+      const base = {
+        x, y: -26, t: Math.random() * 10, type,
+        hp: type === 'gunner' ? 4 : (type === 'weaver' ? 2 : 1),
+        r: type === 'gunner' ? 19 : 13,
+        vy: (type === 'gunner' ? 34 : 62) + Math.random() * 26 + this.wave * 4,
+        amp: 34 + Math.random() * 30, fireT: 1 + Math.random() * 1.4
+      };
+      base.x0 = x;
+      this.enemies.push(base);
+    },
+
+    explode(x, y, colors, n, spd) {
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, v = (0.25 + Math.random() * 0.75) * (spd || 130);
+        this.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.45 + Math.random() * 0.4, max: 0.85, size: 2 + Math.random() * 3, color: colors[(Math.random() * colors.length) | 0] });
+      }
+    },
+
+    step(dt) {
+      const K = Arcade.keys, ship = this.ship;
+      // --- ship movement ---
+      let ax = 0, ay = 0;
+      if (K['ArrowLeft'] || K['KeyA']) ax -= 1;
+      if (K['ArrowRight'] || K['KeyD']) ax += 1;
+      if (K['ArrowUp'] || K['KeyW']) ay -= 1;
+      if (K['ArrowDown'] || K['KeyS']) ay += 1;
+      const SPEED = 335;
+      if (ax || ay) { ship.x += ax * SPEED * dt; ship.y += ay * SPEED * dt; this.pointer = null; }
+      else if (this.pointer) {
+        const dx = this.pointer.x - ship.x, dy = this.pointer.y - ship.y;
+        const k = Math.min(1, dt * 14);
+        ship.x += dx * k; ship.y += dy * k;
+        ship.tilt = Math.max(-0.35, Math.min(0.35, dx * 0.004));
+      }
+      if (!this.pointer) ship.tilt *= Math.pow(0.001, dt);
+      ship.x = Math.max(18, Math.min(this.W - 18, ship.x));
+      ship.y = Math.max(56, Math.min(this.H - 26, ship.y));
+      ship.flame += dt * 22;
+      if (ship.invuln > 0) ship.invuln -= dt;
+
+      // --- stars ---
+      for (const s of this.stars) { s.y += s.v * dt; if (s.y > this.H) { s.y = -2; s.x = Math.random() * this.W; } }
+
+      // --- firing (auto) ---
+      this.fireT -= dt;
+      if (this.fireT <= 0) {
+        this.fireT = 0.145;
+        this.bullets.push({ x: ship.x - 9, y: ship.y - 16, vy: -520 });
+        this.bullets.push({ x: ship.x + 9, y: ship.y - 16, vy: -520 });
+      }
+      for (const b of this.bullets) b.y += b.vy * dt;
+      this.bullets = this.bullets.filter(b => b.y > -14);
+
+      // --- spawning / waves ---
+      if (this.waveBannerT > 0) this.waveBannerT -= dt;
+      if (this.waveKills < this.waveTarget) {
+        this.spawnT -= dt;
+        if (this.spawnT <= 0) {
+          this.spawnEnemy();
+          this.spawnT = Math.max(0.32, 0.95 - this.wave * 0.06) * (0.7 + Math.random() * 0.6);
+        }
+      } else if (this.enemies.length === 0) {
+        this.score += 100 * this.wave;
+        this.wave++; this.waveKills = 0;
+        this.waveTarget = 8 + this.wave * 3;
+        this.waveBannerT = 1.6;
+        this.updateHud();
+      }
+
+      // --- enemies ---
+      for (const e of this.enemies) {
+        e.t += dt;
+        e.y += e.vy * dt;
+        if (e.type === 'weaver') e.x = e.x0 + Math.sin(e.t * 2.6) * e.amp;
+        if (e.type === 'gunner') {
+          e.fireT -= dt;
+          if (e.fireT <= 0 && e.y > 0 && e.y < this.H * 0.55) {
+            e.fireT = 1.5 + Math.random() * 0.5;
+            const dx = ship.x - e.x, dy = ship.y - e.y, d = Math.hypot(dx, dy) || 1;
+            this.ebullets.push({ x: e.x, y: e.y + 14, vx: dx / d * 195, vy: dy / d * 195 });
+          }
+        }
+      }
+
+      // --- bullets vs enemies ---
+      for (const e of this.enemies) {
+        if (e.hp <= 0) continue;
+        for (const b of this.bullets) {
+          if (b.dead) continue;
+          const dx = b.x - e.x, dy = b.y - e.y;
+          if (dx * dx + dy * dy < (e.r + 5) * (e.r + 5)) {
+            b.dead = true; e.hp--;
+            this.explode(b.x, b.y, ['#fde68a', '#f8fafc'], 2, 60);
+            if (e.hp <= 0) {
+              this.score += e.type === 'gunner' ? 150 : (e.type === 'weaver' ? 75 : 50);
+              this.kills++; this.waveKills++;
+              this.explode(e.x, e.y, e.type === 'gunner' ? ['#f472b6', '#fbbf24', '#f8fafc'] : ['#38bdf8', '#fbbf24', '#f8fafc'], e.type === 'gunner' ? 22 : 13, 150);
+              this.updateHud();
+            }
+          }
+        }
+      }
+      this.bullets = this.bullets.filter(b => !b.dead);
+      this.enemies = this.enemies.filter(e => e.hp > 0 && e.y < this.H + 34);
+
+      // --- enemy bullets ---
+      for (const b of this.ebullets) { b.x += b.vx * dt; b.y += b.vy * dt; }
+      this.ebullets = this.ebullets.filter(b => b.y < this.H + 12 && b.y > -12 && b.x > -12 && b.x < this.W + 12);
+
+      // --- damage to ship ---
+      if (ship.invuln <= 0) {
+        let hit = false;
+        for (const b of this.ebullets) {
+          const dx = b.x - ship.x, dy = b.y - ship.y;
+          if (dx * dx + dy * dy < 15 * 15) { hit = true; b.y = 9999; break; }
+        }
+        if (!hit) {
+          for (const e of this.enemies) {
+            const dx = e.x - ship.x, dy = e.y - ship.y;
+            if (dx * dx + dy * dy < (e.r + 12) * (e.r + 12)) { e.hp = 0; this.explode(e.x, e.y, ['#38bdf8', '#fbbf24'], 14, 150); hit = true; break; }
+          }
+        }
+        if (hit) {
+          this.lives--;
+          this.explode(ship.x, ship.y, ['#f87171', '#fbbf24', '#f8fafc'], 26, 190);
+          this.shake = 0.35;
+          ship.invuln = 2;
+          ship.x = this.W / 2; ship.y = this.H - 84; this.pointer = null;
+          this.updateHud();
+          if (this.lives <= 0) { this.gameOver(); return; }
+        }
+      }
+
+      // --- particles / shake ---
+      for (const p of this.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.98; p.vy *= 0.98; p.life -= dt; }
+      this.parts = this.parts.filter(p => p.life > 0);
+      if (this.shake > 0) this.shake -= dt;
+    },
+
+    gameOver() {
+      this.running = false;
+      Arcade.saveScore('striker', this.score);
+      this.updateHud();
+      const best = Arcade.scores.striker || this.score;
+      this.showOverlay('💥 SHIP DOWN', `You held the void for ${this.kills} kills across ${this.wave} wave${this.wave > 1 ? 's' : ''}.\nScore ${this.score.toLocaleString()} · Best ${best.toLocaleString()}`, '↻ FLY AGAIN');
+      this.drawFrame(0);
+    },
+
+    drawFrame(dt) {
+      const ctx = this.ctx, W = this.W, H = this.H;
+      if (!ctx) return;
+      ctx.setTransform(this.cv._sx || 1, 0, 0, this.cv._sy || 1, 0, 0);
+      // space backdrop
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#030712'); g.addColorStop(0.55, '#0a1130'); g.addColorStop(1, '#131038');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#e0f2fe';
+      for (const s of this.stars) { ctx.globalAlpha = 0.35 + s.s * 0.3; ctx.fillRect(s.x, s.y, s.s, s.s); }
+      ctx.globalAlpha = 1;
+
+      ctx.save();
+      if (this.shake > 0) ctx.translate((Math.random() - 0.5) * 9 * this.shake * 3, (Math.random() - 0.5) * 9 * this.shake * 3);
+
+      // enemy bullets
+      for (const b of this.ebullets) {
+        ctx.fillStyle = '#f87171'; ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 9;
+        ctx.beginPath(); ctx.arc(b.x, b.y, 4.4, 0, 7); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      // player bullets
+      ctx.fillStyle = '#fde68a'; ctx.shadowColor = '#f59e0b'; ctx.shadowBlur = 7;
+      for (const b of this.bullets) ctx.fillRect(b.x - 2, b.y - 8, 4, 11);
+      ctx.shadowBlur = 0;
+
+      // enemies
+      for (const e of this.enemies) {
+        ctx.save(); ctx.translate(e.x, e.y);
+        if (e.type === 'drone') {
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath(); ctx.moveTo(0, 13); ctx.lineTo(11, -7); ctx.lineTo(4, -3); ctx.lineTo(-4, -3); ctx.lineTo(-11, -7); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#f87171'; ctx.beginPath(); ctx.arc(0, 2, 3, 0, 7); ctx.fill();
+        } else if (e.type === 'weaver') {
+          ctx.fillStyle = '#c084fc';
+          ctx.beginPath(); ctx.moveTo(0, 14); ctx.lineTo(12, 2); ctx.lineTo(6, -10); ctx.lineTo(-6, -10); ctx.lineTo(-12, 2); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#f0abfc'; ctx.fillRect(-2.5, -4, 5, 8);
+        } else {
+          ctx.fillStyle = '#f472b6';
+          ctx.beginPath(); ctx.moveTo(0, 19); ctx.lineTo(15, 6); ctx.lineTo(18, -10); ctx.lineTo(7, -16); ctx.lineTo(-7, -16); ctx.lineTo(-18, -10); ctx.lineTo(-15, 6); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#7f1d1d'; ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, 7); ctx.fill();
+          ctx.fillStyle = '#fecdd3'; ctx.beginPath(); ctx.arc(0, 0, 2.8, 0, 7); ctx.fill();
+          // hp pips
+          ctx.fillStyle = '#f9a8d4';
+          for (let i = 0; i < e.hp; i++) ctx.fillRect(-14 + i * 8, -26, 5.5, 3.4);
+        }
+        ctx.restore();
+      }
+
+      // particles
+      for (const p of this.parts) {
+        ctx.globalAlpha = Math.max(0, p.life / p.max);
+        ctx.fillStyle = p.color; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      }
+      ctx.globalAlpha = 1;
+
+      // ship
+      const ship = this.ship;
+      if (ship && !(ship.invuln > 0 && Math.floor(ship.invuln * 12) % 2 === 0)) {
+        ctx.save(); ctx.translate(ship.x, ship.y); ctx.rotate(ship.tilt);
+        const fl = 9 + Math.sin(ship.flame) * 3.5;
+        ctx.fillStyle = '#fb923c'; ctx.beginPath(); ctx.moveTo(-4.5, 13); ctx.lineTo(0, 13 + fl); ctx.lineTo(4.5, 13); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#fb7185'; ctx.beginPath(); ctx.moveTo(-2, 13); ctx.lineTo(0, 13 + fl * 0.55); ctx.lineTo(2, 13); ctx.closePath(); ctx.fill();
+        const bg = ctx.createLinearGradient(0, -18, 0, 14);
+        bg.addColorStop(0, '#bae6fd'); bg.addColorStop(0.5, '#38bdf8'); bg.addColorStop(1, '#0369a1');
+        ctx.fillStyle = bg;
+        ctx.beginPath(); ctx.moveTo(0, -19); ctx.lineTo(5, -4); ctx.lineTo(16, 11); ctx.lineTo(16, 14); ctx.lineTo(5, 10); ctx.lineTo(-5, 10); ctx.lineTo(-16, 14); ctx.lineTo(-16, 11); ctx.lineTo(-5, -4); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#0c4a6e'; ctx.beginPath(); ctx.arc(0, -3, 3.6, 0, 7); ctx.fill();
+        ctx.fillStyle = '#e0f2fe'; ctx.beginPath(); ctx.arc(-1, -4.4, 1.4, 0, 7); ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // wave banner
+      if (this.waveBannerT > 0 && this.running) {
+        ctx.globalAlpha = Math.min(1, this.waveBannerT);
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = '22px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('WAVE ' + this.wave, W / 2, H * 0.38);
+        ctx.globalAlpha = 1;
+      }
+    }
+  };
+  Arcade.register('striker', StrikerGame);
+
+  /* ================= 🐍 SNAKE ================= */
+  const SnakeGame = {
+    W: 480, H: 480, CELL: 20, COLS: 24, ROWS: 24,
+    cv: null, ctx: null, raf: 0, running: false, last: 0, acc: 0,
+    snake: [], dir: { x: 1, y: 0 }, queue: [], apple: null,
+    score: 0, eaten: 0, tickMs: 128, dead: false,
+
+    init() {
+      this.cv = document.getElementById('snakeCanvas');
+      this.ctx = this.cv.getContext('2d');
+      let sx = 0, sy = 0;
+      this.cv.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY; }, { passive: true });
+      this.cv.addEventListener('touchend', (e) => {
+        const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+        if (Math.hypot(dx, dy) < 22) return;
+        if (Math.abs(dx) > Math.abs(dy)) this.turn(dx > 0 ? 1 : -1, 0); else this.turn(0, dy > 0 ? 1 : -1);
+        e.preventDefault();
+      }, { passive: false });
+      this._keyHandler = (e) => {
+        if (Arcade.current !== 'snake' || !this.running) return;
+        const m = { ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1], ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0] };
+        if (m[e.code]) this.turn(m[e.code][0], m[e.code][1]);
+      };
+      window.addEventListener('keydown', this._keyHandler);
+    },
+
+    turn(x, y) {
+      if (this.dead || !this.snake.length) return;
+      const last = this.queue.length ? this.queue[this.queue.length - 1] : this.dir;
+      if (last.x === -x && last.y === -y) return;
+      if (last.x === x && last.y === y) return;
+      if (this.queue.length < 3) this.queue.push({ x, y });
+    },
+
+    onOpen() {
+      if (!this.cv) this.init();
+      Arcade.fit(this.cv, this.W, this.H);
+      this.reset();
+      this.showOverlay('🐍 SNAKE', 'Eat the apples, grow long, and do not kiss the walls — or yourself.', '▶ SLITHER');
+      this.drawFrame();
+    },
+    onResize() { if (this.cv) { Arcade.fit(this.cv, this.W, this.H); this.drawFrame(); } },
+    stop() { this.running = false; cancelAnimationFrame(this.raf); },
+
+    reset() {
+      const cy = this.ROWS >> 1, cx = this.COLS >> 1;
+      this.snake = [{ x: cx, y: cy }, { x: cx - 1, y: cy }, { x: cx - 2, y: cy }];
+      this.dir = { x: 1, y: 0 }; this.queue = [];
+      this.score = 0; this.eaten = 0; this.tickMs = 128; this.dead = false;
+      this.placeApple();
+      this.updateHud();
+    },
+
+    placeApple() {
+      for (;;) {
+        const a = { x: (Math.random() * this.COLS) | 0, y: (Math.random() * this.ROWS) | 0 };
+        if (!this.snake.some(s => s.x === a.x && s.y === a.y)) { this.apple = a; return; }
+      }
+    },
+
+    start() {
+      document.getElementById('snakeOverlay').classList.remove('show');
+      this.reset();
+      this.running = true; this.acc = 0;
+      this.last = performance.now();
+      cancelAnimationFrame(this.raf);
+      this.raf = requestAnimationFrame((t) => this.loop(t));
+    },
+
+    showOverlay(title, text, btn) {
+      document.getElementById('snakeOverlayTitle').textContent = title;
+      document.getElementById('snakeOverlayText').textContent = text;
+      document.querySelector('#snakeOverlay .pixel-btn').textContent = btn;
+      document.getElementById('snakeOverlay').classList.add('show');
+    },
+
+    updateHud() {
+      document.getElementById('snakeScore').textContent = this.score.toLocaleString();
+      document.getElementById('snakeLen').textContent = this.snake.length;
+      document.getElementById('snakeBest').textContent = (Arcade.scores.snake || 0).toLocaleString();
+    },
+
+    loop(t) {
+      if (!this.running) return;
+      const dt = Math.min(0.1, (t - this.last) / 1000 || 0.016);
+      this.last = t;
+      this.acc += dt * 1000;
+      while (this.acc >= this.tickMs && this.running) { this.acc -= this.tickMs; this.tick(); }
+      this.drawFrame();
+      if (this.running) this.raf = requestAnimationFrame((tt) => this.loop(tt));
+    },
+
+    tick() {
+      if (this.queue.length) this.dir = this.queue.shift();
+      const head = { x: this.snake[0].x + this.dir.x, y: this.snake[0].y + this.dir.y };
+      if (head.x < 0 || head.y < 0 || head.x >= this.COLS || head.y >= this.ROWS ||
+          this.snake.some(s => s.x === head.x && s.y === head.y)) { this.gameOver(); return; }
+      this.snake.unshift(head);
+      if (head.x === this.apple.x && head.y === this.apple.y) {
+        this.score += 10; this.eaten++;
+        if (this.eaten % 5 === 0) this.tickMs = Math.max(74, this.tickMs - 7);
+        this.placeApple();
+        this.updateHud();
+      } else {
+        this.snake.pop();
+      }
+    },
+
+    gameOver() {
+      this.running = false; this.dead = true;
+      Arcade.saveScore('snake', this.score);
+      this.updateHud();
+      this.drawFrame();
+      const best = Arcade.scores.snake || this.score;
+      this.showOverlay('💀 SNAKE DOWN', `Length ${this.snake.length} · ${this.eaten} apples munched.\nScore ${this.score.toLocaleString()} · Best ${best.toLocaleString()}`, '↻ SLITHER AGAIN');
+    },
+
+    drawFrame() {
+      const ctx = this.ctx; if (!ctx) return;
+      const C = this.CELL;
+      ctx.setTransform(this.cv._sx || 1, 0, 0, this.cv._sy || 1, 0, 0);
+      ctx.fillStyle = '#07130a'; ctx.fillRect(0, 0, this.W, this.H);
+      ctx.fillStyle = 'rgba(163, 230, 53, 0.05)';
+      for (let y = 0; y < this.ROWS; y++) for (let x = 0; x < this.COLS; x++) if ((x + y) % 2 === 0) ctx.fillRect(x * C, y * C, C, C);
+      ctx.strokeStyle = 'rgba(163,230,53,0.25)'; ctx.lineWidth = 2;
+      ctx.strokeRect(1, 1, this.W - 2, this.H - 2);
+
+      // apple
+      if (this.apple) {
+        const ax = this.apple.x * C + C / 2, ay = this.apple.y * C + C / 2;
+        ctx.fillStyle = '#166534'; ctx.fillRect(ax - 1, ay - C / 2 + 1, 2.4, 5);
+        ctx.fillStyle = '#ef4444'; ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.arc(ax, ay + 1.5, C * 0.36, 0, 7); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(ax - 3, ay - 2, 2.2, 0, 7); ctx.fill();
+      }
+
+      // snake
+      const n = this.snake.length;
+      for (let i = n - 1; i >= 0; i--) {
+        const s = this.snake[i], t = n <= 1 ? 0 : i / (n - 1);
+        const r = 46 + Math.round(30 * (1 - t)), g = 160 + Math.round(60 * (1 - t)), b = 30;
+        ctx.fillStyle = this.dead ? '#78716c' : `rgb(${r},${g},${b})`;
+        const pad = i === 0 ? 1 : 1.8;
+        const x = s.x * C + pad, y = s.y * C + pad, w = C - pad * 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(x, y, w, w, 5); else ctx.rect(x, y, w, w);
+        ctx.fill();
+        if (i === 0) {
+          const cxp = s.x * C + C / 2, cyp = s.y * C + C / 2;
+          const ex = this.dir.x * 3.4, ey = this.dir.y * 3.4;
+          const px = this.dir.y !== 0 ? 4.4 : 0, py = this.dir.x !== 0 ? 4.4 : 0;
+          ctx.fillStyle = '#fefce8';
+          ctx.beginPath(); ctx.arc(cxp + ex + px, cyp + ey + py, 2.7, 0, 7); ctx.fill();
+          ctx.beginPath(); ctx.arc(cxp + ex - px, cyp + ey - py, 2.7, 0, 7); ctx.fill();
+          ctx.fillStyle = '#1a2e05';
+          ctx.beginPath(); ctx.arc(cxp + ex * 1.5 + px, cyp + ey * 1.5 + py, 1.4, 0, 7); ctx.fill();
+          ctx.beginPath(); ctx.arc(cxp + ex * 1.5 - px, cyp + ey * 1.5 - py, 1.4, 0, 7); ctx.fill();
+        }
+      }
+    }
+  };
+  Arcade.register('snake', SnakeGame);
+  </script>
+
+
+  <script>
+  'use strict';
+
+  /* ================= 🏎️ NEON DRIFT 3D =================
+     Pseudo-3D OutRun-style racer, pure canvas. Segment projection
+     road with curves + hills, neon night theme. */
+  const DriftGame = {
+    W: 480, H: 560,
+    cv: null, ctx: null, raf: 0, running: false, last: 0,
+    segLen: 200, rumble: 3, roadWidth: 2100, lanes: 3,
+    camHeight: 1050, camDepth: 0, playerZ: 0,
+    maxSpeed: 0, drawDist: 110, fogDensity: 5, centrifugal: 0.31,
+    segments: [], trackLength: 0, cars: [], popups: [], parts: [],
+    position: 0, totalDist: 0, playerX: 0, speed: 0,
+    steerVis: 0, hillPhase: 0, skyStars: [], score: 0, nearMiss: 0,
+    pointerSteer: null, crashed: false,
+
+    init() {
+      this.cv = document.getElementById('driftCanvas');
+      this.ctx = this.cv.getContext('2d');
+      this.camDepth = 1 / Math.tan((100 / 2) * Math.PI / 180);
+      this.playerZ = this.camHeight * this.camDepth;
+      this.maxSpeed = this.segLen * 60;
+      for (let i = 0; i < 80; i++) this.skyStars.push({ x: Math.random(), y: Math.random() * 0.42, s: Math.random() * 1.6 + 0.4 });
+      this.buildTrack();
+      const cv = this.cv;
+      cv.addEventListener('pointerdown', (e) => { e.preventDefault(); this.pointerSteer = Arcade.toLogical(cv, e); });
+      cv.addEventListener('pointermove', (e) => { if (this.pointerSteer) this.pointerSteer = Arcade.toLogical(cv, e); });
+      const end = () => { this.pointerSteer = null; };
+      cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end); cv.addEventListener('pointerleave', end);
+    },
+
+    lastY() { return this.segments.length === 0 ? 0 : this.segments[this.segments.length - 1].p2.world.y; },
+    addSegment(curve, y) {
+      const n = this.segments.length;
+      this.segments.push({
+        index: n, curve,
+        p1: { world: { y: this.lastY(), z: n * this.segLen }, camera: {}, screen: {} },
+        p2: { world: { y, z: (n + 1) * this.segLen }, camera: {}, screen: {} },
+        color: Math.floor(n / this.rumble) % 2 ? 'dark' : 'light',
+        looped: false, fog: 0, clip: 0
+      });
+    },
+    addRoad(enter, hold, leave, curve, dy) {
+      const startY = this.lastY(), endY = startY + dy * this.segLen, total = enter + hold + leave;
+      const easeIn = (a, b, p) => a + (b - a) * p * p;
+      const easeIO = (a, b, p) => a + (b - a) * (-Math.cos(p * Math.PI) / 2 + 0.5);
+      for (let n = 0; n < enter; n++) this.addSegment(easeIn(0, curve, n / enter), easeIO(startY, endY, n / total));
+      for (let n = 0; n < hold; n++) this.addSegment(curve, easeIO(startY, endY, (enter + n) / total));
+      for (let n = 0; n < leave; n++) this.addSegment(easeIO(curve, 0, n / leave), easeIO(startY, endY, (enter + hold + n) / total));
+    },
+    buildTrack() {
+      this.segments = [];
+      this.addRoad(25, 25, 25, 0, 0);
+      this.addRoad(30, 30, 30, 2, 10);
+      this.addRoad(30, 30, 30, -3, -6);
+      this.addRoad(20, 20, 20, 0, 14);
+      this.addRoad(35, 35, 35, 4, 0);
+      this.addRoad(25, 25, 25, -2, -12);
+      this.addRoad(30, 30, 30, -4.5, 4);
+      this.addRoad(20, 20, 20, 1.5, 0);
+      this.addRoad(40, 40, 40, 0, -10);
+      this.trackLength = this.segments.length * this.segLen;
+    },
+    findSegment(z) { return this.segments[Math.floor(z / this.segLen) % this.segments.length]; },
+
+    reset() {
+      this.position = 0; this.totalDist = 0; this.playerX = 0; this.speed = 0;
+      this.score = 0; this.nearMiss = 0; this.crashed = false;
+      this.popups = []; this.parts = []; this.pointerSteer = null; this.steerVis = 0;
+      this.cars = [];
+      const palette = ['#f472b6', '#38bdf8', '#fbbf24', '#a78bfa', '#34d399', '#fb7185', '#f8fafc'];
+      for (let i = 0; i < 26; i++) {
+        const lane = [-0.62, 0, 0.62][i % 3];
+        this.cars.push({
+          offset: lane + (Math.random() - 0.5) * 0.14,
+          z: (i / 26) * this.trackLength + Math.random() * this.segLen * 6 + this.segLen * 8,
+          speedPct: 0.34 + Math.random() * 0.24,
+          color: palette[(Math.random() * palette.length) | 0],
+          wasAhead: false
+        });
+      }
+      this.cars.forEach(c => { c.z = c.z % this.trackLength; });
+      this.updateHud();
+    },
+
+    onOpen() {
+      if (!this.cv) this.init();
+      Arcade.fit(this.cv, this.W, this.H);
+      this.reset();
+      this.showOverlay('🏎️ NEON DRIFT 3D', 'Weave through night traffic on the neon highway. Near misses pay bonus points — trading paint ends the run.', '▶ START ENGINE');
+      this.drawFrame();
+    },
+    onResize() { if (this.cv) { Arcade.fit(this.cv, this.W, this.H); if (!this.running) this.drawFrame(); } },
+    stop() { this.running = false; cancelAnimationFrame(this.raf); if (this.score > 0) Arcade.saveScore('drift', Math.floor(this.score)); },
+
+    start() {
+      document.getElementById('driftOverlay').classList.remove('show');
+      this.reset();
+      this.running = true;
+      this.last = performance.now();
+      cancelAnimationFrame(this.raf);
+      this.raf = requestAnimationFrame((t) => this.loop(t));
+    },
+
+    showOverlay(title, text, btn) {
+      document.getElementById('driftOverlayTitle').textContent = title;
+      document.getElementById('driftOverlayText').textContent = text;
+      document.querySelector('#driftOverlay .pixel-btn').textContent = btn;
+      document.getElementById('driftOverlay').classList.add('show');
+    },
+
+    updateHud() {
+      document.getElementById('driftScore').textContent = Math.floor(this.score).toLocaleString();
+      document.getElementById('driftDist').textContent = Math.floor(this.totalDist / 100).toLocaleString();
+      document.getElementById('driftSpeed').textContent = Math.round(this.speed / this.maxSpeed * 265);
+      document.getElementById('driftBest').textContent = (Arcade.scores.drift || 0).toLocaleString();
+    },
+
+    loop(t) {
+      if (!this.running) return;
+      const dt = Math.min(0.033, (t - this.last) / 1000 || 0.016);
+      this.last = t;
+      this.step(dt);
+      this.drawFrame();
+      if (this.running) this.raf = requestAnimationFrame((tt) => this.loop(tt));
+    },
+
+    step(dt) {
+      const K = Arcade.keys;
+      const playerSegment = this.findSegment(this.position + this.playerZ);
+      const speedPct = this.speed / this.maxSpeed;
+      const dx = dt * 2.1 * (0.35 + 0.65 * speedPct); // steering keeps authority at low speed
+
+      // --- steering ---
+      let steer = 0;
+      if (K['ArrowLeft'] || K['KeyA']) steer -= 1;
+      if (K['ArrowRight'] || K['KeyD']) steer += 1;
+      if (steer !== 0) { this.playerX += steer * dx; this.pointerSteer = null; }
+      else if (this.pointerSteer) {
+        const target = ((this.pointerSteer.x / this.W) * 2 - 1) * 1.7;
+        const diff = target - this.playerX;
+        this.playerX += Math.max(-dx * 1.7, Math.min(dx * 1.7, diff));
+        steer = Math.max(-1, Math.min(1, diff * 2.4));
+      }
+      this.steerVis += ((steer || 0) - this.steerVis) * Math.min(1, dt * 10);
+      // centrifugal push on curves
+      this.playerX -= dx * speedPct * playerSegment.curve * this.centrifugal;
+      this.playerX = Math.max(-2.2, Math.min(2.2, this.playerX));
+
+      // --- speed ---
+      let target = this.maxSpeed * 0.8;
+      if (K['ArrowUp'] || K['KeyW']) target = this.maxSpeed;
+      if (K['ArrowDown'] || K['KeyS']) target = this.maxSpeed * 0.34;
+      const accel = this.maxSpeed / 4.2;
+      if (this.speed < target) this.speed = Math.min(target, this.speed + accel * dt);
+      else this.speed = Math.max(target, this.speed - this.maxSpeed * 0.7 * dt);
+      // offroad scrub
+      if (Math.abs(this.playerX) > 1 && this.speed > this.maxSpeed * 0.3) {
+        this.speed = Math.max(this.maxSpeed * 0.3, this.speed - this.maxSpeed * 1.1 * dt);
+      }
+
+      // --- advance ---
+      this.position = (this.position + this.speed * dt) % this.trackLength;
+      this.totalDist += this.speed * dt;
+      this.score = this.totalDist / 100 + this.nearMiss * 50;
+      this.hillPhase += playerSegment.curve * speedPct * dt * 1.4;
+
+      // --- traffic ---
+      const playerZPos = this.position + this.playerZ;
+      for (const car of this.cars) {
+        // simple traffic AI: don't rear-end the car ahead
+        let carSpeed = this.maxSpeed * car.speedPct;
+        for (const other of this.cars) {
+          if (other === car) continue;
+          let gap = other.z - car.z; if (gap < 0) gap += this.trackLength;
+          if (gap > 0 && gap < this.segLen * 7 && Math.abs(other.offset - car.offset) < 0.4) {
+            carSpeed = Math.min(carSpeed, this.maxSpeed * other.speedPct);
+          }
+        }
+        car.z = (car.z + carSpeed * dt) % this.trackLength;
+
+        // wrapped distance from player (positive = ahead)
+        let rel = car.z - playerZPos;
+        while (rel > this.trackLength / 2) rel -= this.trackLength;
+        while (rel < -this.trackLength / 2) rel += this.trackLength;
+
+        if (rel > 0 && rel < this.segLen * 4) car.wasAhead = true;
+        car.relZ = rel;
+        if (rel < 0 && car.wasAhead) {
+          car.wasAhead = false;
+          const lat = Math.abs(this.playerX - car.offset);
+          if (lat >= 0.5 && lat < 1.3 && this.speed > this.maxSpeed * 0.4) {
+            this.nearMiss++;
+            this.popups.push({ text: 'NEAR MISS +50', t: 1.1, x: this.W / 2 + (car.offset - this.playerX) * 90 });
+            this.score = this.totalDist / 100 + this.nearMiss * 50;
+          }
+        }
+
+        // collision
+        if (Math.abs(rel) < this.segLen * 0.85 && Math.abs(this.playerX - car.offset) < 0.56) {
+          this.crash();
+          return;
+        }
+      }
+
+      // popups + particles
+      for (const p of this.popups) p.t -= dt;
+      this.popups = this.popups.filter(p => p.t > 0);
+      for (const p of this.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
+      this.parts = this.parts.filter(p => p.life > 0);
+
+      this.updateHud();
+    },
+
+    crash() {
+      this.crashed = true;
+      this.running = false;
+      const cx = this.W / 2, cy = this.H - 120;
+      for (let i = 0; i < 34; i++) {
+        const a = Math.random() * Math.PI * 2, v = 40 + Math.random() * 190;
+        this.parts.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, life: 0.5 + Math.random() * 0.5, color: ['#fb923c', '#f87171', '#fbbf24', '#e2e8f0'][(Math.random() * 4) | 0], size: 2 + Math.random() * 4 });
+      }
+      this.score = this.totalDist / 100 + this.nearMiss * 50;
+      Arcade.saveScore('drift', Math.floor(this.score));
+      this.drawFrame();
+      this.updateHud();
+      const best = Arcade.scores.drift || Math.floor(this.score);
+      this.showOverlay('💥 WRECKED', `You covered ${(this.totalDist / 100).toFixed(0)}m with ${this.nearMiss} near miss${this.nearMiss === 1 ? '' : 'es'}.\nScore ${Math.floor(this.score).toLocaleString()} · Best ${best.toLocaleString()}`, '↻ DRIVE AGAIN');
+    },
+
+    project(p, cameraX, cameraY, cameraZ) {
+      p.camera.x = (p.world.x || 0) - cameraX;
+      p.camera.y = p.world.y - cameraY;
+      p.camera.z = p.world.z - cameraZ;
+      p.screen.scale = this.camDepth / Math.max(1, p.camera.z);
+      p.screen.x = Math.round(this.W / 2 + p.screen.scale * p.camera.x * this.W / 2);
+      p.screen.y = Math.round(this.H / 2 - p.screen.scale * p.camera.y * this.H / 2);
+      p.screen.w = Math.round(p.screen.scale * this.roadWidth * this.W / 2);
+    },
+
+    poly(ctx, x1, y1, x2, y2, x3, y3, x4, y4, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.lineTo(x4, y4);
+      ctx.closePath(); ctx.fill();
+    },
+
+    renderSegment(ctx, x1, y1, w1, x2, y2, w2, color, fog) {
+      const ground = color === 'light' ? '#0a0f26' : '#070b1d';
+      ctx.fillStyle = ground;
+      ctx.fillRect(0, y2, this.W, y1 - y2);
+      const asphalt = color === 'light' ? '#1d2440' : '#181f38';
+      const rumble = color === 'light' ? '#ec4899' : '#06b6d4';
+      const rw1 = w1 * 1.14, rw2 = w2 * 1.14;
+      this.poly(ctx, x1 - rw1, y1, x1 + rw1, y1, x2 + rw2, y2, x2 - rw2, y2, rumble);
+      this.poly(ctx, x1 - w1, y1, x1 + w1, y1, x2 + w2, y2, x2 - w2, y2, asphalt);
+      if (color === 'light') {
+        ctx.fillStyle = 'rgba(125, 211, 252, 0.75)';
+        for (const lanePos of [-1 / 3, 1 / 3]) {
+          const lx1 = x1 + w1 * lanePos, lx2 = x2 + w2 * lanePos;
+          const lw1 = Math.max(1, w1 * 0.018), lw2 = Math.max(1, w2 * 0.018);
+          this.poly(ctx, lx1 - lw1, y1, lx1 + lw1, y1, lx2 + lw2, y2, lx2 - lw2, y2, 'rgba(125,211,252,0.6)');
+        }
+      }
+      if (fog > 0.01) {
+        ctx.fillStyle = `rgba(8, 11, 32, ${fog.toFixed(3)})`;
+        ctx.fillRect(0, y2, this.W, y1 - y2);
+      }
+    },
+
+    drawCar(ctx, cx, bottomY, w, color, isPlayer) {
+      const h = w * 0.46;
+      const top = bottomY - h;
+      ctx.save();
+      // shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.beginPath(); ctx.ellipse(cx, bottomY - h * 0.04, w * 0.52, h * 0.13, 0, 0, 7); ctx.fill();
+      // wheels
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(cx - w * 0.5, bottomY - h * 0.34, w * 0.13, h * 0.34);
+      ctx.fillRect(cx + w * 0.37, bottomY - h * 0.34, w * 0.13, h * 0.34);
+      // body
+      const grad = ctx.createLinearGradient(0, top, 0, bottomY);
+      grad.addColorStop(0, color); grad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(cx - w * 0.46, bottomY - h * 0.06);
+      ctx.lineTo(cx - w * 0.42, top + h * 0.34);
+      ctx.lineTo(cx - w * 0.24, top + h * 0.3);
+      ctx.lineTo(cx - w * 0.17, top);
+      ctx.lineTo(cx + w * 0.17, top);
+      ctx.lineTo(cx + w * 0.24, top + h * 0.3);
+      ctx.lineTo(cx + w * 0.42, top + h * 0.34);
+      ctx.lineTo(cx + w * 0.46, bottomY - h * 0.06);
+      ctx.closePath(); ctx.fill();
+      // rear window
+      ctx.fillStyle = 'rgba(186, 230, 253, 0.85)';
+      ctx.beginPath();
+      ctx.moveTo(cx - w * 0.155, top + h * 0.06);
+      ctx.lineTo(cx + w * 0.155, top + h * 0.06);
+      ctx.lineTo(cx + w * 0.21, top + h * 0.3);
+      ctx.lineTo(cx - w * 0.21, top + h * 0.3);
+      ctx.closePath(); ctx.fill();
+      // tail lights
+      ctx.fillStyle = '#ef4444'; ctx.shadowColor = '#ef4444'; ctx.shadowBlur = w * 0.09;
+      ctx.fillRect(cx - w * 0.4, bottomY - h * 0.3, w * 0.17, h * 0.09);
+      ctx.fillRect(cx + w * 0.23, bottomY - h * 0.3, w * 0.17, h * 0.09);
+      ctx.shadowBlur = 0;
+      // spoiler (player car)
+      if (isPlayer) {
+        ctx.fillStyle = '#0ea5e9';
+        ctx.fillRect(cx - w * 0.44, top - h * 0.1, w * 0.88, h * 0.07);
+        ctx.fillRect(cx - w * 0.3, top - h * 0.04, w * 0.06, h * 0.08);
+        ctx.fillRect(cx + w * 0.24, top - h * 0.04, w * 0.06, h * 0.08);
+      }
+      ctx.restore();
+    },
+
+    drawFrame() {
+      const ctx = this.ctx; if (!ctx) return;
+      const W = this.W, H = this.H;
+      ctx.setTransform(this.cv._sx || 1, 0, 0, this.cv._sy || 1, 0, 0);
+
+      // --- sky ---
+      const sky = ctx.createLinearGradient(0, 0, 0, H * 0.62);
+      sky.addColorStop(0, '#020617'); sky.addColorStop(0.6, '#131038'); sky.addColorStop(1, '#3b1154');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#e0f2fe';
+      for (const s of this.skyStars) { ctx.globalAlpha = 0.5 + s.s * 0.25; ctx.fillRect(s.x * W, s.y * H, s.s, s.s); }
+      ctx.globalAlpha = 1;
+      // moon
+      ctx.fillStyle = '#fef9c3'; ctx.shadowColor = '#fde68a'; ctx.shadowBlur = 26;
+      ctx.beginPath(); ctx.arc(W * 0.79, 74, 21, 0, 7); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(3,7,18,0.16)';
+      ctx.beginPath(); ctx.arc(W * 0.79 - 7, 68, 4, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(W * 0.79 + 6, 80, 3, 0, 7); ctx.fill();
+      // mountain ridges (parallax by accumulated curve)
+      for (const layer of [{ amp: 26, base: H * 0.52, col: '#1e1b4b', ph: this.hillPhase * 30, fr: 0.013 }, { amp: 17, base: H * 0.575, col: '#0f0c2e', ph: this.hillPhase * 55 + 90, fr: 0.021 }]) {
+        ctx.fillStyle = layer.col;
+        ctx.beginPath(); ctx.moveTo(0, H);
+        for (let x = 0; x <= W; x += 8) {
+          const y = layer.base - (Math.sin(x * layer.fr + layer.ph) * 0.5 + 0.5) * layer.amp - Math.sin(x * layer.fr * 2.7 + layer.ph * 1.7) * layer.amp * 0.3;
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+      }
+
+      // --- road ---
+      const baseSegment = this.findSegment(this.position);
+      const basePct = (this.position % this.segLen) / this.segLen;
+      const playerSegment = this.findSegment(this.position + this.playerZ);
+      const playerPct = ((this.position + this.playerZ) % this.segLen) / this.segLen;
+      const playerY = playerSegment.p1.world.y + (playerSegment.p2.world.y - playerSegment.p1.world.y) * playerPct;
+      let maxy = H;
+      let x = 0, dx = -(baseSegment.curve * basePct);
+      const projCache = new Map();
+
+      for (let n = 0; n < this.drawDist; n++) {
+        const segment = this.segments[(baseSegment.index + n) % this.segments.length];
+        segment.looped = segment.index < baseSegment.index;
+        segment.fog = 1 / Math.pow(Math.E, Math.pow(n / this.drawDist, 2) * this.fogDensity);
+        segment.clip = maxy;
+        const camZ = this.position - (segment.looped ? this.trackLength : 0);
+        this.project(segment.p1, this.playerX * this.roadWidth - x, playerY + this.camHeight, camZ);
+        this.project(segment.p2, this.playerX * this.roadWidth - x - dx, playerY + this.camHeight, camZ);
+        x += dx; dx += segment.curve;
+        if (segment.p1.camera.z <= this.camDepth || segment.p2.screen.y >= segment.p1.screen.y || segment.p2.screen.y >= maxy) continue;
+        this.renderSegment(ctx, segment.p1.screen.x, segment.p1.screen.y, segment.p1.screen.w,
+          segment.p2.screen.x, segment.p2.screen.y, segment.p2.screen.w, segment.color, segment.fog);
+        projCache.set(segment.index, segment);
+        maxy = segment.p1.screen.y;
+      }
+
+      // --- traffic (far to near) ---
+      const sorted = this.cars.map(car => {
+        let rel = car.z - this.position; if (rel < 0) rel += this.trackLength;
+        return { car, rel };
+      }).filter(e => e.rel > this.playerZ * 0.6 && e.rel < this.drawDist * this.segLen)
+        .sort((a, b) => b.rel - a.rel);
+      for (const { car } of sorted) {
+        const seg = this.findSegment(car.z);
+        const proj = projCache.get(seg.index);
+        if (!proj) continue;
+        const pct = (car.z % this.segLen) / this.segLen;
+        const scale = proj.p1.screen.scale + (proj.p2.screen.scale - proj.p1.screen.scale) * pct;
+        const sx = (proj.p1.screen.x + (proj.p2.screen.x - proj.p1.screen.x) * pct) + scale * car.offset * this.roadWidth * W / 2;
+        const sy = proj.p1.screen.y + (proj.p2.screen.y - proj.p1.screen.y) * pct;
+        const carW = scale * this.roadWidth * W / 2 * 1.06;
+        if (carW < 3 || sy < proj.clip - carW) continue;
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0, 0, W, proj.clip); ctx.clip();
+        this.drawCar(ctx, sx, sy, carW, car.color, false);
+        ctx.restore();
+      }
+
+      // --- player car ---
+      const playerScale = this.camDepth / this.playerZ;
+      const roadHalf = playerScale * this.roadWidth * W / 2;
+      const carW = roadHalf * 1.06;
+      const bounce = Math.sin(this.totalDist * 0.05) * (this.speed / this.maxSpeed) * 1.6;
+      const offroadShake = Math.abs(this.playerX) > 1 && this.speed > this.maxSpeed * 0.3 ? (Math.random() - 0.5) * 4 : 0;
+      ctx.save();
+      ctx.translate(W / 2 + offroadShake, H - 26 + bounce);
+      ctx.rotate(this.steerVis * 0.045);
+      ctx.translate(-W / 2, -(H - 26));
+      this.drawCar(ctx, W / 2, H - 26 + Math.abs(bounce) * 0.4, carW, this.crashed ? '#475569' : '#0ea5e9', true);
+      ctx.restore();
+      // exhaust glow at speed
+      if (this.speed > this.maxSpeed * 0.6 && !this.crashed) {
+        ctx.fillStyle = 'rgba(56,189,248,0.5)';
+        ctx.beginPath(); ctx.ellipse(W / 2 - carW * 0.18, H - 22, 5 + Math.random() * 4, 3, 0, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(W / 2 + carW * 0.18, H - 22, 5 + Math.random() * 4, 3, 0, 0, 7); ctx.fill();
+      }
+
+      // crash particles
+      for (const p of this.parts) {
+        ctx.globalAlpha = Math.max(0, p.life * 1.6);
+        ctx.fillStyle = p.color; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      }
+      ctx.globalAlpha = 1;
+
+      // near-miss popups
+      ctx.textAlign = 'center';
+      for (const p of this.popups) {
+        ctx.globalAlpha = Math.min(1, p.t);
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = '13px "Press Start 2P", monospace';
+        ctx.fillText(p.text, p.x, this.H * 0.58 - (1.1 - p.t) * 34);
+      }
+      ctx.globalAlpha = 1;
+
+      // countdown-free start hint
+      if (this.running && this.totalDist < 60) {
+        ctx.fillStyle = 'rgba(248,250,252,0.85)';
+        ctx.font = '12px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('GO!', W / 2, H * 0.3);
+      }
+    }
+  };
+  Arcade.register('drift', DriftGame);
+  </script>
+
+
+  <script>
+  'use strict';
+
+  /* ================= 🎯 VOID BLASTER 3D =================
+     Real-3D tap shooter on Three.js (r128, cdnjs). The library is
+     lazy-loaded on first open; if it cannot load, a clean fallback
+     message is shown instead of throwing. */
+  const BlasterGame = {
+    ready: false, loading: false, failed: false,
+    renderer: null, scene: null, camera: null, raycaster: null, flashEl: null,
+    targets: [], shards: [], running: false, raf: 0, last: 0,
+    score: 0, lives: 3, kills: 0, wave: 1, spawnT: 0,
+    yaw: 0, pitch: 0, tYaw: 0, tPitch: 0, dragging: false, lastPX: 0, lastPY: 0,
+    boxGeo: null, edgeGeo: null, shardGeo: null,
+    palette: [0x38bdf8, 0xf472b6, 0xfbbf24, 0x34d399, 0xc084fc, 0xfb923c],
+
+    onOpen() {
+      this.updateHud();
+      this.ensureThree();
+      if (this.failed) this.showFallback();
+      else {
+        document.getElementById('blasterFallback').style.display = 'none';
+        document.getElementById('blasterOverlay').classList.add('show');
+        if (this.ready) this.renderOnce();
+      }
+    },
+    stop() { this.running = false; cancelAnimationFrame(this.raf); if (this.score > 0) Arcade.saveScore('blaster', this.score); },
+    onResize() { if (this.renderer) { this.sizeRenderer(); if (!this.running) this.renderOnce(); } },
+
+    showFallback() {
+      document.getElementById('blasterOverlay').classList.remove('show');
+      document.getElementById('blasterFallback').style.display = 'block';
+    },
+
+    ensureThree() {
+      if (this.ready || this.loading) return;
+      if (window.THREE) { this.setup(); return; }
+      this.loading = true;
+      const btn = document.getElementById('blasterStartBtn');
+      if (btn) { btn.textContent = '⏳ LOADING 3D…'; btn.disabled = true; }
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+      s.async = true;
+      s.onload = () => {
+        this.loading = false;
+        if (window.THREE) this.setup();
+        else { this.failed = true; if (Arcade.current === 'blaster') this.showFallback(); }
+      };
+      s.onerror = () => {
+        this.loading = false; this.failed = true;
+        if (Arcade.current === 'blaster') this.showFallback();
+      };
+      document.head.appendChild(s);
+      setTimeout(() => {
+        if (!this.ready && this.loading) {
+          this.loading = false; this.failed = true;
+          if (Arcade.current === 'blaster') this.showFallback();
+        }
+      }, 15000);
+    },
+
+    setup() {
+      try {
+        const stage = document.getElementById('blasterStage');
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+        const cv = this.renderer.domElement;
+        cv.style.cssText = 'display:block; border:3px solid #334155; border-radius:8px; background:#020617; box-shadow:0 0 0 3px #030712, 0 0 34px rgba(192,132,252,0.16); touch-action:none; cursor:crosshair; max-width:100%;';
+        stage.appendChild(cv);
+
+        this.flashEl = document.createElement('div');
+        this.flashEl.style.cssText = 'position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at center, transparent 40%, rgba(239,68,68,0.55) 100%); opacity:0; transition:opacity 0.12s ease; border-radius:8px;';
+        stage.appendChild(this.flashEl);
+
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x050814);
+        this.scene.fog = new THREE.FogExp2(0x050814, 0.02);
+        this.camera = new THREE.PerspectiveCamera(72, 4 / 3, 0.1, 200);
+        this.camera.position.set(0, 0, 0);
+        this.raycaster = new THREE.Raycaster();
+
+        // starfield shell
+        const starGeo = new THREE.BufferGeometry();
+        const pos = new Float32Array(700 * 3);
+        for (let i = 0; i < 700; i++) {
+          const r = 45 + Math.random() * 55, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+          pos[i * 3] = r * Math.sin(ph) * Math.cos(th);
+          pos[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th);
+          pos[i * 3 + 2] = -Math.abs(r * Math.cos(ph)) - 4;
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xcfe8ff, size: 0.55, fog: false }));
+        this.scene.add(stars);
+        // distant nebula clouds (radial-gradient sprites, soft edges)
+        const nebTex = (() => {
+          const c = document.createElement('canvas'); c.width = c.height = 128;
+          const g2 = c.getContext('2d');
+          const grad = g2.createRadialGradient(64, 64, 4, 64, 64, 64);
+          grad.addColorStop(0, 'rgba(255,255,255,0.85)');
+          grad.addColorStop(0.4, 'rgba(255,255,255,0.32)');
+          grad.addColorStop(1, 'rgba(255,255,255,0)');
+          g2.fillStyle = grad; g2.fillRect(0, 0, 128, 128);
+          return new THREE.CanvasTexture(c);
+        })();
+        for (const [x, y, z, c, s] of [[-15, 6, -52, 0x2563eb, 34], [16, -5, -58, 0x7c3aed, 40], [-2, 11, -64, 0x0d9488, 44], [7, -11, -48, 0xbe185d, 26]]) {
+          const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: nebTex, color: c, transparent: true, opacity: 0.3, fog: false, depthWrite: false }));
+          sp.position.set(x, y, z); sp.scale.set(s, s * 0.62, 1); this.scene.add(sp);
+        }
+
+        this.boxGeo = new THREE.BoxGeometry(1, 1, 1);
+        this.edgeGeo = new THREE.EdgesGeometry(this.boxGeo);
+        this.shardGeo = new THREE.BoxGeometry(0.16, 0.16, 0.16);
+
+        cv.addEventListener('pointerdown', (e) => {
+          this.dragging = true; this.lastPX = e.clientX; this.lastPY = e.clientY;
+          if (this.running) this.shoot(e);
+        });
+        window.addEventListener('pointermove', (e) => {
+          if (!this.dragging || Arcade.current !== 'blaster') return;
+          const dx = e.clientX - this.lastPX, dy = e.clientY - this.lastPY;
+          this.lastPX = e.clientX; this.lastPY = e.clientY;
+          this.tYaw = Math.max(-0.42, Math.min(0.42, this.tYaw - dx * 0.0026));
+          this.tPitch = Math.max(-0.26, Math.min(0.26, this.tPitch - dy * 0.0026));
+        });
+        window.addEventListener('pointerup', () => { this.dragging = false; });
+        window.addEventListener('pointercancel', () => { this.dragging = false; });
+
+        this.sizeRenderer();
+        this.ready = true; this.failed = false;
+        const btn = document.getElementById('blasterStartBtn');
+        if (btn) { btn.textContent = '▶ ENGAGE'; btn.disabled = false; }
+        document.getElementById('blasterFallback').style.display = 'none';
+        if (Arcade.current === 'blaster') {
+          document.getElementById('blasterOverlay').classList.add('show');
+          this.renderOnce();
+        }
+      } catch (err) {
+        console.error('Blaster setup failed:', err);
+        this.failed = true;
+        if (Arcade.current === 'blaster') this.showFallback();
+      }
+    },
+
+    sizeRenderer() {
+      const stage = document.getElementById('blasterStage');
+      if (!stage || !this.renderer) return;
+      const w = Math.max(160, stage.clientWidth - 4), h = Math.max(160, stage.clientHeight - 4);
+      this.renderer.setSize(w, h);
+      this.camera.aspect = w / h;
+      this.camera.updateProjectionMatrix();
+    },
+
+    renderOnce() { if (this.renderer && this.scene) this.renderer.render(this.scene, this.camera); },
+
+    start() {
+      if (!this.ready) { this.ensureThree(); return; }
+      document.getElementById('blasterOverlay').classList.remove('show');
+      // clear field
+      for (const t of this.targets) this.scene.remove(t.mesh);
+      for (const s of this.shards) this.scene.remove(s.mesh);
+      this.targets = []; this.shards = [];
+      this.score = 0; this.lives = 3; this.kills = 0; this.wave = 1; this.spawnT = 0.6;
+      this.yaw = 0; this.pitch = 0; this.tYaw = 0; this.tPitch = 0;
+      this.updateHud();
+      this.running = true;
+      this.last = performance.now();
+      cancelAnimationFrame(this.raf);
+      this.raf = requestAnimationFrame((t) => this.loop(t));
+    },
+
+    updateHud() {
+      document.getElementById('blasterScore').textContent = this.score.toLocaleString();
+      document.getElementById('blasterLives').textContent = Math.max(0, this.lives);
+      document.getElementById('blasterWave').textContent = this.wave;
+      document.getElementById('blasterBest').textContent = (Arcade.scores.blaster || 0).toLocaleString();
+    },
+
+    spawn() {
+      const armored = this.wave >= 3 && Math.random() < 0.22;
+      const color = armored ? 0xdc2626 : this.palette[(Math.random() * this.palette.length) | 0];
+      const mesh = new THREE.Mesh(this.boxGeo, new THREE.MeshBasicMaterial({ color }));
+      const edges = new THREE.LineSegments(this.edgeGeo, new THREE.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.55 }));
+      mesh.add(edges);
+      const sc = armored ? 1.55 : 0.9 + Math.random() * 0.55;
+      mesh.scale.setScalar(sc);
+      mesh.position.set((Math.random() * 13 - 6.5), (Math.random() * 7 - 2.6), -30 - Math.random() * 7);
+      mesh.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+      this.scene.add(mesh);
+      this.targets.push({
+        mesh, hp: armored ? 2 : 1, armored,
+        speed: (2.1 + this.wave * 0.32) * (0.85 + Math.random() * 0.35),
+        rx: (Math.random() - 0.5) * 1.6, ry: (Math.random() - 0.5) * 1.6,
+        wob: Math.random() * 10, baseX: mesh.position.x
+      });
+    },
+
+    shoot(e) {
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+      this.raycaster.setFromCamera(ndc, this.camera);
+      const meshes = this.targets.map(t => t.mesh);
+      const hits = this.raycaster.intersectObjects(meshes, false);
+      if (!hits.length) return;
+      const t = this.targets.find(tt => tt.mesh === hits[0].object);
+      if (!t) return;
+      t.hp--;
+      if (t.hp > 0) {
+        // armored hit: chip burst + knockback flash
+        this.burst(t.mesh.position, 0xfca5a5, 6, 2.6);
+        t.mesh.position.z -= 0.7;
+        return;
+      }
+      this.burst(t.mesh.position, t.armored ? 0xef4444 : this.palette[(Math.random() * this.palette.length) | 0], t.armored ? 20 : 13, 4.2);
+      this.scene.remove(t.mesh);
+      this.targets = this.targets.filter(tt => tt !== t);
+      this.score += t.armored ? 150 : 100;
+      this.kills++;
+      const newWave = 1 + Math.floor(this.kills / 10);
+      if (newWave !== this.wave) this.wave = newWave;
+      this.updateHud();
+    },
+
+    burst(pos, color, n, spd) {
+      for (let i = 0; i < n; i++) {
+        const m = new THREE.Mesh(this.shardGeo, new THREE.MeshBasicMaterial({ color }));
+        m.position.copy(pos);
+        this.scene.add(m);
+        this.shards.push({
+          mesh: m, life: 0.55 + Math.random() * 0.25,
+          vx: (Math.random() - 0.5) * spd * 2, vy: (Math.random() - 0.5) * spd * 2, vz: (Math.random() - 0.5) * spd * 2,
+          rx: Math.random() * 6, ry: Math.random() * 6
+        });
+      }
+    },
+
+    flash() {
+      if (!this.flashEl) return;
+      this.flashEl.style.opacity = '1';
+      setTimeout(() => { if (this.flashEl) this.flashEl.style.opacity = '0'; }, 130);
+    },
+
+    loop(t) {
+      if (!this.running) return;
+      const dt = Math.min(0.05, (t - this.last) / 1000 || 0.016);
+      this.last = t;
+      this.step(dt);
+      this.renderer.render(this.scene, this.camera);
+      if (this.running) this.raf = requestAnimationFrame((tt) => this.loop(tt));
+    },
+
+    step(dt) {
+      this.spawnT -= dt;
+      const interval = Math.max(0.5, 1.45 - this.wave * 0.09);
+      if (this.spawnT <= 0) { this.spawn(); this.spawnT = interval * (0.7 + Math.random() * 0.6); }
+
+      for (const t of this.targets) {
+        t.mesh.position.z += t.speed * dt;
+        t.mesh.position.x = t.baseX + Math.sin(t.wob += dt * 1.7) * 0.35;
+        t.mesh.rotation.x += t.rx * dt;
+        t.mesh.rotation.y += t.ry * dt;
+      }
+      // breaches
+      for (const t of [...this.targets]) {
+        if (t.mesh.position.z > 2.2) {
+          this.scene.remove(t.mesh);
+          this.targets = this.targets.filter(tt => tt !== t);
+          this.lives--;
+          this.flash();
+          this.updateHud();
+          if (this.lives <= 0) { this.gameOver(); return; }
+        }
+      }
+      // shards
+      for (const s of this.shards) {
+        s.life -= dt;
+        s.mesh.position.x += s.vx * dt;
+        s.mesh.position.y += s.vy * dt;
+        s.mesh.position.z += s.vz * dt;
+        s.vy -= 2.4 * dt;
+        s.mesh.rotation.x += s.rx * dt;
+        s.mesh.rotation.y += s.ry * dt;
+        const k = Math.max(0.01, s.life / 0.7);
+        s.mesh.scale.setScalar(k);
+      }
+      const dead = this.shards.filter(s => s.life <= 0);
+      for (const s of dead) this.scene.remove(s.mesh);
+      this.shards = this.shards.filter(s => s.life > 0);
+
+      // camera look (lerped drag)
+      this.yaw += (this.tYaw - this.yaw) * Math.min(1, dt * 9);
+      this.pitch += (this.tPitch - this.pitch) * Math.min(1, dt * 9);
+      this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+    },
+
+    gameOver() {
+      this.running = false;
+      Arcade.saveScore('blaster', this.score);
+      this.updateHud();
+      this.renderer.render(this.scene, this.camera);
+      const best = Arcade.scores.blaster || this.score;
+      document.getElementById('blasterOverlayTitle').textContent = '💥 BREACH!';
+      document.getElementById('blasterOverlayText').textContent = `You blasted ${this.kills} cubes and reached wave ${this.wave}.\nScore ${this.score.toLocaleString()} · Best ${best.toLocaleString()}`;
+      document.getElementById('blasterStartBtn').textContent = '↻ ENGAGE AGAIN';
+      document.getElementById('blasterOverlay').classList.add('show');
+    }
+  };
+  Arcade.register('blaster', BlasterGame);
+
+  /* ================= 🧩 MEMORY MATCH ================= */
+  const MemoryGame = {
+    difficulty: 'medium',
+    DIFFS: { easy: { cols: 4, rows: 3, label: '4×3' }, medium: { cols: 4, rows: 4, label: '4×4' }, hard: { cols: 6, rows: 5, label: '6×5' } },
+    EMOJI: ['🚀', '🪐', '⭐', '🌙', '☄️', '🛸', '👽', '🔭', '🌌', '💫', '🛰️', '🌠', '🦐', '🔮', '⚡', '🌟'],
+    first: null, lock: false, moves: 0, pairs: 0, totalPairs: 0,
+    started: false, startT: 0, elapsed: 0, timerInt: 0,
+
+    onOpen() { this.start(this.difficulty); },
+    stop() { clearInterval(this.timerInt); this.timerInt = 0; },
+
+    fmt(s) { return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0'); },
+
+    start(diff) {
+      this.difficulty = diff || this.difficulty;
+      const d = this.DIFFS[this.difficulty];
+      clearInterval(this.timerInt); this.timerInt = 0;
+      this.first = null; this.lock = false; this.moves = 0; this.pairs = 0;
+      this.started = false; this.elapsed = 0;
+      this.totalPairs = (d.cols * d.rows) / 2;
+      document.getElementById('memoryWin').style.display = 'none';
+      const btnIds = { easy: 'memDiffEasy', medium: 'memDiffMed', hard: 'memDiffHard' };
+      for (const k in this.DIFFS) {
+        const btn = document.getElementById(btnIds[k]);
+        if (btn) btn.style.borderColor = k === this.difficulty ? '#fbbf24' : '';
+      }
+      // build + shuffle deck
+      const faces = this.EMOJI.slice(0, this.totalPairs);
+      const deck = [...faces, ...faces];
+      for (let i = deck.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[deck[i], deck[j]] = [deck[j], deck[i]]; }
+      const grid = document.getElementById('memoryGrid');
+      grid.style.gridTemplateColumns = `repeat(${d.cols}, 1fr)`;
+      grid.innerHTML = '';
+      deck.forEach((face) => {
+        const card = document.createElement('div');
+        card.className = 'memory-card';
+        card.innerHTML = `<div class="memory-card-inner"><div class="memory-face front">✦</div><div class="memory-face back">${face}</div></div>`;
+        card.addEventListener('click', () => this.flip(card, face));
+        grid.appendChild(card);
+      });
+      this.updateHud();
+      this.updateBestLabel();
+    },
+
+    updateHud() {
+      document.getElementById('memoryMoves').textContent = this.moves;
+      document.getElementById('memoryTime').textContent = this.fmt(this.elapsed);
+      document.getElementById('memoryPairs').textContent = this.pairs + '/' + this.totalPairs;
+    },
+
+    updateBestLabel() {
+      const all = Arcade.scores.memory || {};
+      const b = all[this.difficulty];
+      document.getElementById('memoryBest').textContent = b ? `${b.moves} moves · ${this.fmt(b.time)}` : '—';
+    },
+
+    flip(card, face) {
+      if (this.lock || card.classList.contains('flipped')) return;
+      if (!this.started) {
+        this.started = true; this.startT = Date.now();
+        this.timerInt = setInterval(() => {
+          this.elapsed = (Date.now() - this.startT) / 1000;
+          document.getElementById('memoryTime').textContent = this.fmt(this.elapsed);
+        }, 250);
+      }
+      card.classList.add('flipped');
+      if (!this.first) { this.first = { card, face }; return; }
+      const first = this.first; this.first = null;
+      this.moves++;
+      if (first.face === face) {
+        first.card.classList.add('matched');
+        card.classList.add('matched');
+        this.pairs++;
+        this.updateHud();
+        if (this.pairs === this.totalPairs) this.win();
+      } else {
+        this.lock = true;
+        this.updateHud();
+        setTimeout(() => {
+          first.card.classList.remove('flipped');
+          card.classList.remove('flipped');
+          this.lock = false;
+        }, 620);
+      }
+    },
+
+    win() {
+      clearInterval(this.timerInt); this.timerInt = 0;
+      this.elapsed = (Date.now() - this.startT) / 1000;
+      const d = this.DIFFS[this.difficulty];
+      if (!Arcade.scores.memory) Arcade.scores.memory = {};
+      const prev = Arcade.scores.memory[this.difficulty];
+      const rec = { moves: this.moves, time: Math.round(this.elapsed) };
+      if (!prev || rec.moves < prev.moves || (rec.moves === prev.moves && rec.time < prev.time)) {
+        Arcade.scores.memory[this.difficulty] = rec;
+      }
+      const mb = Arcade.scores.memory.medium || Arcade.scores.memory.easy || Arcade.scores.memory.hard;
+      if (mb) Arcade.scores.memoryBest = { moves: mb.moves };
+      try { localStorage.setItem(Arcade.SCORES_KEY, JSON.stringify(Arcade.scores)); } catch (_) {}
+      Arcade.refreshBests();
+      this.updateBestLabel();
+      document.getElementById('memoryWinText').textContent =
+        `${d.label} board cleared in ${this.moves} moves and ${this.fmt(this.elapsed)}. Best on this board: ${Arcade.scores.memory[this.difficulty].moves} moves.`;
+      document.getElementById('memoryWin').style.display = 'block';
+      this.updateHud();
+    }
+  };
+  Arcade.register('memory', MemoryGame);
+
+  /* ================= ARCADE BOOT =================
+     Show the hub as the front door. The existing game boots on its
+     own DOMContentLoaded exactly as before, underneath the hub. */
+  try { Arcade.loadScores(); } catch (_) {}
+  try { Arcade.refreshBests(); } catch (_) {}
+  try { Arcade.showHub(); } catch (_) {}
+  </script>
+
 </body>
 </html>
